@@ -1,0 +1,14 @@
+<RCC>
+   <qresource>
+      <file>./assets/icons/chevron-down.svg</file>
+      <file>./assets/icons/x.svg</file>
+      <file>./assets/icons/minus.svg</file>
+      <file>./assets/icons/minimize-2.svg</file>
+      <file>./assets/icons/settings.svg</file>
+      <file>./assets/icons/arrow-right.svg</file>
+      <file>./assets/icons/arrow-left.svg</file>
+   </qresource>
+   <qresource>
+      <file>./assets/fonts/Inter-Regular.ttf</file>
+   </qresource>
+</RCC>
