@@ -16,7 +16,7 @@ class LoadingWidget(QWidget):
         self.setLayout(self.loading_box_layout)
         self.setFixedSize(250, 100)
         self.setStyleSheet(
-            "background-color: #262626; color: #fafafa; font-size: 14px; padding: 16px; border-radius: 4px;"
+            "background-color: #262626; color: #fafafa;  padding: 16px; border-radius: 4px;"
         )
 
         self.loading_box_layout.addWidget(self.text_label)

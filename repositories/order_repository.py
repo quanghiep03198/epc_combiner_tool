@@ -4,20 +4,21 @@ from database import get_raw_sql
 from PyQt6.QtSql import *
 from helpers.logger import logger
 from pathlib import Path
+from database import DATA_SOURCE_ERP
 
 
 class OrderRepository:
-    def __init__(self, data_source_erp):
-        self.data_source_erp = data_source_erp
 
-    async def get_order_detail(self, mo_no: str):
+    @staticmethod
+    def get_order_detail(mo_no: str):
         results = []
+        logger.debug("Getting order detail")
         try:
             current_dir = Path(__file__).parent.resolve()
             sql_file_path = current_dir / "./sql/get_order_information.sql"
-            sql_statement = await asyncio.to_thread(get_raw_sql, sql_file_path)
-
-            query = QSqlQuery(self.data_source_erp)
+            # sql_statement = await asyncio.to_thread(get_raw_sql, sql_file_path)
+            sql_statement = get_raw_sql(sql_file_path)
+            query = QSqlQuery(DATA_SOURCE_ERP)
             query.prepare(sql_statement)
             query.bindValue(":mo_no", mo_no)
             query.exec()

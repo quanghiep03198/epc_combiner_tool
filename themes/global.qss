@@ -1,11 +1,16 @@
-@import url('../assets/fonts/Inter-Regular.ttf');
-
-* {
-   background-color: #262626;
+*{
    color: #fafafa;
-   font: 14px 'Inter';
    border-color: #404040;
+   background-color: #262626;
    border-width: 1px;
+   font-family: Inter, serif;
+   font-weight: normal;
+   font-style: normal;
+   font-size: 14px;
+}
+
+#MainWindow{
+   border-radius: 8px
 }
 
 QPushButton{
@@ -14,6 +19,7 @@ QPushButton{
    background-color: #fafafa;
    color:  #171717;
    border-radius: 4px;
+   spacing: 8px; 
 }
 
 QPushButton:hover{
@@ -25,6 +31,11 @@ QPushButton:disabled {
    color: #a3a3a3;
 }
 
+QPushButton:pressed{
+   background-color: #e5e5e5;
+   color:  #404040;
+}
+
 QLineEdit{
    height: 36px;
    background-color: #171717;
@@ -32,8 +43,19 @@ QLineEdit{
    border: 1px solid #404040;
    border-radius: 4px;
    padding: 0px 8px;
+   selection-background-color: #404040;
+   selection-color: #fafafa;
 }
 
+QLineEdit[valid="True"] {
+   border:1px solid #22c55e;
+}
+QLineEdit[valid="False"] {
+   border:1px solid #ef4444;
+}
+QLineEdit[echoMode="2"] {
+   lineedit-password-character: 8226;
+}
 
 QComboBox{
    height: 36px;
@@ -118,27 +140,26 @@ QTableWidget QTableHead{
 
 
 QScrollBar:vertical {
-   border: none;
-   background: none;
+   background-color: #262626;
    width: 8px;
    margin: 0px 0px 0px 0px;
 }
 
 QScrollBar:horizontal {
    border: 0px;
-   background: none;
+   background-color: #262626;
    height: 8px;
    margin: 0px 0px 0px 0px;
 }
 
 QScrollBar::handle:vertical {
-   background: #262626;
+   background-color: #404040;
    min-height: 20px;
    border-radius: 9999px;
 }
 
 QScrollBar::handle:horizontal {
-   background: #262626;
+   background-color: #404040;
    min-width: 20px;
    border-radius: 9999px;
 }
@@ -186,33 +207,34 @@ QHeaderView::section{
    border-right: 1px solid #404040;
 }
 
-#reset_btn{
+QMessageBox{
+      background-color: #171717;
+      color: #fafafa;
+      border: 1px solid #404040;
+      border-radius: 4px;
+      font-size: 14px;
+}
+QMessageBox QPushButton{
+      height: 32px;
+      width: 96px;
+      font-size: 14px;
+      font-weight: 500;
+      background-color: #fafafa;
+      color:  #171717;
+      border-radius: 4px;
+      alternate-background-color: #262626;
+}
+
+/* QDialogButtonBox > QPushButton[text="&OK"] {
+   background-color: orange;
+} */
+QMessageBox QPushButton[text="&No"],QPushButton[text="&Cancel"]{
    background: transparent;
-   border: 1px solid #262626;
+   border: 1px solid #404040;
    color: #fafafa
 }
-
-#reset_btn:hover{
+QMessageBox QPushButton[text="&No"]:hover,QPushButton[text="&Cancel"]:hover {
    background-color: #404040;
-}
-#reset_btn:disabled {
-   color: #57534e;
-}
-
-
-#epc_reader_playground{
-   border: 1px solid #404040;
-   border-radius: 4px;
-   background-color: #171717;
-}
-
-#epc_reader_playground #epc_list{
-   border: 0px; 
-   border-radius: 4px;
-}
-
-#epc_list_box #epc_list::item{
-   font-weight: 600
 }
 
 QMenuBar{
@@ -227,15 +249,137 @@ QMenuBar::item {    /* Hiệu ứng khi nhấn */
 QMenuBar::item:selected {    /* Hiệu ứng khi nhấn */
    color: #fafafa;
 }
+
 QMenu{
    background-color: #171717;
-   padding: 4px;
+   border-radius: 4px;
+   font-size: 14px;
+   border: 1px solid #404040;
 }
 
-/* #menubar::item{
-   color: #fafafa;
+QMenu::item{
+   border-radius: 2px;
+   height: 28px;
 }
 
-#menubar::item:hover{
+QMenu::item:selected{
+   background-color: #404040;
+}
+
+QToolBar { 
+   spacing: 8px; 
+   padding: 4px 8px;
+   background-color: #171717; 
+}
+QToolBar * { 
+   background-color: #171717; 
+}
+
+QToolBar #logout_act{
+   color: #ef4444;
+}
+
+QToolButton { 
+   alternate-background-color: #262626; 
+}
+
+QToolButton:pressed { 
+   background-color: #404040; 
+}
+
+QToolBar::handle {
+   image: url(./assets/icons/grip.svg);
+   width: 18px;
+   height: 18px;
+   margin-bottom: 4px;
+   margin-right: 4px;
+}
+
+
+* QToolTip {
+   background-color: #262626;  /* Màu nền */
+   color: white;               /* Màu chữ */
+   border: 1px solid #404040;  /* Viền */
+   border-radius: 4px;         /* Bo góc */
+   padding: 6px;               /* Khoảng cách nội dung */
+   font-size: 14px;            /* Kích thước chữ */
+}
+
+#epc_reader_playground{
+   border: 1px solid #404040;
+   border-radius: 4px;
+   background-color: #262626;
+}
+
+#epc_counter_box  {
+   background-color: #262626;
+   border-radius: 4px;
+}
+
+#scanned_epc_counter, #ng_epc_counter{
+   background: none;
+   font-weight: 600;
+}
+
+#scanned_epc_counter:checked, #ng_epc_counter:checked {
+   background-color: #404040;
+}
+
+#scanned_epc_counter{
+   color: #fafafa
+}
+
+#ng_epc_counter{
+   color: #ef4444; 
+}
+
+#scanned_epc_counter:hover, #ng_epc_counter:hover{
+   background: #404040;
+}
+
+#reader_actions_group {
+   background-color: #262626;
+   border-radius: 4px;
+}
+
+#epc_reader_playground #epc_list{
+   border: 0px; 
+   border-radius: 4px;
+   font-weight: 600
+}
+
+#epc_list_box #epc_list::item{
+   font-weight: 600
+}
+
+#epc_list_action_group  QPushButton{
+   background: transparent;
+   border: 1px solid #262626;
    color: #fafafa;
-} */
+   font-weight: 600;
+}
+
+#epc_list_action_group QPushButton:hover{
+   background-color: #404040;
+}
+
+#epc_list_action_group QPushButton:disabled{
+   color: #57534e;
+}
+
+
+
+#header_top_title, #playground_section_title{
+   font-family: Inter, serif;
+   font-weight: 600;
+   font-style: normal;
+   font-size: 16px;
+}
+
+#settings_dialog #fieldset_legend{
+   font-family: Inter, serif;
+   font-weight: 600;
+   font-style: normal;
+   font-size: 14px;
+   color: #a3a3a3
+}

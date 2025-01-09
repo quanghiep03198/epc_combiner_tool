@@ -168,8 +168,11 @@ cython_debug/
 #.idea/
 
 # PyPI configuration file
-<<<<<<< Updated upstream
 .pypirc
-=======
-.pypirc
->>>>>>> Stashed changes
+
+
+# Output data
+data/
+
+# VS Code settings
+.vscode/

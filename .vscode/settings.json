@@ -1,7 +1,0 @@
-{
-  "editor.defaultFormatter": "ms-python.black-formatter",
-  "editor.formatOnSave": true,
-  "editor.indentSize": 4,
-  "editor.tabSize": 4,
-  "editor.insertSpaces": true,
-}

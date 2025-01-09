@@ -1,14 +1,11 @@
-import asyncio
 from helpers.logger import logger
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import *
 from PyQt6.QtGui import *
 from PyQt6.QtSql import QSqlQuery
-from pyee.asyncio import AsyncIOEventEmitter
 from contexts.combine_form_context import combine_form_context
-from contexts.app_context import app_context
 from database import DATA_SOURCE_ERP
-from events import async_event_emitter, UserActionEvent
+from events import sync_event_emitter, UserActionEvent
 from widgets.loading import LoadingWidget
 
 # mo_no_change_event = AsyncIOEventEmitter()
@@ -56,7 +53,7 @@ class OrderAutoCompleteWidget(QPushButton):
         self.popover_content.setLayout(self.popover_content_layout)
         self.popover_input = QLineEdit(self.popover_content)
         self.popover_input.setStyleSheet(
-            "border: 0px; border-bottom: 1px solid #404040; border-radius: 0px; height: 32px; font-size: 14px; padding: 2px 8px; background-color: #171717"
+            "border: 0px; border-bottom: 1px solid #404040; border-radius: 0px; height: 32px; padding: 2px 8px; background-color: #171717"
         )
         self.popover_input.setPlaceholderText("Search...")
         self.popover_input.textChanged.connect(self.on_input)
@@ -68,9 +65,8 @@ class OrderAutoCompleteWidget(QPushButton):
         )
 
         self.popover_menu_list.clear()
-        self.popover_menu_list.addItems(list(app_context["order_items"]))
         self.popover_menu_list.itemClicked.connect(
-            lambda item: asyncio.run(self.on_value_change(item))
+            lambda item: self.on_value_change(item)
         )
         self.popover_content.layout().addWidget(self.popover_menu_list)
 
@@ -79,6 +75,9 @@ class OrderAutoCompleteWidget(QPushButton):
         if combine_form_context["mo_no"] is None:
             self.setText("Chọn chỉ lệnh")
 
+        self.handle_find_mo_no("")
+
+    @pyqtSlot()
     def on_open(self) -> None:
         """
         Handles the event when the widget is opened.
@@ -94,9 +93,10 @@ class OrderAutoCompleteWidget(QPushButton):
         try:
             button_geometry = self.geometry()
             global_position = self.mapToGlobal(button_geometry.bottomLeft())
+            self.popover_input.setFocus()
             self.popover_content.setGeometry(
                 global_position.x() - button_geometry.x(),
-                global_position.y() + 4,
+                global_position.y(),
                 button_geometry.width(),
                 250,
             )
@@ -104,7 +104,8 @@ class OrderAutoCompleteWidget(QPushButton):
         except Exception as e:
             logger.error(e)
 
-    def on_input(self, q: str | None) -> None:
+    @pyqtSlot(str)
+    def on_input(self, q: str) -> None:
         if hasattr(self, "debounce_timer") and self.debounce_timer.isActive():
             self.debounce_timer.stop()
 
@@ -114,7 +115,8 @@ class OrderAutoCompleteWidget(QPushButton):
         self.debounce_timer.start(200)  # 200ms debounce time
 
     # * Handle select manufacturing order
-    async def on_value_change(self, item) -> None:
+    @pyqtSlot(QListWidgetItem)
+    def on_value_change(self, item: QListWidgetItem) -> None:
         """
         Handles the event when the value of the item changes.
 
@@ -127,16 +129,17 @@ class OrderAutoCompleteWidget(QPushButton):
             value = item.text()
             self.setText(value)
             self.popover_content.close()
-            async_event_emitter.emit(UserActionEvent.MO_NO_CHANGE.value, value)
-            QCoreApplication.processEvents()
-            await asyncio.to_thread(async_event_emitter.wait_for_complete)
+            combine_form_context.update(mo_no=value)
+            sync_event_emitter.emit(UserActionEvent.MO_NO_CHANGE.value, value)
         except Exception as e:
             logger.error(f"Error in on_mo_no_selected: {e}")
         finally:
             self.loading.close()
 
     # * Handle find manufacturing order from database
-    def handle_find_mo_no(self, q: str | None) -> None:
+
+    @pyqtSlot(str)
+    def handle_find_mo_no(self, q: str) -> None:
         try:
             query = QSqlQuery(DATA_SOURCE_ERP)
             query.prepare(
@@ -150,7 +153,7 @@ class OrderAutoCompleteWidget(QPushButton):
                     ORDER BY created DESC
                 """,
             )
-            query.bindValue(":search", f"{q}%")
+            query.bindValue(":search", f"%{q}%")
             query.exec()
 
             self.popover_menu_list.clear()

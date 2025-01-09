@@ -4,10 +4,21 @@ from PyQt6.QtCore import *
 from repositories.order_repository import OrderRepository
 from helpers.logger import logger
 from contexts.combine_form_context import combine_form_context
-from concurrent.futures import ThreadPoolExecutor
+from widgets.table_loading import TableLoading
 
-# from widgets.order_autocomplete import mo_no_change_event
-from events import UserActionEvent, async_event_emitter, sync_event_emitter
+from events import UserActionEvent, sync_event_emitter
+
+
+class OrderDetailWorker(QRunnable):
+    def __init__(self, data, callback):
+        super().__init__()
+        self.data = data
+        self.callback = callback
+
+    @pyqtSlot()
+    def run(self):
+        query_result = OrderRepository.get_order_detail(self.data)
+        self.callback(query_result)
 
 
 class OrderDetailTableWidget(QTableWidget):
@@ -15,13 +26,10 @@ class OrderDetailTableWidget(QTableWidget):
     Table for displaying order details
     """
 
-    def __init__(self, root: QWidget, order_repository: OrderRepository):
+    def __init__(self, root: QWidget):
         super().__init__(
             root.container,
         )
-        self.executor = ThreadPoolExecutor()
-        self.order_detail_data: list = []
-        self.order_repository = order_repository
 
         horizontal_headers = [
             "Đặt đơn của khách",
@@ -32,6 +40,13 @@ class OrderDetailTableWidget(QTableWidget):
             "Mã đặt đơn",
             "Số lượng đặt hàng",
         ]
+        self.setColumnWidth(0, 200)
+        self.setColumnWidth(1, 200)
+        self.setColumnWidth(2, 200)
+        self.setColumnWidth(3, 200)
+        self.setColumnWidth(4, 200)
+        self.setColumnWidth(5, 200)
+        self.setColumnWidth(6, 250)
         self.setColumnCount(len(horizontal_headers))
         self.setHorizontalHeaderLabels(horizontal_headers)
         self.setSortingEnabled(False)
@@ -62,7 +77,7 @@ class OrderDetailTableWidget(QTableWidget):
         self.setSortingEnabled(False)
         self.verticalHeader().setVisible(False)
 
-        async_event_emitter.on(UserActionEvent.MO_NO_CHANGE.value)(self.on_mo_no_change)
+        sync_event_emitter.on(UserActionEvent.MO_NO_CHANGE.value)(self.on_mo_no_change)
         sync_event_emitter.on(UserActionEvent.MO_NOSEQ_CHANGE.value)(
             self.on_mo_noseq_change
         )
@@ -92,7 +107,6 @@ class OrderDetailTableWidget(QTableWidget):
             row += 1
 
     def on_mo_noseq_change(self, selected_mo_noseq: str):
-        logger.debug(selected_mo_noseq)
         if selected_mo_noseq == "all":
             self.render_row(self.order_detail_data)
         else:
@@ -104,31 +118,36 @@ class OrderDetailTableWidget(QTableWidget):
             )
             self.render_row(filtered_data)
 
-    async def on_mo_no_change(self, data):
+    def on_mo_no_change(self, data):
         try:
-            # Reset table row on selected order change
-            self.setRowCount(0)
-            # Get order detail from database
-
-            query_result = await self.order_repository.get_order_detail(data)
-
-            logger.debug(query_result)
-
-            if len(query_result) > 0:
-                combine_form_context["mat_code"] = query_result[0]["mat_code"]
-                combine_form_context["shoestyle_codefactory"] = query_result[0][
-                    "shoestyle_codefactory"
-                ]
-                combine_form_context["or_no"] = query_result[0]["or_no"]
-                combine_form_context["or_custpo"] = query_result[0]["or_custpo"]
-                combine_form_context["cust_shoestyle"] = query_result[0][
-                    "cust_shoestyle"
-                ]
-            # Store order detail data
-            self.order_detail_data = query_result
-            # Render order detail to UI
-            self.render_row(query_result)
+            self.loading = TableLoading(self)
+            self.loading.show_loading()
+            worker = OrderDetailWorker(data, self.handle_query_result)
+            QThreadPool.globalInstance().start(worker)
 
         except Exception as e:
             logger.error(f"Error reading SQL file: {e}")
             return None
+
+    def handle_query_result(self, query_result):
+        self.setRowCount(0)
+
+        if len(query_result) > 0:
+            combine_form_context["mat_code"] = query_result[0]["mat_code"]
+            combine_form_context["shoestyle_codefactory"] = query_result[0][
+                "shoestyle_codefactory"
+            ]
+            combine_form_context["or_no"] = query_result[0]["or_no"]
+            combine_form_context["or_custpo"] = query_result[0]["or_custpo"]
+            combine_form_context["cust_shoestyle"] = query_result[0]["cust_shoestyle"]
+        # Store order detail data
+        sync_event_emitter.emit(
+            UserActionEvent.GET_ORDER_DETAIL_SUCCESS.value,
+            list(map(lambda item: item["mo_noseq"], query_result)),
+        )
+        self.order_detail_data = query_result
+        # Render order detail to UI
+
+        self.render_row(query_result)
+
+        self.loading.close_loading()

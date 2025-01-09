@@ -1,5 +1,7 @@
 import asyncio
-import types
+import math
+import json
+from pyqttoast import ToastPreset
 from PyQt6.QtCore import *
 from PyQt6.QtSql import *
 from PyQt6.QtGui import *
@@ -7,17 +9,31 @@ from PyQt6.QtWidgets import *
 from asyncio import Queue
 from uhf.reader import *
 from helpers.logger import logger
-from repositories.rfid_repository import RFIDRepository
-from database import DATA_SOURCE_DL
 
 # Import widgets
-from widgets.custom_message_box import CustomMessageBox
 from widgets.loading import LoadingWidget
+from widgets.toaster import Toaster
 
+from services.rfid_service import RFIDService
 from events import UserActionEvent, sync_event_emitter
-import json
+from helpers.configuration import ConfigService
+from contexts.combine_form_context import combine_form_context
+from typing import Callable
 
-# lock = threading.Lock()
+PAGE_SIZE: int = 50
+SCANNED_EPC_LABEL: str = "Đã Quét"
+NG_EPC_LABEL: str = "NG"
+
+
+class GetActiveCombinationsWorker(QRunnable):
+    def __init__(self, epcs: list[str], callback: Callable[[list], None]):
+        super().__init__()
+        self.epcs = epcs
+        self.callback = callback
+
+    def run(self):
+        result = RFIDService.get_active_combinations(self.epcs)
+        self.callback(result)
 
 
 class EpcReaderPlayground(QFrame):
@@ -25,29 +41,45 @@ class EpcReaderPlayground(QFrame):
     EPC reader widget for scanning EPC from UHF reader
     """
 
-    _connection_status: bool = False
-    _play_state: bool = False
-    _epc_count: int = 0
-    _max_epc_qty: int = 0
-    _epc_datalist: list[str] = []
-    _has_over_qty_alert: bool = False
+    uhf_reader_instance: GClient
+    """
+    UHF reader instance
 
-    PAGE_SIZE = 100
-    _current_page = 1
-    _total_page = 1
-    _has_next_page = False
-    _has_prev_page = False
-    # uhf_reader_instance: GClient
+    Scope: public
+    """
+
+    # private
+    _connection_status: bool = False
+    # private
+    _play_state: bool = False
+    # private
+    _max_epc_qty: int = 0
+    # private
+    _epc_datalist: list[str] = []
+    # private
+    _ng_epc_datalist: list[str] = []
+    # private
+    _ng_active_combinations: list[dict[str, str]] = []
+    # private
+    _current_tab_index: int = 1
+    # private
+    _current_page: int = 1
+    # private
+    _total_page: int = 1
+    # private
+    _has_next_page: bool = False
+    # private
+    _has_prev_page: bool = False
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.rfid_repository = RFIDRepository(DATA_SOURCE_DL)
+        self.root = parent
 
         self.setObjectName("epc_reader_playground")
         self.setAutoFillBackground(True)
         self.epc_reader_layout = QVBoxLayout(self)
-        self.epc_reader_layout.setContentsMargins(2, 2, 2, 2)
-        self.epc_reader_layout.setSpacing(6)
+        self.epc_reader_layout.setContentsMargins(8, 8, 8, 8)
+        self.epc_reader_layout.setSpacing(8)
 
         self.setLayout(self.epc_reader_layout)
         # region EPC counter box
@@ -57,77 +89,34 @@ class EpcReaderPlayground(QFrame):
 
         self.epc_counter_box_layout.setAlignment(Qt.AlignmentFlag.AlignJustify)
         self.epc_counter_box_layout.setContentsMargins(0, 0, 0, 0)
+        self.epc_counter_box_layout.setSpacing(4)
 
         self.epc_counter_box.setLayout(self.epc_counter_box_layout)
-        self.epc_counter_box.setStyleSheet(
-            """
-            #epc_counter_box{
-                padding: 2px;
-                border-radius: 4px;
-            }
-            """
-        )
 
-        self.label_group_layout_1 = QHBoxLayout()
-        self.label_group_layout_2 = QHBoxLayout()
-        self.label_group_layout_3 = QHBoxLayout()
+        self.scanned_epc_counter = QPushButton(parent=self.epc_counter_box)
+        self.scanned_epc_counter.setObjectName("scanned_epc_counter")
+        self.scanned_epc_counter.setText(f"0/0 {SCANNED_EPC_LABEL}")
+        self.scanned_epc_counter.clicked.connect(lambda: self.handle_change_tab(1))
+        self.scanned_epc_counter.setCheckable(True)
+        self.scanned_epc_counter.setChecked(self._current_tab_index == 1)
 
-        self.label_group_layout_1.setSpacing(4)
-        self.label_group_layout_2.setSpacing(4)
-        self.label_group_layout_3.setSpacing(4)
+        self.ng_epc_counter = QPushButton(parent=self.epc_counter_box)
+        self.ng_epc_counter.setObjectName("ng_epc_counter")
+        self.ng_epc_counter.setText(f"0/0 {NG_EPC_LABEL}")
+        self.ng_epc_counter.clicked.connect(lambda: self.handle_change_tab(2))
+        self.ng_epc_counter.setCheckable(True)
+        self.ng_epc_counter.setChecked(self._current_tab_index == 2)
 
-        self.label_group_layout_1.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.label_group_layout_2.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.label_group_layout_3.setAlignment(Qt.AlignmentFlag.AlignLeft)
-
-        self.label_group_1 = QFrame(parent=self.epc_counter_box)
-        self.label_group_2 = QFrame(parent=self.epc_counter_box)
-        self.label_group_3 = QFrame(parent=self.epc_counter_box)
-
-        self.label_group_1.setLayout(self.label_group_layout_1)
-        self.label_group_2.setLayout(self.label_group_layout_2)
-        self.label_group_3.setLayout(self.label_group_layout_3)
-
-        self.scanned_epc_counter_label = QLabel(parent=self.label_group_1)
-        self.scanned_epc_counter_label.setText("Đã quét")
-        self.scanned_epc_counter = QLabel(parent=self.label_group_1)
-        self.scanned_epc_counter.setText("0/0")
-        self.label_group_layout_1.addWidget(self.scanned_epc_counter)
-        self.label_group_layout_1.addWidget(self.scanned_epc_counter_label)
-
-        self.label_group_2.setStyleSheet("color: #22c55e; font-weight: 500")
-        self.epc_pass_counter_label = QLabel(parent=self.label_group_2)
-        self.epc_pass_counter_label.setText("OK")
-        self.epc_pass_qty = QLabel(parent=self.label_group_2)
-        self.epc_pass_qty.setText("0/0")
-        self.label_group_layout_2.addWidget(self.epc_pass_qty)
-        self.label_group_layout_2.addWidget(self.epc_pass_counter_label)
-
-        self.label_group_3.setStyleSheet("color: #ef4444; font-weight: 500")
-        self.epc_failed_counter_label = QLabel(parent=self.label_group_3)
-        self.epc_failed_counter_label.setText("NG")
-        self.epc_failed_qty = QLabel(parent=self.label_group_3)
-        self.epc_failed_qty.setText("0/0")
-        self.label_group_layout_3.addWidget(self.epc_failed_qty)
-        self.label_group_layout_3.addWidget(self.epc_failed_counter_label)
-
-        self.epc_counter_box_layout.addWidget(self.label_group_1, 1)
-        self.epc_counter_box_layout.addWidget(self.label_group_2, 1)
-        self.epc_counter_box_layout.addWidget(self.label_group_3, 1)
+        self.epc_counter_box_layout.addWidget(self.scanned_epc_counter, 1)
+        self.epc_counter_box_layout.addWidget(self.ng_epc_counter, 1)
 
         # endregion
 
         # region EPC list
         self.epc_list = QListWidget(parent=self)
         self.epc_list.setObjectName("epc_list")
-        self.epc_list.setStyleSheet(
-            """
-            QListWidget::item{
-                font-weight: 600
-            }
-            """
-        )
         self.epc_list.setSortingEnabled(False)
+        self.epc_list.itemDoubleClicked.connect(self.handle_view_combination_history)
         # endregion
 
         # region EPC list actions group
@@ -138,25 +127,6 @@ class EpcReaderPlayground(QFrame):
         self.epc_list_action_group = QFrame(parent=self)
         self.epc_list_action_group.setLayout(self.epc_list_action_group_layout)
         self.epc_list_action_group.setObjectName("epc_list_action_group")
-        self.epc_list_action_group.setStyleSheet(
-            """
-            QFrame{
-                padding: 2px;
-                border-radius: 4px;
-            }
-            QPushButton{
-                background: transparent;
-                border: 1px solid #262626;
-                color: #fafafa
-            }
-            QPushButton:hover{
-                background-color: #404040;
-            }
-            QPushButton:disabled{
-                color: #57534e;
-            }
-        """
-        )
         # Toggle connect UHF reader button
         self.reader_actions_group_layout = QHBoxLayout()
         self.reader_actions_group_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -183,8 +153,9 @@ class EpcReaderPlayground(QFrame):
         self.toggle_connect_button.setIcon(self.plug_icon)
         self.toggle_connect_button.setToolTip("Kết nối máy UHF")
         self.toggle_connect_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.toggle_connect_button.setEnabled(False)
-        self.toggle_connect_button.clicked.connect(self.handle_toggle_connect)
+        self.toggle_connect_button.setCheckable(True)
+        self.toggle_connect_button.setChecked(False)
+        self.toggle_connect_button.toggled.connect(self.handle_toggle_connect)
 
         # Toggle start/stop reader
         self.play_icon = QIcon()
@@ -201,12 +172,14 @@ class EpcReaderPlayground(QFrame):
         )
         self.toggle_play_button = QPushButton(parent=self.reader_actions_group)
         self.toggle_play_button.setObjectName("toggle_play_button")
+        self.toggle_play_button.setCheckable(True)
+        self.toggle_play_button.setChecked(False)
         self.toggle_play_button.setToolTip("Bắt đầu đọc")
         self.toggle_play_button.setIcon(self.play_icon)
         self.toggle_play_button.setFixedSize(32, 32)
         self.toggle_play_button.setEnabled(False)
         self.toggle_play_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.toggle_play_button.clicked.connect(self.handle_toggle_play)
+        self.toggle_play_button.toggled.connect(self.handle_toggle_play)
 
         # Reset all reader data
         self.reset_icon = QIcon()
@@ -234,8 +207,15 @@ class EpcReaderPlayground(QFrame):
         self.pagination_layout.setSpacing(2)
         self.pagination_group = QFrame(parent=self)
         self.pagination_group.setLayout(self.pagination_layout)
+        self.page_index = QLabel(parent=self.pagination_group)
+        self.page_index.setText("Trang 1/1")
         self.prev_page_button = QPushButton(parent=self.pagination_group)
         self.next_page_button = QPushButton(parent=self.pagination_group)
+        self.prev_page_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.next_page_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.prev_page_button.clicked.connect(self.handle_prev_page)
+        self.next_page_button.clicked.connect(self.handle_next_page)
+        self.pagination_layout.addWidget(self.page_index)
         self.pagination_layout.addWidget(self.prev_page_button)
         self.pagination_layout.addWidget(self.next_page_button)
 
@@ -269,93 +249,146 @@ class EpcReaderPlayground(QFrame):
         self.epc_reader_layout.addWidget(self.epc_list)
         self.epc_reader_layout.addWidget(self.epc_list_action_group)
 
+        # Fake EPC data
+        with open("./data/faker.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
+            self._epc_datalist = data["epcs"][0:14]
+            self.scanned_epc_counter.setText(
+                f"{len(self._epc_datalist)}/{self._max_epc_qty} {SCANNED_EPC_LABEL}"
+            )
+            self._handle_pagination()
+            self._get_page_data()
+
         self.loading = LoadingWidget(parent, "")
-        self.alert = None
 
-        # Fake data
-        with open("./data/faker.json", "r") as file:
-            data = json.load(file)
-            logger.debug(data.get("epcs", []))
-
-            self._epc_datalist = data.get("epcs", [])
-            self.epc_list.addItems(self._epc_datalist)
-
-        sync_event_emitter.on(UserActionEvent.SELECTED_SIZE_CHANGE.value)(
-            self.on_selected_size_change
+        sync_event_emitter.on(UserActionEvent.COMBINE_FORM_STATE_CHANGE.value)(
+            self.on_combine_form_state_change
         )
 
-    def on_selected_size_change(self, data):
-        # * Only when size is selected, enable the connect button
-        self.toggle_connect_button.setEnabled(True)
-        self.toggle_play_button.setEnabled(True)
-
-        self._max_epc_qty = data["size_qty"]
-        self._epc_count = 0
-        _curr_epc_qty = len(self._epc_datalist)
-        self.scanned_epc_counter.setText(f"{_curr_epc_qty}/{data["size_qty"]}")
-        self.epc_pass_qty.setText(f"{_curr_epc_qty}/{data["size_qty"]}")
-        self.epc_failed_qty.setText(f"{_curr_epc_qty}/{data["size_qty"]}")
-
-    def show_over_limit_qty_alert(self):
-        self.alert = CustomMessageBox(
-            "Số lượng quét vượt quá số lượng cần phối. Vui lòng kiểm tra lại!",
-            QMessageBox.Icon.Warning,
+        sync_event_emitter.on(UserActionEvent.COMBINED_EPC_CREATED.value)(
+            self.on_combined_epc_created
         )
-        self.alert.exec()
-        QCoreApplication.processEvents()
-        self.handle_stop_reading()
+
+        sync_event_emitter.on(UserActionEvent.CHECK_COMBINABLE_FAILED.value)(
+            self.on_check_combinable_failed
+        )
+
+    # region Event handlers
+    def on_check_combinable_failed(self, error_data: dict[str]):
+        """
+        Handle failed to check combinable EPC
+        """
+        self._ng_epc_datalist = error_data["ng_epcs"]
+        self.ng_epc_counter.setText(
+            f"{len(self._ng_epc_datalist)}/{self._max_epc_qty} {NG_EPC_LABEL}"
+        )
+        worker = GetActiveCombinationsWorker(
+            self._ng_epc_datalist, self.on_active_combinations_received
+        )
+        QThreadPool.globalInstance().start(worker)
+        # TODO: Highlighting the NG EPCs
+
+    def on_active_combinations_received(self, data: list[dict[str, str]]):
+        data: self._ng_active_combinations = data
+
+    def on_combined_epc_created(self, data: dict):
+        self._epc_datalist.clear()
+        self.epc_list.clear()
+        self._handle_pagination()
         self.handle_reset_scanned_epc()
-        self.alert = None
+        self.scanned_epc_counter.setText(f"0/0 {SCANNED_EPC_LABEL}")
+        self.ng_epc_counter.setText(f"0/0 {NG_EPC_LABEL}")
 
-    def handle_pagination(self):
-        self._total_page = len(self._epc_datalist) // self.PAGE_SIZE
+    def on_combine_form_state_change(self, data):
+        # * Only when size is selected, enable the connect button
+        self._max_epc_qty = data["size_qty"]
+        _curr_epc_qty = len(self._epc_datalist)
+        self.scanned_epc_counter.setText(
+            f"{_curr_epc_qty}/{data["size_qty"]} {SCANNED_EPC_LABEL}"
+        )
+
+        # # * Fake data
+        # sync_event_emitter.emit(
+        #     UserActionEvent.EPC_DATA_CHANGE.value, self._epc_datalist
+        # )
+
+    def _handle_pagination(self):
+        process_data = (
+            self._epc_datalist if self._current_tab_index else self._ng_epc_datalist
+        )
+        self._total_page = math.ceil(len(process_data) / PAGE_SIZE)
         self._has_next_page = self._current_page < self._total_page
         self._has_prev_page = self._current_page > 1
 
+        self.page_index.setText(f"Trang {self._current_page}/{self._total_page}")
+        self.prev_page_button.setEnabled(self._has_prev_page)
+        self.next_page_button.setEnabled(self._has_next_page)
+
+    @pyqtSlot()
     def handle_next_page(self):
         self._current_page += 1
-        self.handle_pagination()
+        self._get_page_data()
+        self._handle_pagination()
 
+    @pyqtSlot()
     def handle_prev_page(self):
         self._current_page -= 1
-        self.handle_pagination()
+        self._get_page_data()
+        self._handle_pagination()
 
-    async def process_epc_queue(self, epc):
-        if (
-            self._connection_status
-            and self._play_state
-            and epc not in self._epc_datalist
-        ):
-            self.epc_list.clear()
-            logger.debug(f"Has alert shown : {self.alert is None}")
-            if len(self._epc_datalist) > self._max_epc_qty and self.alert is None:
-                self.show_over_limit_qty_alert()
-                return
+    def _get_page_data(self):
+        process_data = (
+            self._epc_datalist
+            if self._current_tab_index == 1
+            else self._ng_epc_datalist
+        )
+        self.epc_list.clear()
+        start_index = (self._current_page - 1) * PAGE_SIZE
+        end_index = start_index + PAGE_SIZE
+        self.epc_list.addItems(process_data[start_index:end_index])
 
-            self._epc_datalist.insert(0, epc)
-            self.epc_list.addItems(self._epc_datalist[:100])
-            self.scanned_epc_counter.setText(
-                f"{len(self._epc_datalist)}/{self._max_epc_qty}"
-            )
-            sync_event_emitter.emit(
-                UserActionEvent.EPC_DATA_CHANGE.value, self._epc_datalist
-            )
-
-    async def on_receive_epc(self, epcInfo: LogBaseEpcInfo):
+    async def _on_receive_epc(self, epcInfo: LogBaseEpcInfo):
         try:
             if epcInfo.result == 0:
-                await asyncio.sleep(0.05)
-                await self.process_epc_queue(epcInfo.epc.upper())
+                await asyncio.sleep(0.025)
+                epc = epcInfo.epc.upper()
+                if (
+                    self.toggle_connect_button.isChecked()
+                    and self.toggle_play_button.isChecked()
+                    and epc not in self._epc_datalist
+                ):
+                    self.epc_list.clear()
+
+                    self._epc_datalist.insert(0, epc)
+                    self.scanned_epc_counter.setText(
+                        f"{len(self._epc_datalist)}/{self._max_epc_qty} {SCANNED_EPC_LABEL}"
+                    )
+                    self._handle_pagination()
+                    self._get_page_data()
+                    sync_event_emitter.emit(
+                        UserActionEvent.EPC_DATA_CHANGE.value, self._epc_datalist
+                    )
         except Exception as e:
             logger.error(f"Error in on_receive_epc: {e}")
 
-    def on_receive_epc_end(self, epcOver: LogBaseEpcOver):
-        print(epcOver)
+    def _on_receive_epc_end(self, epcOver: LogBaseEpcOver):
+        logger.info(f"Stopped with message id: >>> {epcOver.msgId}")
 
-    def handle_toggle_connect(self):
+    @pyqtSlot(bool)
+    def handle_toggle_connect(self, checked_state: bool):
+        UHF_READER_TPC_IP = ConfigService.get("UHF_READER_TCP_IP")
+        UHF_READER_TPC_PORT = ConfigService.get("UHF_READER_TCP_PORT")
+        if UHF_READER_TPC_IP == "" and UHF_READER_TPC_PORT == "":
+            toast = Toaster(
+                parent=self.root,
+                title="Kết nối thất bại",
+                text="Vui lòng kiểm tra cấu hình máy UHF",
+                preset=ToastPreset.ERROR,
+            )
+            toast.show()
+            return
         try:
-            if self._connection_status:
-                self.loading.open("Đang ngắt kết nối máy UHF...")
+            if not checked_state:
                 self.toggle_connect_button.setIcon(self.plug_icon)
                 self.toggle_connect_button.setToolTip("Kết nối máy UHF")
                 self.reset_btn.setEnabled(True)
@@ -363,62 +396,48 @@ class EpcReaderPlayground(QFrame):
                 QCoreApplication.processEvents()
                 stop = MsgBaseStop()
                 if (
-                    hasattr(self, "uhf_reader_instance")
+                    hasattr(self.uhf_reader_instance, "sendSynMsg")
                     and self.uhf_reader_instance.sendSynMsg(stop) == 0
                 ):
-                    print(stop.rtMsg)
+                    logger.info(f"Disconnected reader with messsage :>>> {stop.rtMsg}")
                     self._play_state(False)
                     self.toggle_play_button.setIcon(self.play_icon)
-                    self.toggle_play_button.setEnabled(False)
                     self.uhf_reader_instance.close()
-                self.loading.close()
 
             else:
-                self.loading.open("Đang kết nối ...")
-                QCoreApplication.processEvents()
                 self.uhf_reader_instance = GClient()
-                if self.uhf_reader_instance.openTcp(("10.30.82.20", 8160)):
+                if self.uhf_reader_instance.openTcp(
+                    (UHF_READER_TPC_IP, int(UHF_READER_TPC_PORT))
+                ):
                     self.toggle_connect_button.setIcon(self.unplug_icon)
                     self.toggle_connect_button.setToolTip("Ngắt kết nối máy UHF")
                     self.uhf_reader_instance.callEpcInfo = lambda epcInfo: asyncio.run(
-                        self.on_receive_epc(epcInfo)
+                        self._on_receive_epc(epcInfo)
                     )
-                    self.uhf_reader_instance.callEpcOver = self.on_receive_epc_end
+                    self.uhf_reader_instance.callEpcOver = self._on_receive_epc_end
                     self.toggle_play_button.setEnabled(True)
-                    self._connection_status = True
-                self.loading.close()
 
         except Exception as e:
             logger.error(f"Error in handle_toggle_connect: {e}")
-            self._connection_status = False
 
-    def handle_toggle_play(self):
+    @pyqtSlot(bool)
+    def handle_toggle_play(self, checked_state: bool):
         try:
-            if self._play_state:
-                # * With scanned EPC, check if they are end of their lifecycle
-                self.handle_stop_reading()
-                asyncio.run(self.handle_check_epc_combinable())
-
-            else:
+            if checked_state:
                 self.handle_perform_reading()
-
+            else:
+                self.handle_stop_reading()
         except Exception as e:
             logger.error(f"Error in handle_toggle_play: {e}")
 
-    async def handle_check_epc_combinable(self):
-        result = await self.rfid_repository.check_epc_lifecycle_end(self._epc_datalist)
-        logger.debug(result)
-        # Todo: Highlight the EPC that are not combinable & update quantity of pass/fail EPC
-
     def handle_stop_reading(self):
-        self.loading.open("Đang dừng đọc ...")
         stop = MsgBaseStop()
         if self.uhf_reader_instance.sendSynMsg(stop) == 0:
             logger.info(f"Stopped reading with :>>> {stop.rtMsg}")
 
         self.toggle_play_button.setIcon(self.play_icon)
         self.toggle_play_button.setToolTip("Bắt đầu đọc")
-        self.loading.close()
+
         self._play_state = False
 
     def handle_perform_reading(self):
@@ -437,17 +456,37 @@ class EpcReaderPlayground(QFrame):
 
         self._play_state = True
 
+    @pyqtSlot(int)
+    def handle_change_tab(self, index: int):
+        self._current_tab_index = index
+        self._current_page = 1
+        self.scanned_epc_counter.setChecked(self._current_tab_index == 1)
+        self.ng_epc_counter.setChecked(self._current_tab_index == 2)
+
+        self._get_page_data()
+        self._handle_pagination()
+
+        # TODO: Remove later
+        # * Fake data
+        sync_event_emitter.emit(
+            UserActionEvent.EPC_DATA_CHANGE.value, self._epc_datalist
+        )
+
+    @pyqtSlot()
     def handle_reset_scanned_epc(self):
-        logger.debug("Resetting scanned EPC list")
         self._epc_datalist.clear()
         self.epc_list.clear()
-        _curr_epc_qty = len(self._epc_datalist)
-        self.scanned_epc_counter.setText(f"{_curr_epc_qty}/{self._max_epc_qty}")
-        self.epc_pass_qty.setText(f"{_curr_epc_qty}/{self._max_epc_qty}")
-        self.epc_failed_qty.setText(f"{_curr_epc_qty}/{self._max_epc_qty}")
-        self.alert = CustomMessageBox(
-            "Đã đặt lại danh sách quét", QMessageBox.Icon.Information
+        self._handle_pagination()
+        self.scanned_epc_counter.setText(f"0/{self._max_epc_qty} {SCANNED_EPC_LABEL}")
+        self.ng_epc_counter.setText(f"0/{self._max_epc_qty} {NG_EPC_LABEL}")
+        toast = Toaster(
+            parent=self.root,
+            title="Đã đặt lại danh sách quét.",
+            text="Thực hiện quét lại để tiếp tục phối đôi.",
         )
-        # self.alert.setMinimumSize(500, 400)
-        self.alert.exec()
-        # QCoreApplication.processEvents()
+        toast.show()
+
+    @pyqtSlot()
+    def handle_view_combination_history():
+        # TODO: Show combination history dialog
+        pass
