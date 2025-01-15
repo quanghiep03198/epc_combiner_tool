@@ -16,7 +16,6 @@ class LoginDialog(QDialog):
         "username": None,
         "password": None,
         "factory_code": None,
-        "dept_code": None,
     }
 
     def __init__(self, parent: QMainWindow):
@@ -172,7 +171,7 @@ class LoginDialog(QDialog):
         self.debounce_timer.timeout.connect(
             lambda: self.handle_debounce_change(key, value)
         )
-        self.debounce_timer.start(200)  # 500ms debounce time
+        self.debounce_timer.start(300)  # 300ms debounce time
 
     def on_factory_code_change(self, index):
         auth_context.update(factory_code=self.factory_code_select.itemData(index))
@@ -216,18 +215,24 @@ class LoginDialog(QDialog):
             if isinstance(e.args[0], dict) and "status" in e.args[0]:
                 e.status = e.args[0]["status"]
                 e.message = e.args[0]["message"]
-                self.username_input.setStyleSheet("border: 1px solid #ef4444")
-                self.password_input.setStyleSheet(
-                    """
-                    QLineEdit{
-                        border: 1px solid #ef4444
-                    }
-                    QLineEdit[echoMode="2"] {
-                        lineedit-password-character: 8226;
-                    }
-                    """
-                )
                 if e.status == StatusCode.UNAUTHORIZED.value:
+                    self.username_input.setStyleSheet(
+                        """
+                        QLineEdit{
+                            border: 1px solid #ef4444
+                        }
+                        """
+                    )
+                    self.password_input.setStyleSheet(
+                        """
+                        QLineEdit{
+                            border: 1px solid #ef4444
+                        }
+                        QLineEdit[echoMode="2"] {
+                            lineedit-password-character: 8226;
+                        }
+                        """
+                    )
                     toast = Toaster(
                         parent=self.root,
                         title="Đăng nhập thất bại",

@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import *
 from PyQt6.QtCore import *
 from PyQt6.QtGui import *
 from PyQt6.QtSql import *
+from typing import Callable
 from pyqttoast import ToastPreset
 from events import sync_event_emitter, UserActionEvent
 from services.rfid_service import RFIDService
@@ -28,7 +29,12 @@ class StoreDataWorker(QRunnable):
     Worker thread for storing data to the database
     """
 
-    def __init__(self, payload, on_success, on_error):
+    def __init__(
+        self,
+        payload: dict,
+        on_success: Callable[[int], None],
+        on_error: Callable[[dict], None],
+    ):
         super().__init__()
 
         self.signals = WorkerSignals()
@@ -97,6 +103,7 @@ class CombineForm(QFrame):
         # Combine proceed button
         self.combine_proceed_button = QPushButton(parent=self)
         self.combine_proceed_button.setObjectName("combine_procedd_button")
+        self.combine_proceed_button.setFixedWidth(150)
         self.combine_proceed_button.setEnabled(False)
         self.combine_proceed_button.setText(self.PROCEED_BUTTON_TEXT)
         self.combine_proceed_button.setCursor(
@@ -123,15 +130,18 @@ class CombineForm(QFrame):
             self.on_auth_state_change
         )
 
+        sync_event_emitter.on(UserActionEvent.SELECTED_SIZE_CHANGE.value)(
+            self.resume_combination
+        )
+
     def on_size_list_change(self, data):
         self._size_list = data
         self.size_select.clear()
         self.size_select.addItems(map(lambda item: item["size_numcode"], data))
 
     def on_epc_data_change(self, data):
-        logger.debug(data)
-
         self._epcs = data
+        logger.debug(self._epcs)
         self.on_combine_from_state_change(
             "has_epc", isinstance(data, list) and len(data) > 0
         )
@@ -199,18 +209,7 @@ class CombineForm(QFrame):
             UserActionEvent.COMBINE_FORM_STATE_CHANGE.value, combine_form_context
         )
 
-        is_combinable = (
-            combine_form_context["ri_type"] is not None
-            and combine_form_context["mo_no"] is not None
-            and combine_form_context["mo_noseq"] is not None
-            and combine_form_context["size_numcode"] is not None
-            and combine_form_context["size_code"] is not None
-            and combine_form_context["mat_code"] is not None
-            and combine_form_context["or_no"] is not None
-            and combine_form_context["or_custpo"] is not None
-            and combine_form_context["cust_shoestyle"] is not None
-            and combine_form_context["has_epc"]
-        )
+        is_combinable = self.check_can_submit()
 
         self.combine_proceed_button.setEnabled(is_combinable)
 
@@ -255,15 +254,9 @@ class CombineForm(QFrame):
     @pyqtSlot(int)
     def on_mutate_success(self, num_rows_affected: int | None):
         if isinstance(num_rows_affected, int):
-            sync_event_emitter.emit(
-                UserActionEvent.COMBINED_EPC_CREATED.value,
-                {
-                    "mo_no": combine_form_context["mo_no"],
-                    "size_numcode": combine_form_context["size_numcode"],
-                    "affected": num_rows_affected,
-                },
-            )
             # Ensure the directory exists
+            self.combine_proceed_button.setText(self.PROCEED_BUTTON_TEXT)
+            logger.debug(self._epcs)
             write_data(
                 {
                     "mo_no": combine_form_context["mo_no"],
@@ -272,12 +265,17 @@ class CombineForm(QFrame):
                     "created_by": auth_context["employee_name"],
                 }
             )
-            self.combine_proceed_button.setText(self.PROCEED_BUTTON_TEXT)
+            sync_event_emitter.emit(
+                UserActionEvent.COMBINED_EPC_CREATED.value,
+                {
+                    "mo_no": combine_form_context["mo_no"],
+                    "size_numcode": combine_form_context["size_numcode"],
+                    "affected": num_rows_affected,
+                },
+            )
 
     @pyqtSlot(dict)
     def on_mutate_error(self, error_data):
-        logger.debug(f"Error :>>> {error_data}")
-
         self.combine_proceed_button.setText(self.PROCEED_BUTTON_TEXT)
 
         if (
@@ -295,3 +293,24 @@ class CombineForm(QFrame):
             sync_event_emitter.emit(
                 UserActionEvent.CHECK_COMBINABLE_FAILED.value, error_data["data"]
             )
+
+    def check_can_submit(self) -> bool:
+        return (
+            combine_form_context["ri_type"] is not None
+            and combine_form_context["mo_no"] is not None
+            and combine_form_context["mo_noseq"] is not None
+            and combine_form_context["size_numcode"] is not None
+            and combine_form_context["size_code"] is not None
+            and combine_form_context["mat_code"] is not None
+            and combine_form_context["or_no"] is not None
+            and combine_form_context["or_custpo"] is not None
+            and combine_form_context["cust_shoestyle"] is not None
+            and combine_form_context["has_epc"]
+        )
+
+    def resume_combination(self, ng_epcs: list[str]) -> None:
+        """
+        Resume the combination process when NG EPCs are mutated
+        """
+        is_combinable = self.check_can_submit() and len(ng_epcs) == 0
+        self.combine_proceed_button.setEnabled(is_combinable)

@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import QWidget
 from widgets.loading_spinner import LoadingSpinner
 
 
-class TableLoading:
+class LoadingWidget:
     def __init__(self, parent):
         self.overlay = QWidget(parent)
         self.overlay = QWidget(parent)

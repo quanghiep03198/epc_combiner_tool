@@ -4,7 +4,8 @@ SELECT
     SUM(CAST(b.size_qty AS INT)) AS size_qty,
     ISNULL(SUM(CAST(c.combined_qty AS INT)), 0) AS combined_qty,
     ISNULL(SUM(CAST(d.in_use_qty AS INT)), 0) AS in_use_qty,
-    ISNULL(SUM(CAST(e.cancelled_qty AS INT)), 0) AS cancelled_qty
+    ISNULL(SUM(CAST(e.compensated_qty AS INT)), 0) AS compensated_qty,
+    ISNULL(SUM(CAST(f.cancelled_qty AS INT)), 0) AS cancelled_qty
 FROM wuerp_vnrd.dbo.ta_ordersizerun a
     LEFT JOIN wuerp_vnrd.dbo.ta_ordermst or1 ON or1.or_no= a.or_no
         AND or1.isactive= 'Y'
@@ -68,11 +69,17 @@ OUTER APPLY (
     GROUP BY size_code, size_numcode
 ) d ([in_use_qty])
 OUTER APPLY (
+    SELECT COUNT(EPC_Code) AS compensated_qty
+    FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst
+    WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode AND ri_type = 'D'
+    GROUP BY size_code, size_numcode
+) e ([compensated_qty])
+OUTER APPLY (
     SELECT COUNT(EPC_Code) AS cancelled_qty
     FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst
     WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode AND ri_cancel = 1
     GROUP BY size_code, size_numcode
-) e ([cancelled_qty])
+) f ([cancelled_qty])
 WHERE b.size_qty <> 0
     AND a.isactive= 'Y'
     AND a1.mo_no = :mo_no

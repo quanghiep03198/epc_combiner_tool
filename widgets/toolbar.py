@@ -35,6 +35,7 @@ class AppToolBar(QToolBar):
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
+
         open_file_icon.addPixmap(scaled_pixmap, QIcon.Mode.Normal, QIcon.State.Off)
         self.open_file_act = QAction(icon=open_file_icon, text="Thư Mục", parent=self)
         self.open_file_act.triggered.connect(self.handle_reveal_data_folder)
@@ -50,6 +51,12 @@ class AppToolBar(QToolBar):
             Qt.TransformationMode.SmoothTransformation,
         )
         language_icon.addPixmap(scaled_pixmap, QIcon.Mode.Normal, QIcon.State.Off)
+        # self.language_menu = QMenu( title="Ngôn Ngữ", parent=self)
+        # self.language_menu.addAction("English")
+        # self.language_menu.addAction("Tiếng Việt")
+        # self.language_menu.addAction("Español")
+        # self.language_menu.addAction("Français")
+        # self.language_setting_act.setMenu(self.language_menu)
         self.language_setting_act = QAction(
             icon=language_icon, text="Ngôn Ngữ", parent=self
         )
@@ -110,6 +117,7 @@ class AppToolBar(QToolBar):
         separator = QFrame()
         separator.setFrameShape(QFrame.Shape.VLine)
         separator.setFrameShadow(QFrame.Shadow.Sunken)
+        separator.setFixedHeight(24)
         separator.setStyleSheet("background-color: #262626;")
         self.addWidget(separator)
 

@@ -7,6 +7,7 @@ from contexts.combine_form_context import combine_form_context
 from database import DATA_SOURCE_ERP
 from events import sync_event_emitter, UserActionEvent
 from widgets.loading import LoadingWidget
+from time import sleep
 
 # mo_no_change_event = AsyncIOEventEmitter()
 
@@ -18,6 +19,11 @@ class OrderAutoCompleteWidget(QPushButton):
 
     def __init__(self, root):
         super().__init__(root.container)
+
+        self._is_closing = False
+        """
+        A flag that indicates whether the popover content is closing or not.
+        """
 
         self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.setStyleSheet(
@@ -34,13 +40,16 @@ class OrderAutoCompleteWidget(QPushButton):
         self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self.setIconSize(QSize(14, 14))
         self.setObjectName("manuOrderPopoverTrigger")
-        self.clicked.connect(self.on_open)
-
+        self.setCheckable(True)
+        self.setChecked(False)
+        # self.setFixedWidth(300)
+        self.toggled.connect(self.handle_toggle_open)
         self.popover_content = QDialog(self)
         self.popover_content.setGraphicsEffect(None)
         self.popover_content.setStyleSheet(
             "border: 1px solid #404040; border-radius: 4px; background-color: #171717"
         )
+        self.popover_content.finished.connect(lambda: self.on_popover_content_close())
         self.popover_content.setMaximumHeight(190)
         self.popover_content.setWindowFlags(
             Qt.WindowType.Popup
@@ -77,8 +86,8 @@ class OrderAutoCompleteWidget(QPushButton):
 
         self.handle_find_mo_no("")
 
-    @pyqtSlot()
-    def on_open(self) -> None:
+    @pyqtSlot(bool)
+    def handle_toggle_open(self, checked_state: bool) -> None:
         """
         Handles the event when the widget is opened.
 
@@ -86,23 +95,65 @@ class OrderAutoCompleteWidget(QPushButton):
         and size of the popover content relative to the button's position. It then
         displays the popover content. If an exception occurs during this process,
         it logs the error.
-
-        Raises:
-            Exception: If an error occurs during the execution of the method.
         """
-        try:
-            button_geometry = self.geometry()
-            global_position = self.mapToGlobal(button_geometry.bottomLeft())
+        if self._is_closing:
+            self._is_closing = False
+            return
+
+        button_geometry = self.geometry()
+        global_position = self.mapToGlobal(button_geometry.bottomLeft())
+        animation = QPropertyAnimation(self.popover_content, b"geometry")
+        animation.setDuration(150)
+
+        if checked_state:
             self.popover_input.setFocus()
-            self.popover_content.setGeometry(
-                global_position.x() - button_geometry.x(),
-                global_position.y(),
-                button_geometry.width(),
-                250,
+            animation.setStartValue(
+                QRect(
+                    global_position.x() - button_geometry.x(),
+                    global_position.y(),
+                    button_geometry.width(),
+                    0,
+                )
             )
+            animation.setEndValue(
+                QRect(
+                    global_position.x() - button_geometry.x(),
+                    global_position.y(),
+                    button_geometry.width(),
+                    250,
+                )
+            )
+            animation.setEasingCurve(QEasingCurve.Type.OutQuad)
+            animation.start()
+
             self.popover_content.exec()
-        except Exception as e:
-            logger.error(e)
+
+        else:
+            self._is_closing = True
+            animation.setStartValue(
+                QRect(
+                    global_position.x() - button_geometry.x(),
+                    global_position.y(),
+                    button_geometry.width(),
+                    250,
+                )
+            )
+            animation.setEndValue(
+                QRect(
+                    global_position.x() - button_geometry.x(),
+                    global_position.y(),
+                    button_geometry.width(),
+                    0,
+                )
+            )
+            animation.setEasingCurve(QEasingCurve.Type.InQuad)
+            animation.setEasingCurve(QEasingCurve.Type.InQuad)
+            animation.start()
+
+    @pyqtSlot()
+    def on_popover_content_close(self):
+        self._is_closing = True
+        self.setChecked(False)
 
     @pyqtSlot(str)
     def on_input(self, q: str) -> None:
@@ -143,7 +194,7 @@ class OrderAutoCompleteWidget(QPushButton):
         try:
             query = QSqlQuery(DATA_SOURCE_ERP)
             query.prepare(
-                f"""
+                f"""--sql
                     SELECT TOP 5 mo_no
                     FROM (
                         SELECT DISTINCT mo_no, created

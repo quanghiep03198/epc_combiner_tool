@@ -9,9 +9,8 @@ from database import DATA_SOURCE_ERP
 class SizingRepository:
 
     @staticmethod
-    def find_size_qty(mo_no: str) -> QSqlQuery:
+    def find_size_qty(mo_no: str) -> list[dict]:
         result = []
-        logger.debug("Getting size data detail")
         try:
             current_dir = Path(__file__).parent.resolve()
             sql_file_path = current_dir / "./sql/get_size_qty.sql"
@@ -29,6 +28,7 @@ class SizingRepository:
                         "size_qty": query.value("size_qty"),
                         "combined_qty": query.value("combined_qty"),
                         "in_use_qty": query.value("in_use_qty"),
+                        "compensated_qty": query.value("compensated_qty"),
                         "cancelled_qty": query.value("cancelled_qty"),
                     }
                 )

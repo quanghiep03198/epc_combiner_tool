@@ -14,9 +14,9 @@ class CombineAction(Enum):
 
 
 @unique
-class CombineType(Enum):
-    BY_MO_NO = 0
-    BY_MO_NOSEQ = 1
+class NgAction(Enum):
+    COMPENSATE = 1
+    CANCEL = 2
 
 
 @unique

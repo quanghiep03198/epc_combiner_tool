@@ -11,6 +11,7 @@ from uhf.reader import GClient
 
 # Import widgets
 from widgets.toolbar import AppToolBar
+from widgets.status_bar import StatusBar
 from widgets.order_detail_table import OrderDetailTableWidget
 from widgets.sizing_detail_table import SizingDetailTableWidget
 from widgets.order_autocomplete import OrderAutoCompleteWidget
@@ -20,6 +21,7 @@ from widgets.login_dialog import LoginDialog
 
 # Import services
 from helpers.configuration import ConfigService
+from helpers.logger import logger
 from events import sync_event_emitter, UserActionEvent
 from contexts.auth_context import auth_context
 
@@ -47,7 +49,10 @@ class MainWindow(QMainWindow):
 
         # region Menubar
         self.toolbar = AppToolBar(self)
-        self.addToolBar(self.toolbar)
+        self.status_bar = StatusBar(self)
+
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolbar)
+        self.addToolBar(Qt.ToolBarArea.BottomToolBarArea, self.status_bar)
 
         self.app_layout = QHBoxLayout(self.container)
         self.app_layout.setSpacing(20)
@@ -119,8 +124,14 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(self.container)
         self.setWindowTitle("EPC CI - v1.0.0 Beta")
+        self.addToolBar(self.toolbar)
 
         QMetaObject.connectSlotsByName(self)
+        self.retranslate_ui()
+
+    def retranslate_ui(self):
+        _translate = QCoreApplication.translate
+        self.setWindowTitle(_translate("MainWindow", "EPC CI - v1.0.0 Beta"))
 
     def on_app_shutdown(self):
         """
@@ -157,9 +168,12 @@ if __name__ == "__main__":
 
     # * Setup global stylesheet for application
     with open("./themes/global.qss", "r", encoding="utf-8") as f:
-        app.setStyleSheet(f.read())
-
-    ui.show()
+        stylesheet = f.read()
+        app.setStyleSheet(stylesheet)
+    try:
+        ui.show()
+    except Exception as e:
+        logger.error(e)
 
     def on_setting_update(e):
         ui.setEnabled(True)

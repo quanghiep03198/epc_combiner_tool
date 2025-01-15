@@ -1,23 +1,23 @@
-import asyncio
+from typing import Callable
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import *
 from repositories.order_repository import OrderRepository
 from helpers.logger import logger
 from contexts.combine_form_context import combine_form_context
-from widgets.table_loading import TableLoading
+from widgets.loading_widget import LoadingWidget
 
 from events import UserActionEvent, sync_event_emitter
 
 
 class OrderDetailWorker(QRunnable):
-    def __init__(self, data, callback):
+    def __init__(self, param: str, callback: Callable[[list], None]):
         super().__init__()
-        self.data = data
+        self.param = param
         self.callback = callback
 
     @pyqtSlot()
     def run(self):
-        query_result = OrderRepository.get_order_detail(self.data)
+        query_result = OrderRepository.get_order_detail(self.param)
         self.callback(query_result)
 
 
@@ -59,9 +59,9 @@ class OrderDetailTableWidget(QTableWidget):
             Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft
         )
         self.setCornerButtonEnabled(True)
-        self.setObjectName("tableWidget")
+        # self.setObjectName("tableWidget")
         self.setContentsMargins(4, 4, 4, 4)
-        self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
+        # self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
         self.setColumnCount(7)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.horizontalHeader().setMinimumSectionSize(150)
@@ -76,6 +76,11 @@ class OrderDetailTableWidget(QTableWidget):
         self.setMidLineWidth(1)
         self.setSortingEnabled(False)
         self.verticalHeader().setVisible(False)
+
+        self.empty_state_label = QLabel("No data available")
+        self.empty_state_label.setStyleSheet("font-size: 16px; color: gray;")
+        self.empty_state_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
 
         sync_event_emitter.on(UserActionEvent.MO_NO_CHANGE.value)(self.on_mo_no_change)
         sync_event_emitter.on(UserActionEvent.MO_NOSEQ_CHANGE.value)(
@@ -106,6 +111,11 @@ class OrderDetailTableWidget(QTableWidget):
 
             row += 1
 
+        if len(data) == 0:
+            self.empty_state_label.show()
+
+        self.resizeColumnsToContents()
+
     def on_mo_noseq_change(self, selected_mo_noseq: str):
         if selected_mo_noseq == "all":
             self.render_row(self.order_detail_data)
@@ -120,7 +130,7 @@ class OrderDetailTableWidget(QTableWidget):
 
     def on_mo_no_change(self, data):
         try:
-            self.loading = TableLoading(self)
+            self.loading = LoadingWidget(self)
             self.loading.show_loading()
             worker = OrderDetailWorker(data, self.handle_query_result)
             QThreadPool.globalInstance().start(worker)

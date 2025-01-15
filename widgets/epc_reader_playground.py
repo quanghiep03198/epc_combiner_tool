@@ -1,6 +1,7 @@
 import asyncio
 import math
-import json
+
+# import json
 from pyqttoast import ToastPreset
 from PyQt6.QtCore import *
 from PyQt6.QtSql import *
@@ -9,15 +10,17 @@ from PyQt6.QtWidgets import *
 from asyncio import Queue
 from uhf.reader import *
 from helpers.logger import logger
+from constants import CombineAction
+from contexts.combine_form_context import combine_form_context
 
 # Import widgets
 from widgets.loading import LoadingWidget
 from widgets.toaster import Toaster
+from widgets.ng_epc_table_dialog import NgEpcTableDialog
 
 from services.rfid_service import RFIDService
 from events import UserActionEvent, sync_event_emitter
 from helpers.configuration import ConfigService
-from contexts.combine_form_context import combine_form_context
 from typing import Callable
 
 PAGE_SIZE: int = 50
@@ -25,14 +28,14 @@ SCANNED_EPC_LABEL: str = "Đã Quét"
 NG_EPC_LABEL: str = "NG"
 
 
-class GetActiveCombinationsWorker(QRunnable):
-    def __init__(self, epcs: list[str], callback: Callable[[list], None]):
+class GetNgEpcDetailWorker(QRunnable):
+    def __init__(self, params: list[str], callback: Callable[[list], None]):
         super().__init__()
-        self.epcs = epcs
+        self.params = params
         self.callback = callback
 
     def run(self):
-        result = RFIDService.get_active_combinations(self.epcs)
+        result = RFIDService.get_ng_epc_detail(self.params)
         self.callback(result)
 
 
@@ -48,27 +51,15 @@ class EpcReaderPlayground(QFrame):
     Scope: public
     """
 
-    # private
-    _connection_status: bool = False
-    # private
-    _play_state: bool = False
-    # private
+    # region Local states
     _max_epc_qty: int = 0
-    # private
     _epc_datalist: list[str] = []
-    # private
     _ng_epc_datalist: list[str] = []
-    # private
-    _ng_active_combinations: list[dict[str, str]] = []
-    # private
+    _ng_epc_detail_datalist: list[dict[str, str]] = []
     _current_tab_index: int = 1
-    # private
     _current_page: int = 1
-    # private
     _total_page: int = 1
-    # private
     _has_next_page: bool = False
-    # private
     _has_prev_page: bool = False
 
     def __init__(self, parent):
@@ -96,14 +87,14 @@ class EpcReaderPlayground(QFrame):
         self.scanned_epc_counter = QPushButton(parent=self.epc_counter_box)
         self.scanned_epc_counter.setObjectName("scanned_epc_counter")
         self.scanned_epc_counter.setText(f"0/0 {SCANNED_EPC_LABEL}")
-        self.scanned_epc_counter.clicked.connect(lambda: self.handle_change_tab(1))
+        self.scanned_epc_counter.clicked.connect(lambda: self.handle_view_curr_tab(1))
         self.scanned_epc_counter.setCheckable(True)
         self.scanned_epc_counter.setChecked(self._current_tab_index == 1)
 
         self.ng_epc_counter = QPushButton(parent=self.epc_counter_box)
         self.ng_epc_counter.setObjectName("ng_epc_counter")
         self.ng_epc_counter.setText(f"0/0 {NG_EPC_LABEL}")
-        self.ng_epc_counter.clicked.connect(lambda: self.handle_change_tab(2))
+        self.ng_epc_counter.clicked.connect(lambda: self.handle_view_curr_tab(2))
         self.ng_epc_counter.setCheckable(True)
         self.ng_epc_counter.setChecked(self._current_tab_index == 2)
 
@@ -213,8 +204,8 @@ class EpcReaderPlayground(QFrame):
         self.next_page_button = QPushButton(parent=self.pagination_group)
         self.prev_page_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.next_page_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.prev_page_button.clicked.connect(self.handle_prev_page)
-        self.next_page_button.clicked.connect(self.handle_next_page)
+        self.prev_page_button.clicked.connect(lambda: self.handle_goto_page(-1))
+        self.next_page_button.clicked.connect(lambda: self.handle_goto_page(1))
         self.pagination_layout.addWidget(self.page_index)
         self.pagination_layout.addWidget(self.prev_page_button)
         self.pagination_layout.addWidget(self.next_page_button)
@@ -250,14 +241,14 @@ class EpcReaderPlayground(QFrame):
         self.epc_reader_layout.addWidget(self.epc_list_action_group)
 
         # Fake EPC data
-        with open("./data/faker.json", "r", encoding="utf-8") as f:
-            data = json.load(f)
-            self._epc_datalist = data["epcs"][0:14]
-            self.scanned_epc_counter.setText(
-                f"{len(self._epc_datalist)}/{self._max_epc_qty} {SCANNED_EPC_LABEL}"
-            )
-            self._handle_pagination()
-            self._get_page_data()
+        # with open("./data/faker.json", "r", encoding="utf-8") as f:
+        #     data = json.load(f)
+        #     self._epc_datalist = data["epcs"][15:30]
+        #     self.scanned_epc_counter.setText(
+        #         f"{len(self._epc_datalist)}/{self._max_epc_qty} {SCANNED_EPC_LABEL}"
+        #     )
+        #     self._handle_pagination()
+        #     self._get_page_data()
 
         self.loading = LoadingWidget(parent, "")
 
@@ -273,44 +264,64 @@ class EpcReaderPlayground(QFrame):
             self.on_check_combinable_failed
         )
 
+        sync_event_emitter.on(UserActionEvent.NG_EPC_MUTATION.value)(
+            self.on_ng_epc_mutation
+        )
+
     # region Event handlers
     def on_check_combinable_failed(self, error_data: dict[str]):
         """
         Handle failed to check combinable EPC
         """
         self._ng_epc_datalist = error_data["ng_epcs"]
-        self.ng_epc_counter.setText(
-            f"{len(self._ng_epc_datalist)}/{self._max_epc_qty} {NG_EPC_LABEL}"
+        failed_epc_text = self._get_counter_text(
+            combine_form_context["ri_type"], len(self._ng_epc_datalist), NG_EPC_LABEL
         )
-        worker = GetActiveCombinationsWorker(
-            self._ng_epc_datalist, self.on_active_combinations_received
+        self.ng_epc_counter.setText(failed_epc_text)
+        worker = GetNgEpcDetailWorker(
+            self._ng_epc_datalist, self.set_ng_epc_detail_state
         )
         QThreadPool.globalInstance().start(worker)
         # TODO: Highlighting the NG EPCs
 
-    def on_active_combinations_received(self, data: list[dict[str, str]]):
-        data: self._ng_active_combinations = data
+    def set_ng_epc_detail_state(self, data: list[dict[str, str]]):
+        self._ng_epc_detail_datalist = data
+        self.handle_view_curr_tab(self._current_tab_index)
 
     def on_combined_epc_created(self, data: dict):
         self._epc_datalist.clear()
         self.epc_list.clear()
         self._handle_pagination()
         self.handle_reset_scanned_epc()
-        self.scanned_epc_counter.setText(f"0/0 {SCANNED_EPC_LABEL}")
-        self.ng_epc_counter.setText(f"0/0 {NG_EPC_LABEL}")
+        self.scanned_epc_counter.setText(
+            self._get_counter_text(
+                combine_form_context["ri_type"], 0, SCANNED_EPC_LABEL
+            )
+        )
+        self.ng_epc_counter.setText(
+            self._get_counter_text(combine_form_context["ri_type"], 0, NG_EPC_LABEL)
+        )
 
     def on_combine_form_state_change(self, data):
         # * Only when size is selected, enable the connect button
         self._max_epc_qty = data["size_qty"]
-        _curr_epc_qty = len(self._epc_datalist)
+
         self.scanned_epc_counter.setText(
-            f"{_curr_epc_qty}/{data["size_qty"]} {SCANNED_EPC_LABEL}"
+            self._get_counter_text(
+                data["ri_type"], len(self._epc_datalist), SCANNED_EPC_LABEL
+            )
+        )
+        self.ng_epc_counter.setText(
+            self._get_counter_text(
+                data["ri_type"], len(self._ng_epc_datalist), NG_EPC_LABEL
+            )
         )
 
-        # # * Fake data
-        # sync_event_emitter.emit(
-        #     UserActionEvent.EPC_DATA_CHANGE.value, self._epc_datalist
-        # )
+    def _get_counter_text(self, type: str, acc_qty: int, sub_text: str) -> str:
+        if type == CombineAction.COMBINE_NEW.value:
+            return f"{acc_qty}/{self._max_epc_qty} {sub_text}"
+        else:
+            return f"{acc_qty} {sub_text}"
 
     def _handle_pagination(self):
         process_data = (
@@ -324,15 +335,10 @@ class EpcReaderPlayground(QFrame):
         self.prev_page_button.setEnabled(self._has_prev_page)
         self.next_page_button.setEnabled(self._has_next_page)
 
-    @pyqtSlot()
-    def handle_next_page(self):
-        self._current_page += 1
-        self._get_page_data()
-        self._handle_pagination()
-
-    @pyqtSlot()
-    def handle_prev_page(self):
-        self._current_page -= 1
+    #
+    @pyqtSlot(int)
+    def handle_goto_page(self, step: int):
+        self._current_page += step
         self._get_page_data()
         self._handle_pagination()
 
@@ -394,15 +400,8 @@ class EpcReaderPlayground(QFrame):
                 self.reset_btn.setEnabled(True)
                 self.toggle_play_button.setEnabled(False)
                 QCoreApplication.processEvents()
-                stop = MsgBaseStop()
-                if (
-                    hasattr(self.uhf_reader_instance, "sendSynMsg")
-                    and self.uhf_reader_instance.sendSynMsg(stop) == 0
-                ):
-                    logger.info(f"Disconnected reader with messsage :>>> {stop.rtMsg}")
-                    self._play_state(False)
-                    self.toggle_play_button.setIcon(self.play_icon)
-                    self.uhf_reader_instance.close()
+                self.handle_stop_reading()
+                self.uhf_reader_instance.close()
 
             else:
                 self.uhf_reader_instance = GClient()
@@ -434,11 +433,8 @@ class EpcReaderPlayground(QFrame):
         stop = MsgBaseStop()
         if self.uhf_reader_instance.sendSynMsg(stop) == 0:
             logger.info(f"Stopped reading with :>>> {stop.rtMsg}")
-
         self.toggle_play_button.setIcon(self.play_icon)
         self.toggle_play_button.setToolTip("Bắt đầu đọc")
-
-        self._play_state = False
 
     def handle_perform_reading(self):
         self._epc_queue = Queue(maxsize=100)
@@ -454,31 +450,40 @@ class EpcReaderPlayground(QFrame):
         if self.uhf_reader_instance.sendSynMsg(msg) == 0:
             logger.info(f"Stop reading with :>>> {msg.rtMsg}")
 
-        self._play_state = True
-
     @pyqtSlot(int)
-    def handle_change_tab(self, index: int):
+    def handle_view_curr_tab(self, index: int):
         self._current_tab_index = index
         self._current_page = 1
         self.scanned_epc_counter.setChecked(self._current_tab_index == 1)
         self.ng_epc_counter.setChecked(self._current_tab_index == 2)
-
         self._get_page_data()
         self._handle_pagination()
 
+        if self._current_tab_index == 1:
+            self.epc_list.setStyleSheet("QListWidget::item { color: #fafafa; }")
+        else:
+            self.epc_list.setStyleSheet("QListWidget::item { color: #ef4444; }")
+
         # TODO: Remove later
         # * Fake data
-        sync_event_emitter.emit(
-            UserActionEvent.EPC_DATA_CHANGE.value, self._epc_datalist
-        )
+        # sync_event_emitter.emit(
+        #     UserActionEvent.EPC_DATA_CHANGE.value, self._epc_datalist
+        # )
 
     @pyqtSlot()
     def handle_reset_scanned_epc(self):
         self._epc_datalist.clear()
+        self._ng_epc_datalist.clear()
         self.epc_list.clear()
         self._handle_pagination()
-        self.scanned_epc_counter.setText(f"0/{self._max_epc_qty} {SCANNED_EPC_LABEL}")
-        self.ng_epc_counter.setText(f"0/{self._max_epc_qty} {NG_EPC_LABEL}")
+        self.scanned_epc_counter.setText(
+            self._get_counter_text(
+                combine_form_context["ri_type"], 0, SCANNED_EPC_LABEL
+            )
+        )
+        self.ng_epc_counter.setText(
+            self._get_counter_text(combine_form_context["ri_type"], 0, NG_EPC_LABEL)
+        )
         toast = Toaster(
             parent=self.root,
             title="Đã đặt lại danh sách quét.",
@@ -487,6 +492,21 @@ class EpcReaderPlayground(QFrame):
         toast.show()
 
     @pyqtSlot()
-    def handle_view_combination_history():
+    def handle_view_combination_history(self):
         # TODO: Show combination history dialog
-        pass
+        if self._current_tab_index == 2:
+            ng_epcs_detail_table_dialog = NgEpcTableDialog(self.root)
+            ng_epcs_detail_table_dialog.set_data(self._ng_epc_detail_datalist)
+            ng_epcs_detail_table_dialog.exec()
+
+    def on_ng_epc_mutation(self, data: list[str]):
+        self._ng_epc_datalist = data
+        self._current_page = 1
+        self.handle_view_curr_tab(self._current_tab_index)
+        self.ng_epc_counter.setText(
+            self._get_counter_text(
+                combine_form_context["ri_type"],
+                len(self._ng_epc_datalist),
+                NG_EPC_LABEL,
+            )
+        )

@@ -3,9 +3,8 @@
    border-color: #404040;
    background-color: #262626;
    border-width: 1px;
-   font-family: Inter, serif;
-   font-weight: normal;
-   font-style: normal;
+   font-family: Inter;
+   font-weight: Normal;
    font-size: 14px;
 }
 
@@ -75,7 +74,9 @@ QComboBox QListView{
    border: 1px solid #404040;
    border-radius: 4px;
    padding: 1.5px 3px;
-   margin-top: 4px;
+}
+QComboBox QListView:disabled{
+  color: #a3a3a3
 }
 
 QListView::item{
@@ -271,6 +272,7 @@ QToolBar {
    padding: 4px 8px;
    background-color: #171717; 
 }
+
 QToolBar * { 
    background-color: #171717; 
 }
@@ -349,25 +351,29 @@ QToolBar::handle {
 }
 
 #epc_list_box #epc_list::item{
-   font-weight: 600
+   font-weight: 500
+}
+
+#pagination_group QPushButton, #epc_list_action_group  QPushButton{
+   background: transparent;
+   color: #fafafa;
 }
 
 #epc_list_action_group  QPushButton{
-   background: transparent;
-   border: 1px solid #262626;
-   color: #fafafa;
-   font-weight: 600;
+   border: 0px;
 }
 
-#epc_list_action_group QPushButton:hover{
+#pagination_group QPushButton {
+   border: 1px solid #404040;
+}
+
+#pagination_group QPushButton:hover, #epc_list_action_group QPushButton:hover{
    background-color: #404040;
 }
 
-#epc_list_action_group QPushButton:disabled{
+#pagination_group QPushButton:disabled, #epc_list_action_group QPushButton:disabled{
    color: #57534e;
 }
-
-
 
 #header_top_title, #playground_section_title{
    font-family: Inter, serif;

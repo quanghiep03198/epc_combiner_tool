@@ -12,7 +12,6 @@ class OrderRepository:
     @staticmethod
     def get_order_detail(mo_no: str):
         results = []
-        logger.debug("Getting order detail")
         try:
             current_dir = Path(__file__).parent.resolve()
             sql_file_path = current_dir / "./sql/get_order_information.sql"

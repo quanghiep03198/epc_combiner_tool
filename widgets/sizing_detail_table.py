@@ -2,21 +2,25 @@ from PyQt6.QtWidgets import *
 from PyQt6.QtCore import *
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
+from typing import Callable
+
 from repositories.sizing_repository import SizingRepository
 from helpers.logger import logger
 from events import sync_event_emitter, UserActionEvent
-from widgets.table_loading import TableLoading
+from widgets.loading_widget import LoadingWidget
+
+from contexts.combine_form_context import combine_form_context
 
 
 class FetchSizeDataWorker(QRunnable):
-    def __init__(self, data, callback):
+    def __init__(self, param: str, callback: Callable[[list[dict]], None]):
         super().__init__()
-        self.data = data
+        self.param = param
         self.callback = callback
 
     @pyqtSlot()
     def run(self):
-        query_result = SizingRepository.find_size_qty(self.data)
+        query_result = SizingRepository.find_size_qty(self.param)
         self.callback(query_result)
 
 
@@ -26,13 +30,19 @@ class SizingDetailTableWidget(QTableWidget):
     """
 
     _size_list: list[dict] = []
-    _current_mo_no: str = None
+    _vertical_header_labels: list[str] = [
+        "Cỡ giày",
+        "Số lượng đặt đơn",
+        "Tem đã phối",
+        "Đang sử dụng",
+        "Đã bù",
+        "Đã hủy",
+    ]
 
     def __init__(self, root):
         super().__init__(root.container)
         self.root = root
 
-        self.setRowCount(5)
         self.setContentsMargins(2, 2, 2, 2)
         self.setAutoFillBackground(True)
         self.setFrameShape(QFrame.Shape.NoFrame)
@@ -44,15 +54,8 @@ class SizingDetailTableWidget(QTableWidget):
         self.horizontalHeader().setVisible(False)
         self.verticalHeader().setVisible(True)
         self.verticalHeader().setFont(QFont("Inter", 12, QFont.Weight.Bold))
-        self.setVerticalHeaderLabels(
-            [
-                "Cỡ giày",
-                "Số lượng đặt đơn",
-                "Tem đã phối",
-                "Đang sử dụng",
-                "Đã hủy",
-            ]
-        )
+        self.setRowCount(len(self._vertical_header_labels))
+        self.setVerticalHeaderLabels(self._vertical_header_labels)
 
         sync_event_emitter.on(UserActionEvent.COMBINED_EPC_CREATED.value)(
             self.on_combined_epc_created
@@ -60,10 +63,14 @@ class SizingDetailTableWidget(QTableWidget):
         sync_event_emitter.on(UserActionEvent.MO_NO_CHANGE.value)(
             self.handle_fetch_size_data
         )
+        sync_event_emitter.on(UserActionEvent.NG_EPC_MUTATION.value)(
+            lambda _: self.handle_fetch_size_data(combine_form_context["mo_no"])
+        )
 
     def handle_fetch_size_data(self, data: str):
         try:
-            self.loading = TableLoading(self)
+            logger.info(f"Fetching sizing data with mo_no: {data}")
+            self.loading = LoadingWidget(self)
             self.loading.show_loading()
             worker = FetchSizeDataWorker(data, self.handle_render_row)
             QThreadPool.globalInstance().start(worker)
@@ -84,7 +91,8 @@ class SizingDetailTableWidget(QTableWidget):
             self.setItem(1, col, QTableWidgetItem(str(record["size_qty"])))
             self.setItem(2, col, QTableWidgetItem(str(record["combined_qty"])))
             self.setItem(3, col, QTableWidgetItem(str(record["in_use_qty"])))
-            self.setItem(4, col, QTableWidgetItem(str(record["cancelled_qty"])))
+            self.setItem(4, col, QTableWidgetItem(str(record["compensated_qty"])))
+            self.setItem(5, col, QTableWidgetItem(str(record["cancelled_qty"])))
             self.handle_highlight_qty(
                 2, col, record["size_qty"], record["combined_qty"]
             )
