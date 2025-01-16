@@ -53,7 +53,7 @@ class StoreDataWorker(QRunnable):
             self.signals.error.emit(error_data)
 
 
-class CombineForm(QFrame):
+class CombineForm(QWidget):
     """
     EPC combination form submission
     """
@@ -73,7 +73,6 @@ class CombineForm(QFrame):
         self.combine_form_layout.setContentsMargins(0, 0, 0, 0)
         self.combine_form_layout.setSpacing(4)
         self.combine_form_layout.setObjectName("combine_form_layout")
-
         # Action select
         self.action_select = QComboBox(parent=self)
         self.action_select.setObjectName("actionSelect")

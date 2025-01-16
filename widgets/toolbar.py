@@ -32,7 +32,6 @@ class AppToolBar(QToolBar):
                 padding-right: 8px;
                 spacing: 8px;
                 background-color: #171717;
-                border-bottom: 1px solid #3f3f46;
             }
         """
         )

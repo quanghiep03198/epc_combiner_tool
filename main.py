@@ -59,6 +59,7 @@ class MainWindow(QMainWindow):
 
         self.app_layout = QHBoxLayout(self.container)
         self.app_layout.setSpacing(20)
+        self.app_layout.setContentsMargins(20, 20, 20, 20)
         self.app_layout.setObjectName("app_layout")
         # endregion
 

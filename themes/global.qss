@@ -1,15 +1,16 @@
 *{
    
    border-width: 1px;
+   border-color: #52525b;
    font-family: "Inter";
    font-weight: Normal;
    font-size: 14px;
+
 }
 
-#MainWindow{
+QMainWindow, #container{
    color: #fafafa;
-   border-color: #52525b;
-   background-color: #404040;
+   background-color: #262626;
 }
 
 QPushButton{
@@ -135,11 +136,6 @@ QTableWidget::item {
 }
 
 
-QTableWidget QTableHead{
-   font-weight: 600
-}
-
-
 QScrollBar:vertical {
    background-color: #262626;
    width: 8px;
@@ -215,6 +211,7 @@ QMessageBox{
       border-radius: 4px;
       font-size: 14px;
 }
+
 QMessageBox QPushButton{
       height: 32px;
       width: 96px;
@@ -226,14 +223,12 @@ QMessageBox QPushButton{
       alternate-background-color: #262626;
 }
 
-/* QDialogButtonBox > QPushButton[text="&OK"] {
-   background-color: orange;
-} */
 QMessageBox QPushButton[text="&No"],QPushButton[text="&Cancel"]{
    background: transparent;
    border: 1px solid #404040;
    color: #fafafa
 }
+
 QMessageBox QPushButton[text="&No"]:hover,QPushButton[text="&Cancel"]:hover {
    background-color: #404040;
 }
@@ -267,8 +262,6 @@ QMenu::item:selected{
    background-color: #404040;
 }
 
-
-
 QToolBar::handle {
    image: url(./assets/icons/grip.svg);
    width: 18px;
@@ -283,7 +276,6 @@ QToolBar::handle {
    color: white;               /* Màu chữ */
    border: 1px solid #404040;  /* Viền */
    border-radius: 4px;         /* Bo góc */
-   padding: 6px;               /* Khoảng cách nội dung */
    font-size: 14px;            /* Kích thước chữ */
 }
 

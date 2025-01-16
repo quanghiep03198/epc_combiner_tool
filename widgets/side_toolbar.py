@@ -21,8 +21,7 @@ class SideToolbar(QToolBar):
                 padding-left: 8px;
                 padding-right: 8px;
                 spacing: 8px;
-                background-color: #262626;
-                border-right: 1px solid #3f3f46;
+                background-color: #404040;
             }
             """
         )

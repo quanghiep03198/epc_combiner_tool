@@ -112,7 +112,7 @@ class StatusBar(QToolBar):
         # Auto save toggle
         self.auto_save_form_layout = QHBoxLayout()
         self.auto_save_form_layout.setContentsMargins(0, 0, 0, 0)
-        self.auto_save_form_layout.setSpacing(4)
+        self.auto_save_form_layout.setSpacing(8)
         self.auto_save_form = QWidget()
         self.auto_save_form.setLayout(self.auto_save_form_layout)
 
