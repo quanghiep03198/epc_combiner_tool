@@ -1,15 +1,15 @@
 *{
-   color: #fafafa;
-   border-color: #404040;
-   background-color: #262626;
+   
    border-width: 1px;
-   font-family: Inter;
+   font-family: "Inter";
    font-weight: Normal;
    font-size: 14px;
 }
 
 #MainWindow{
-   border-radius: 8px
+   color: #fafafa;
+   border-color: #52525b;
+   background-color: #404040;
 }
 
 QPushButton{
@@ -267,27 +267,7 @@ QMenu::item:selected{
    background-color: #404040;
 }
 
-QToolBar { 
-   spacing: 8px; 
-   padding: 4px 8px;
-   background-color: #171717; 
-}
 
-QToolBar * { 
-   background-color: #171717; 
-}
-
-QToolBar #logout_act{
-   color: #ef4444;
-}
-
-QToolButton { 
-   alternate-background-color: #262626; 
-}
-
-QToolButton:pressed { 
-   background-color: #404040; 
-}
 
 QToolBar::handle {
    image: url(./assets/icons/grip.svg);
@@ -376,14 +356,14 @@ QToolBar::handle {
 }
 
 #header_top_title, #playground_section_title{
-   font-family: Inter, serif;
+   font-family: "Inter";
    font-weight: 600;
    font-style: normal;
    font-size: 16px;
 }
 
 #settings_dialog #fieldset_legend{
-   font-family: Inter, serif;
+   font-family: "Inter";
    font-weight: 600;
    font-style: normal;
    font-size: 14px;

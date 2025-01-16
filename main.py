@@ -18,6 +18,7 @@ from widgets.order_autocomplete import OrderAutoCompleteWidget
 from widgets.combine_form import CombineForm
 from widgets.epc_reader_playground import EpcReaderPlayground
 from widgets.login_dialog import LoginDialog
+from widgets.side_toolbar import SideToolbar
 
 # Import services
 from helpers.configuration import ConfigService
@@ -50,9 +51,11 @@ class MainWindow(QMainWindow):
         # region Menubar
         self.toolbar = AppToolBar(self)
         self.status_bar = StatusBar(self)
+        self.side_toolbar = SideToolbar(self)
 
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolbar)
         self.addToolBar(Qt.ToolBarArea.BottomToolBarArea, self.status_bar)
+        self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, self.side_toolbar)
 
         self.app_layout = QHBoxLayout(self.container)
         self.app_layout.setSpacing(20)
@@ -145,26 +148,13 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-
+    # Enable High DPI support
+    QApplication.setHighDpiScaleFactorRoundingPolicy(
+        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+    )
     # * Setup main window
     ui = MainWindow()
     ui.setup_ui()
-
-    # * Setup global font for application
-    font_id = QFontDatabase.addApplicationFont("./assets/fonts/Inter-Regular.ttf")
-    if font_id == -1:
-        print("Failed to load font.")
-        sys.exit(1)
-
-    font_families = QFontDatabase.applicationFontFamilies(font_id)
-    if font_families:
-        font = QFont()
-        font.setFamilies(font_families)
-        font.setPixelSize(14)
-        font.setWeight(QFont.Weight.Normal)
-        app.setFont(font)
-        ui.setFont(font)
-        QApplication.setFont(font)
 
     # * Setup global stylesheet for application
     with open("./themes/global.qss", "r", encoding="utf-8") as f:
@@ -216,7 +206,23 @@ if __name__ == "__main__":
         )
     else:
         check_authentication(auth_context)
-        # ui.mo_no_autocomplete.handle_find_mo_no("")
+
+    # * Setup global font for application
+    font_id = QFontDatabase.addApplicationFont("./assets/fonts/Inter-Regular.ttf")
+    if font_id == -1:
+        print("Failed to load font.")
+        sys.exit(1)
+
+    font_families = QFontDatabase.applicationFontFamilies(font_id)
+    if font_families:
+        font = QFont(font_families[0])
+        font.setFamilies(font_families)
+        font.setFamily(font_families[0])
+        font.setPixelSize(14)
+        font.setWeight(QFont.Weight.Normal)
+        app.setFont(font)
+        ui.setFont(font)
+        QApplication.setFont(QFont("Inter"))
 
     # * Handle application shutdown
     app.aboutToQuit.connect(ui.on_app_shutdown)

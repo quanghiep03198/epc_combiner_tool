@@ -2,13 +2,12 @@ from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
 from pyqttoast import *
-from widgets.settings_dialog import AppSettingsDialog
 from widgets.toaster import Toaster
-import os
-import subprocess
 from contexts.auth_context import auth_context
 from events import sync_event_emitter, UserActionEvent
-from helpers.logger import logger
+from helpers.configuration import ConfigService
+
+# from qtwidgets import AnimatedToggle
 
 
 class AppToolBar(QToolBar):
@@ -20,79 +19,54 @@ class AppToolBar(QToolBar):
         super().__init__()
 
         self.root = root
+        self.configurations = ConfigService.load_configs()
 
         self.setObjectName("toolbar")
         self.setMovable(False)
         self.setFloatable(False)
-        self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+        self.setStyleSheet(
+            """
+            QToolBar{
+                padding-left: 8px;
+                padding-right: 8px;
+                spacing: 8px;
+                background-color: #171717;
+                border-bottom: 1px solid #3f3f46;
+            }
+        """
+        )
+        self.breadcrumb_layout = QHBoxLayout()
+        self.breadcrumb_layout.setContentsMargins(6, 0, 0, 0)
+        self.breadcrumb_layout.setSpacing(4)
+        self.breadcrumb = QWidget()
+        self.breadcrumb.setLayout(self.breadcrumb_layout)
 
-        # region File actions
-        open_file_icon = QIcon()
-        pixmap = QPixmap("./assets/icons/folder-open.svg")
-        scaled_pixmap = pixmap.scaled(
+        self.home_icon = QLabel()
+        scaled_pixmap = QPixmap("./assets/icons/blocks.svg").scaled(
+            20,
+            20,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        self.home_icon.setPixmap(scaled_pixmap)
+
+        self.breadcrumb_separator = QLabel()
+        scaled_pixmap = QPixmap("./assets/icons/chevron-right.svg").scaled(
             16,
             16,
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
+        self.breadcrumb_separator.setPixmap(scaled_pixmap)
 
-        open_file_icon.addPixmap(scaled_pixmap, QIcon.Mode.Normal, QIcon.State.Off)
-        self.open_file_act = QAction(icon=open_file_icon, text="Thư Mục", parent=self)
-        self.open_file_act.triggered.connect(self.handle_reveal_data_folder)
-        self.addAction(self.open_file_act)
+        self.page_title = QLabel("Phối dữ liệu EPC")
 
-        # region Language actions
-        language_icon = QIcon()
-        pixmap = QPixmap("./assets/icons/languages.svg")
-        scaled_pixmap = pixmap.scaled(
-            16,
-            16,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-        language_icon.addPixmap(scaled_pixmap, QIcon.Mode.Normal, QIcon.State.Off)
-        # self.language_menu = QMenu( title="Ngôn Ngữ", parent=self)
-        # self.language_menu.addAction("English")
-        # self.language_menu.addAction("Tiếng Việt")
-        # self.language_menu.addAction("Español")
-        # self.language_menu.addAction("Français")
-        # self.language_setting_act.setMenu(self.language_menu)
-        self.language_setting_act = QAction(
-            icon=language_icon, text="Ngôn Ngữ", parent=self
-        )
-        self.language_setting_act.triggered.connect(self.handle_change_language)
-        self.addAction(self.language_setting_act)
+        self.breadcrumb_layout.addWidget(self.home_icon)
+        self.breadcrumb_layout.addWidget(self.breadcrumb_separator)
+        self.breadcrumb_layout.addWidget(self.page_title)
 
-        # region Settings actions
-        self.setting_window = AppSettingsDialog(self.root)
-        setting_icon = QIcon()
-        pixmap = QPixmap("./assets/icons/settings.svg")
-        scaled_pixmap = pixmap.scaled(
-            16,
-            16,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-        setting_icon.addPixmap(scaled_pixmap, QIcon.Mode.Normal, QIcon.State.Off)
-        self.connection_setting_act = QAction(
-            icon=setting_icon, text="Cài Đặt", parent=self
-        )
-        self.connection_setting_act.triggered.connect(self.handle_show_settings_window)
-        self.addAction(self.connection_setting_act)
-
-        # region Help actions
-        help_icon = QIcon()
-        pixmap = QPixmap("./assets/icons/circle-help.svg")
-        scaled_pixmap = pixmap.scaled(
-            16,
-            16,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-        help_icon.addPixmap(scaled_pixmap, QIcon.Mode.Normal, QIcon.State.Off)
-        self.help_act = QAction(icon=help_icon, text="Trợ Giúp", parent=self)
-        # self.help_act.triggered.connect(self.handle_show_settings_window)
-        self.addAction(self.help_act)
+        self.addWidget(self.breadcrumb)
 
         self.spacer = QWidget()
         self.spacer.setSizePolicy(
@@ -109,9 +83,17 @@ class AppToolBar(QToolBar):
             Qt.TransformationMode.SmoothTransformation,
         )
         self.factory_icon.setPixmap(scaled_pixmap)
-        self.addWidget(self.factory_icon)
 
-        self.user_factory = QLabel("N/A")
+        self.user_factory_layout = QHBoxLayout()
+        self.user_factory_layout.setSpacing(4)
+        self.user_factory = QFrame()
+        self.user_factory.setLayout(self.user_factory_layout)
+        self.user_factory.setLayout(self.user_factory_layout)
+
+        self.user_factory_text = QLabel("N/A")
+        self.user_factory_layout.addWidget(self.factory_icon)
+        self.user_factory_layout.addWidget(self.user_factory_text)
+
         self.addWidget(self.user_factory)
 
         separator = QFrame()
@@ -120,6 +102,12 @@ class AppToolBar(QToolBar):
         separator.setFixedHeight(24)
         separator.setStyleSheet("background-color: #262626;")
         self.addWidget(separator)
+
+        self.user_info_layout = QHBoxLayout()
+        self.user_info_layout.setSpacing(4)
+        self.user_info_layout.setContentsMargins(0, 0, 0, 0)
+        self.user_info = QFrame()
+        self.user_info.setLayout(self.user_info_layout)
 
         self.user_icon = QLabel()
         pixmap = QPixmap("./assets/icons/user.svg")
@@ -130,10 +118,12 @@ class AppToolBar(QToolBar):
             Qt.TransformationMode.SmoothTransformation,
         )
         self.user_icon.setPixmap(scaled_pixmap)
-        self.addWidget(self.user_icon)
+        self.user_info_layout.addWidget(self.user_icon)
 
-        self.username = QLabel()
-        self.addWidget(self.username)
+        self.user_display_name_text = QLabel("Đăng Nhập")
+        self.user_info_layout.addWidget(self.user_display_name_text)
+
+        self.addWidget(self.user_info)
 
         logout_icon = QIcon()
         pixmap = QPixmap("./assets/icons/log-out.svg")
@@ -154,40 +144,14 @@ class AppToolBar(QToolBar):
 
     def on_auth_state_change(self, data):
         if data["is_authenticated"]:
-            self.user_factory.setText(data["factory_name"])
-            self.username.setText(data["employee_name"])
+            self.user_factory_text.setText(data["factory_name"])
+            self.user_display_name_text.setText(data["employee_name"])
             self.addAction(self.logout_act)
         else:
 
-            self.user_factory.setText("N/A")
-            self.username.setText("Đăng Nhập")
+            self.user_factory_text.setText("N/A")
+            self.user_display_name_text.setText("Đăng Nhập")
             self.removeAction(self.logout_act)
-
-    def handle_show_settings_window(self):
-        self.setting_window.exec()
-
-    def handle_reveal_data_folder(self):
-        folder_path = os.path.abspath("./data")
-        print(folder_path)
-        if os.name == "nt":
-            # Windows
-            os.startfile(folder_path)
-        if os.name == "posix":
-            # macOS or Linux
-            subprocess.call(
-                ["open", folder_path]
-                if sys.platform == "darwin"
-                else ["xdg-open", folder_path]
-            )
-
-    def handle_change_language(self):
-        toast = Toaster(
-            parent=self.root,
-            title="Thông Báo",
-            text="Chức năng đang phát triển",
-            preset=ToastPreset.INFORMATION_DARK,
-        )
-        toast.show()
 
     def handle_logout(self):
         auth_context.update(is_authenticated=False)
