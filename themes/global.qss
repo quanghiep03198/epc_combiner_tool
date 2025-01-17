@@ -5,10 +5,11 @@
    font-family: "Inter";
    font-weight: Normal;
    font-size: 14px;
+   color: #fafafa;
 
 }
 
-QMainWindow, #container{
+QMainWindow, QDialog, #container{
    color: #fafafa;
    background-color: #262626;
 }

@@ -4,10 +4,12 @@ from PyQt6.QtCore import *
 from PyQt6.QtGui import *
 from PyQt6.QtSql import QSqlQuery
 from contexts.combine_form_context import combine_form_context
+from contexts.auth_context import auth_context
 from database import DATA_SOURCE_ERP
-from events import sync_event_emitter, UserActionEvent
+from events import __event_emitter__, UserActionEvent
 from widgets.loading import LoadingWidget
-from time import sleep
+from i18n import I18nService
+
 
 # mo_no_change_event = AsyncIOEventEmitter()
 
@@ -81,10 +83,15 @@ class OrderAutoCompleteWidget(QPushButton):
 
         self.loading = LoadingWidget(root, "Đang tải dữ liệu ...")
 
-        if combine_form_context["mo_no"] is None:
-            self.setText("Chọn chỉ lệnh")
+        __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value)(self.__translate__)
+        __event_emitter__.on(UserActionEvent.AUTH_STATE_CHANGE.value)(
+            lambda _: self.handle_find_mo_no("")
+        )
 
-        self.handle_find_mo_no("")
+    def __translate__(self):
+        if combine_form_context["mo_no"] is None:
+            self.setText(I18nService.t("mo_no_placeholder"))
+        self.popover_input.setPlaceholderText(I18nService.t("search_placeholder"))
 
     @pyqtSlot(bool)
     def handle_toggle_open(self, checked_state: bool) -> None:
@@ -181,7 +188,7 @@ class OrderAutoCompleteWidget(QPushButton):
             self.setText(value)
             self.popover_content.close()
             combine_form_context.update(mo_no=value)
-            sync_event_emitter.emit(UserActionEvent.MO_NO_CHANGE.value, value)
+            __event_emitter__.emit(UserActionEvent.MO_NO_CHANGE.value, value)
         except Exception as e:
             logger.error(f"Error in on_mo_no_selected: {e}")
         finally:
@@ -200,11 +207,14 @@ class OrderAutoCompleteWidget(QPushButton):
                         SELECT DISTINCT mo_no, created
                         FROM wuerp_vnrd.dbo.ta_manufacturmst
                         WHERE mo_no LIKE :search
+                            cofactory_code = :factory_code
+                        AND
                     ) AS subquery
                     ORDER BY created DESC
                 """,
             )
             query.bindValue(":search", f"%{q}%")
+            query.bindValue(":factory_code", auth_context.get("factory_code"))
             query.exec()
 
             self.popover_menu_list.clear()

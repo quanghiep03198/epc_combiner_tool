@@ -5,8 +5,9 @@ from repositories.order_repository import OrderRepository
 from helpers.logger import logger
 from contexts.combine_form_context import combine_form_context
 from widgets.loading_widget import LoadingWidget
+from i18n import I18nService
 
-from events import UserActionEvent, sync_event_emitter
+from events import UserActionEvent, __event_emitter__
 
 
 class OrderDetailWorker(QRunnable):
@@ -31,15 +32,6 @@ class OrderDetailTableWidget(QTableWidget):
             root.container,
         )
 
-        horizontal_headers = [
-            "Đặt đơn của khách",
-            "Mã hình thể",
-            "Hình thể xưởng",
-            "Tiểu chỉ lệnh",
-            "Mã đơn hàng",
-            "Mã đặt đơn",
-            "Số lượng đặt hàng",
-        ]
         self.setColumnWidth(0, 200)
         self.setColumnWidth(1, 200)
         self.setColumnWidth(2, 200)
@@ -47,8 +39,8 @@ class OrderDetailTableWidget(QTableWidget):
         self.setColumnWidth(4, 200)
         self.setColumnWidth(5, 200)
         self.setColumnWidth(6, 250)
-        self.setColumnCount(len(horizontal_headers))
-        self.setHorizontalHeaderLabels(horizontal_headers)
+        # self.setColumnCount(len(horizontal_headers))
+        # self.setHorizontalHeaderLabels(horizontal_headers)
         self.setSortingEnabled(False)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
@@ -80,12 +72,28 @@ class OrderDetailTableWidget(QTableWidget):
         self.empty_state_label = QLabel("No data available")
         self.empty_state_label.setStyleSheet("font-size: 16px; color: gray;")
         self.empty_state_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
 
-        sync_event_emitter.on(UserActionEvent.MO_NO_CHANGE.value)(self.on_mo_no_change)
-        sync_event_emitter.on(UserActionEvent.MO_NOSEQ_CHANGE.value)(
+        # self._retranslate_ui(__dictionary__)
+
+        __event_emitter__.on(UserActionEvent.MO_NO_CHANGE.value)(self.on_mo_no_change)
+        __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value)(self.__translate__)
+        __event_emitter__.on(UserActionEvent.MO_NOSEQ_CHANGE.value)(
             self.on_mo_noseq_change
         )
+
+    def __translate__(self):
+        logger.debug("Translating...")
+        horizontal_headers = [
+            I18nService.t("customer_order_code"),
+            I18nService.t("shoes_style_code"),
+            I18nService.t("shoes_style_code_factory"),
+            I18nService.t("mo_noseq"),
+            I18nService.t("or_no"),
+            I18nService.t("or_custpo"),
+            I18nService.t("mo_qty"),
+        ]
+        self.setColumnCount(len(horizontal_headers))
+        self.setHorizontalHeaderLabels(horizontal_headers)
 
     def render_row(self, data):
         """
@@ -151,7 +159,7 @@ class OrderDetailTableWidget(QTableWidget):
             combine_form_context["or_custpo"] = query_result[0]["or_custpo"]
             combine_form_context["cust_shoestyle"] = query_result[0]["cust_shoestyle"]
         # Store order detail data
-        sync_event_emitter.emit(
+        __event_emitter__.emit(
             UserActionEvent.GET_ORDER_DETAIL_SUCCESS.value,
             list(map(lambda item: item["mo_noseq"], query_result)),
         )

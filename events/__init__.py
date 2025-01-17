@@ -19,11 +19,12 @@ class UserActionEvent(Enum):
     CHECK_COMBINABLE_FAILED = "check_combinable_failed"
     SETTINGS_CHANGE = "settings_change"
     AUTH_STATE_CHANGE = "auth_state_change"
-    NG_EPC_MUTATION = "ng_epc_mutation"
+    NG_EPC_MUTATION = ("ng_epc_mutation",)
+    LANGUAGE_CHANGE = "language_change"
 
 
-global sync_event_emitter
-global async_event_emitter
+global __event_emitter__
+global __async_event_emitter__
 
-sync_event_emitter = EventEmitter()
-async_event_emitter = AsyncIOEventEmitter()
+__event_emitter__ = EventEmitter()
+__async_event_emitter__ = AsyncIOEventEmitter()

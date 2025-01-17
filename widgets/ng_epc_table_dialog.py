@@ -8,7 +8,7 @@ from typing import Callable
 from numpy import unique
 from widgets.loading_widget import LoadingWidget
 from widgets.toaster import Toaster, ToastPreset
-from events import sync_event_emitter, UserActionEvent
+from events import __event_emitter__, UserActionEvent
 from helpers.logger import logger
 
 MIN_WINDOW_WIDTH = 900
@@ -489,7 +489,7 @@ class NgEpcTableDialog(QDialog):
                 else f"{num_row_affected} tem đã được hủy"
             )
 
-            sync_event_emitter.emit(
+            __event_emitter__.emit(
                 UserActionEvent.NG_EPC_MUTATION.value,
                 list(map(lambda item: item["EPC_Code"], remain_ng_epcs)),
             )

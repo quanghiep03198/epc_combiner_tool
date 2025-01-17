@@ -3,9 +3,12 @@ from PyQt6.QtGui import *
 from PyQt6.QtCore import *
 from pyqttoast import *
 from widgets.toaster import Toaster
+
 from contexts.auth_context import auth_context
-from events import sync_event_emitter, UserActionEvent
+from events import __event_emitter__, UserActionEvent
+from i18n import __languages__, I18nService
 from helpers.configuration import ConfigService
+from helpers.logger import logger
 
 # from qtwidgets import AnimatedToggle
 
@@ -35,37 +38,26 @@ class AppToolBar(QToolBar):
             }
         """
         )
-        self.breadcrumb_layout = QHBoxLayout()
-        self.breadcrumb_layout.setContentsMargins(6, 0, 0, 0)
-        self.breadcrumb_layout.setSpacing(4)
-        self.breadcrumb = QWidget()
-        self.breadcrumb.setLayout(self.breadcrumb_layout)
+        self.user_locale_layout = QHBoxLayout()
+        self.user_locale_layout.setContentsMargins(6, 0, 0, 0)
+        self.user_locale_layout.setSpacing(8)
+        self.user_locale = QWidget()
+        self.user_locale.setLayout(self.user_locale_layout)
 
-        self.home_icon = QLabel()
-        scaled_pixmap = QPixmap("./assets/icons/blocks.svg").scaled(
-            20,
-            20,
+        self.globe_icon = QLabel()
+        scaled_pixmap = QPixmap("./assets/icons/globe.svg").scaled(
+            18,
+            18,
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
-        self.home_icon.setPixmap(scaled_pixmap)
+        self.globe_icon.setPixmap(scaled_pixmap)
 
-        self.breadcrumb_separator = QLabel()
-        scaled_pixmap = QPixmap("./assets/icons/chevron-right.svg").scaled(
-            16,
-            16,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-        self.breadcrumb_separator.setPixmap(scaled_pixmap)
+        self.user_locale_text = QLabel()
+        self.user_locale_layout.addWidget(self.globe_icon)
+        self.user_locale_layout.addWidget(self.user_locale_text)
 
-        self.page_title = QLabel("Phối dữ liệu EPC")
-
-        self.breadcrumb_layout.addWidget(self.home_icon)
-        self.breadcrumb_layout.addWidget(self.breadcrumb_separator)
-        self.breadcrumb_layout.addWidget(self.page_title)
-
-        self.addWidget(self.breadcrumb)
+        self.addWidget(self.user_locale)
 
         self.spacer = QWidget()
         self.spacer.setSizePolicy(
@@ -137,9 +129,14 @@ class AppToolBar(QToolBar):
         self.logout_act.setObjectName("logout_act")
         self.logout_act.triggered.connect(self.handle_logout)
 
-        sync_event_emitter.on(UserActionEvent.AUTH_STATE_CHANGE.value)(
+        __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value)(self.__translate__)
+        __event_emitter__.on(UserActionEvent.AUTH_STATE_CHANGE.value)(
             self.on_auth_state_change
         )
+
+    def __translate__(self):
+        curr_lang = I18nService.get_current_language()
+        self.user_locale_text.setText(curr_lang["label"])
 
     def on_auth_state_change(self, data):
         if data["is_authenticated"]:
@@ -165,4 +162,4 @@ class AppToolBar(QToolBar):
             preset=ToastPreset.SUCCESS_DARK,
         )
         toast.show()
-        sync_event_emitter.emit(UserActionEvent.AUTH_STATE_CHANGE.value, auth_context)
+        __event_emitter__.emit(UserActionEvent.AUTH_STATE_CHANGE.value, auth_context)

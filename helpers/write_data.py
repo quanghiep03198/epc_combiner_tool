@@ -17,7 +17,7 @@ def write_data(data):
     csv_filepath = os.path.join(mo_no_folder, csv_filename)
 
     # Write the CSV file with the specified columns
-    with open(csv_filepath, mode="w", newline="", encoding="utf-8") as csv_file:
+    with open(csv_filepath, mode="w", newline="", encoding="utf-8-sig") as csv_file:
         fieldnames = ["EPC", "Chỉ Lệnh", "Size", "Thời Gian Phối", "Người Thực Hiện"]
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         writer.writeheader()

@@ -6,8 +6,9 @@ from typing import Callable
 
 from repositories.sizing_repository import SizingRepository
 from helpers.logger import logger
-from events import sync_event_emitter, UserActionEvent
+from events import __event_emitter__, UserActionEvent
 from widgets.loading_widget import LoadingWidget
+from i18n import I18nService
 
 from contexts.combine_form_context import combine_form_context
 
@@ -30,14 +31,6 @@ class SizingDetailTableWidget(QTableWidget):
     """
 
     _size_list: list[dict] = []
-    _vertical_header_labels: list[str] = [
-        "Cỡ giày",
-        "Số lượng đặt đơn",
-        "Tem đã phối",
-        "Đang sử dụng",
-        "Đã bù",
-        "Đã hủy",
-    ]
 
     def __init__(self, root):
         super().__init__(root.container)
@@ -54,18 +47,31 @@ class SizingDetailTableWidget(QTableWidget):
         self.horizontalHeader().setVisible(False)
         self.verticalHeader().setVisible(True)
         self.verticalHeader().setFont(QFont("Inter", 12, QFont.Weight.Bold))
-        self.setRowCount(len(self._vertical_header_labels))
-        self.setVerticalHeaderLabels(self._vertical_header_labels)
+        # self.setRowCount(len(self._vertical_header_labels))
+        # self.setVerticalHeaderLabels(self._vertical_header_labels)
 
-        sync_event_emitter.on(UserActionEvent.COMBINED_EPC_CREATED.value)(
+        __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value)(self.__translate__)
+        __event_emitter__.on(UserActionEvent.COMBINED_EPC_CREATED.value)(
             self.on_combined_epc_created
         )
-        sync_event_emitter.on(UserActionEvent.MO_NO_CHANGE.value)(
+        __event_emitter__.on(UserActionEvent.MO_NO_CHANGE.value)(
             self.handle_fetch_size_data
         )
-        sync_event_emitter.on(UserActionEvent.NG_EPC_MUTATION.value)(
+        __event_emitter__.on(UserActionEvent.NG_EPC_MUTATION.value)(
             lambda _: self.handle_fetch_size_data(combine_form_context["mo_no"])
         )
+
+    def __translate__(self):
+        vertical_header_labels: list[str] = [
+            I18nService.t("size_numcode"),
+            I18nService.t("size_qty"),
+            I18nService.t("combined_qty"),
+            I18nService.t("in_use_qty"),
+            I18nService.t("compensated_qty"),
+            I18nService.t("cancelled_qty"),
+        ]
+        self.setRowCount(len(vertical_header_labels))
+        self.setVerticalHeaderLabels(vertical_header_labels)
 
     def handle_fetch_size_data(self, data: str):
         try:
@@ -79,12 +85,10 @@ class SizingDetailTableWidget(QTableWidget):
             logger.error(f"Error reading SQL file: {e}")
 
     def handle_render_row(self, result: list[dict]):
-        # if not result:
-        #     logger.warning("No sizing detail found")
-        #     return
+        logger.debug(result)
         self.setColumnCount(len(result))
         self._size_list = result
-        sync_event_emitter.emit(UserActionEvent.SIZE_LIST_CHANGE.value, result)
+        __event_emitter__.emit(UserActionEvent.SIZE_LIST_CHANGE.value, result)
         col: int = 0
         for record in result:
             self.setItem(0, col, QTableWidgetItem(str(record["size_numcode"])))

@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import *
 from helpers.configuration import ConfigService
-from events import sync_event_emitter, UserActionEvent
+from events import __event_emitter__, UserActionEvent
 from widgets.toaster import Toaster
 from pyqttoast import ToastPreset
 
@@ -263,7 +263,7 @@ class AppSettingsDialog(QDialog):
                 toast.show()
                 err_count += 1
                 break
-            ConfigService.set(key, value)
+            ConfigService.set_env(key, value)
 
         if err_count == 0:
             toast = Toaster(
@@ -274,7 +274,7 @@ class AppSettingsDialog(QDialog):
             )
             toast.setPositionRelativeToWidget(None)
             toast.show()
-            sync_event_emitter.emit(UserActionEvent.SETTINGS_CHANGE.value, None)
+            __event_emitter__.emit(UserActionEvent.SETTINGS_CHANGE.value, None)
 
     @pyqtSlot()
     def handle_close(self):

@@ -4,6 +4,9 @@ from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
 from widgets.settings_dialog import AppSettingsDialog
+from i18n import I18nService, Language, __languages__
+from helpers.logger import logger
+from events import __event_emitter__, UserActionEvent
 
 
 class SideToolbar(QToolBar):
@@ -20,7 +23,7 @@ class SideToolbar(QToolBar):
             QToolBar{
                 padding-left: 8px;
                 padding-right: 8px;
-                spacing: 8px;
+                spacing: 12px;
                 background-color: #404040;
             }
             """
@@ -57,14 +60,14 @@ class SideToolbar(QToolBar):
         )
         language_icon.addPixmap(scaled_pixmap, QIcon.Mode.Normal, QIcon.State.Off)
 
-        self.language_setting_act = QAction(
+        self.language_setting_action = QAction(
             icon=language_icon, text="Ngôn Ngữ", parent=self
         )
 
-        self.language_setting_act.setShortcut(QKeySequence("Ctrl+L"))
-        self.language_setting_act.setToolTip("Ctrl + L")
-        self.language_setting_act.triggered.connect(self.handle_change_language)
-        self.addAction(self.language_setting_act)
+        self.language_setting_action.setShortcut(QKeySequence("Ctrl+L"))
+        self.language_setting_action.setToolTip("Ctrl + L")
+        self.language_setting_action.triggered.connect(self.open_language_options)
+        self.addAction(self.language_setting_action)
 
         # region Settings actions
         self.setting_window = AppSettingsDialog(self.root)
@@ -77,11 +80,9 @@ class SideToolbar(QToolBar):
             Qt.TransformationMode.SmoothTransformation,
         )
         setting_icon.addPixmap(scaled_pixmap, QIcon.Mode.Normal, QIcon.State.Off)
-        self.connection_setting_act = QAction(
-            icon=setting_icon, text="Cài Đặt", parent=self
-        )
-        self.connection_setting_act.triggered.connect(self.handle_show_settings_window)
-        self.addAction(self.connection_setting_act)
+        self.setting_action = QAction(icon=setting_icon, text="Cài Đặt", parent=self)
+        self.setting_action.triggered.connect(self.open_setting_dialog)
+        self.addAction(self.setting_action)
 
         # region Help actions
         help_icon = QIcon()
@@ -97,7 +98,37 @@ class SideToolbar(QToolBar):
         # self.help_act.triggered.connect(self.handle_show_settings_window)
         self.addAction(self.help_act)
 
-    def handle_show_settings_window(self):
+        self.menu = QMenu(self)
+        self.menu.setFixedWidth(150)
+        self.menu.setContentsMargins(4, 4, 4, 4)
+        self.menu.setStyleSheet(
+            """
+            QMenu::item {
+                padding-left: 8px;
+            }
+        """
+        )
+
+        for language in __languages__:
+            action = QAction(language["label"], self)
+            action.triggered.connect(
+                lambda checked, lang=language: self.on_language_change(lang["value"])
+            )
+            self.menu.addAction(action)
+
+        __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value)(self.__translate__)
+
+    def __translate__(self):
+        self.open_folder_action.setToolTip(I18nService.t("open_folder") + " (Ctrl+O)")
+        self.language_setting_action.setToolTip(
+            I18nService.t("change_languague") + " (Ctrl+L)"
+        )
+        self.setting_action.setToolTip(I18nService.t("change_languague") + " (Ctrl+S)")
+        self.language_setting_action.setToolTip(
+            I18nService.t("change_languague") + " (Ctrl+S)"
+        )
+
+    def open_setting_dialog(self):
         self.setting_window.exec()
 
     def handle_reveal_data_folder(self):
@@ -114,29 +145,15 @@ class SideToolbar(QToolBar):
                 else ["xdg-open", folder_path]
             )
 
-    def handle_change_language(self):
-        menu = QMenu(self)
-        menu.setFixedWidth(150)
-        menu.setContentsMargins(4, 4, 4, 4)
-        menu.setStyleSheet(
-            """
-            QMenu::item {
-                padding-left: 8px;
-            }
-        """
-        )
-        languages = ["Tiếng Việt", "English", "中文(简体)"]
-        for language in languages:
-            action = QAction(language, self)
-            action.triggered.connect(
-                lambda checked, lang=language: self.set_language(lang)
-            )
-            menu.addAction(action)
-        action_geometry = self.actionGeometry(self.language_setting_act)
+    def open_language_options(self):
+        action_geometry = self.actionGeometry(self.language_setting_action)
+        self.menu.exec(self.mapToGlobal(action_geometry.topRight() + QPoint(8, 0)))
 
-        menu.exec(self.mapToGlobal(action_geometry.topRight() + QPoint(8, 0)))
-
-    def set_language(self, language):
-        print(f"Language selected: {language}")
+    def on_language_change(self, lang: Language):
+        try:
+            I18nService.on_language_change(lang)
+            I18nService.emit()
+        except Exception as e:
+            print(e)
 
         # Add your logic to handle language change here

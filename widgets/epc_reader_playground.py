@@ -19,7 +19,7 @@ from widgets.toaster import Toaster
 from widgets.ng_epc_table_dialog import NgEpcTableDialog
 
 from services.rfid_service import RFIDService
-from events import UserActionEvent, sync_event_emitter
+from events import UserActionEvent, __event_emitter__
 from helpers.configuration import ConfigService
 from typing import Callable
 
@@ -252,19 +252,19 @@ class EpcReaderPlayground(QFrame):
 
         self.loading = LoadingWidget(parent, "")
 
-        sync_event_emitter.on(UserActionEvent.COMBINE_FORM_STATE_CHANGE.value)(
+        __event_emitter__.on(UserActionEvent.COMBINE_FORM_STATE_CHANGE.value)(
             self.on_combine_form_state_change
         )
 
-        sync_event_emitter.on(UserActionEvent.COMBINED_EPC_CREATED.value)(
+        __event_emitter__.on(UserActionEvent.COMBINED_EPC_CREATED.value)(
             self.on_combined_epc_created
         )
 
-        sync_event_emitter.on(UserActionEvent.CHECK_COMBINABLE_FAILED.value)(
+        __event_emitter__.on(UserActionEvent.CHECK_COMBINABLE_FAILED.value)(
             self.on_check_combinable_failed
         )
 
-        sync_event_emitter.on(UserActionEvent.NG_EPC_MUTATION.value)(
+        __event_emitter__.on(UserActionEvent.NG_EPC_MUTATION.value)(
             self.on_ng_epc_mutation
         )
 
@@ -371,7 +371,7 @@ class EpcReaderPlayground(QFrame):
                     )
                     self._handle_pagination()
                     self._get_page_data()
-                    sync_event_emitter.emit(
+                    __event_emitter__.emit(
                         UserActionEvent.EPC_DATA_CHANGE.value, self._epc_datalist
                     )
         except Exception as e:
@@ -382,8 +382,8 @@ class EpcReaderPlayground(QFrame):
 
     @pyqtSlot(bool)
     def handle_toggle_connect(self, checked_state: bool):
-        UHF_READER_TPC_IP = ConfigService.get("UHF_READER_TCP_IP")
-        UHF_READER_TPC_PORT = ConfigService.get("UHF_READER_TCP_PORT")
+        UHF_READER_TPC_IP = ConfigService.get_env("UHF_READER_TCP_IP")
+        UHF_READER_TPC_PORT = ConfigService.get_env("UHF_READER_TCP_PORT")
         if UHF_READER_TPC_IP == "" and UHF_READER_TPC_PORT == "":
             toast = Toaster(
                 parent=self.root,
@@ -466,7 +466,7 @@ class EpcReaderPlayground(QFrame):
 
         # TODO: Remove later
         # * Fake data
-        # sync_event_emitter.emit(
+        # __event_emitter__.emit(
         #     UserActionEvent.EPC_DATA_CHANGE.value, self._epc_datalist
         # )
 

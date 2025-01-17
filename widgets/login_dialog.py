@@ -7,7 +7,8 @@ from contexts.auth_context import auth_context
 from widgets.toaster import Toaster, ToastPreset
 from constants import StatusCode
 from helpers.logger import logger
-from events import sync_event_emitter, UserActionEvent
+from events import __event_emitter__, UserActionEvent
+from i18n import I18nService
 
 
 class LoginDialog(QDialog):
@@ -152,6 +153,15 @@ class LoginDialog(QDialog):
         # Set dialog layout
         self.setLayout(layout)
 
+        __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value)(self.__translate__)
+
+    def __translate__(self):
+        self.username_label.setText(I18nService.t("username"))
+        self.password_label.setText(I18nService.t("password"))
+        self.factory_code_label.setText(I18nService.t("factory"))
+        self.exit_button.setText(I18nService.t("exit"))
+        self.login_button.setText(I18nService.t("login"))
+
     def keyPressEvent(self, event):
         # Kiểm tra nếu phím được nhấn là Esc
         if event.key() == Qt.Key.Key_Escape:
@@ -243,7 +253,7 @@ class LoginDialog(QDialog):
 
     def handle_submit_login(self):
         self.close()
-        sync_event_emitter.emit(UserActionEvent.AUTH_STATE_CHANGE.value, auth_context)
+        __event_emitter__.emit(UserActionEvent.AUTH_STATE_CHANGE.value, auth_context)
         toast = Toaster(
             parent=self.root,
             title="Đăng nhập thành công",

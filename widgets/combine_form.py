@@ -4,15 +4,15 @@ from PyQt6.QtGui import *
 from PyQt6.QtSql import *
 from typing import Callable
 from pyqttoast import ToastPreset
-from events import sync_event_emitter, UserActionEvent
+from events import __event_emitter__, UserActionEvent
 from services.rfid_service import RFIDService
+from i18n import I18nService
 from constants import CombineAction
 from widgets.toaster import Toaster
 from contexts.combine_form_context import combine_form_context
 from helpers.logger import logger
 from helpers.write_data import write_data
 from contexts.auth_context import auth_context
-from widgets.loading_spinner import LoadingSpinner
 
 
 class WorkerSignals(QObject):
@@ -116,22 +116,40 @@ class CombineForm(QWidget):
         self.combine_form_layout.addWidget(self.combine_proceed_button)
 
         # region Event listeners
-        sync_event_emitter.on(UserActionEvent.SIZE_LIST_CHANGE.value)(
+        # * On current language change
+        __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value)(self.__translate__)
+
+        # * On fetch size list successfully
+        __event_emitter__.on(UserActionEvent.SIZE_LIST_CHANGE.value)(
             self.on_size_list_change
         )
-        sync_event_emitter.on(UserActionEvent.EPC_DATA_CHANGE.value)(
+
+        # * On scanned EPC data change
+        __event_emitter__.on(UserActionEvent.EPC_DATA_CHANGE.value)(
             self.on_epc_data_change
         )
-        sync_event_emitter.on(UserActionEvent.GET_ORDER_DETAIL_SUCCESS.value)(
+
+        # * On manufacturer order number sequence change
+        __event_emitter__.on(UserActionEvent.GET_ORDER_DETAIL_SUCCESS.value)(
             self.handle_get_mo_noseq
         )
-        sync_event_emitter.on(UserActionEvent.AUTH_STATE_CHANGE.value)(
+
+        # * On auth state change
+        __event_emitter__.on(UserActionEvent.AUTH_STATE_CHANGE.value)(
             self.on_auth_state_change
         )
-
-        sync_event_emitter.on(UserActionEvent.SELECTED_SIZE_CHANGE.value)(
+        # * On selected size change
+        __event_emitter__.on(UserActionEvent.SELECTED_SIZE_CHANGE.value)(
             self.resume_combination
         )
+
+    def __translate__(self):
+        self.action_select.setPlaceholderText(
+            I18nService.t("combine_action_placeholder")
+        )
+        self.size_select.setPlaceholderText(I18nService.t("size_numcode_placeholder"))
+        self.mo_noseq_select.setPlaceholderText(I18nService.t("mo_noseq_placeholder"))
+        self.combine_proceed_button.setText(I18nService.t("confirm"))
 
     def on_size_list_change(self, data):
         self._size_list = data
@@ -189,7 +207,7 @@ class CombineForm(QWidget):
     @pyqtSlot(int)
     def handle_mo_noseq_change(self, selected_index: int):
         value = self.mo_noseq_select.itemData(selected_index)
-        sync_event_emitter.emit(UserActionEvent.MO_NOSEQ_CHANGE.value, value)
+        __event_emitter__.emit(UserActionEvent.MO_NOSEQ_CHANGE.value, value)
         self.on_combine_from_state_change("mo_noseq", value)
         if value == "all":
             self.combine_proceed_button.setEnabled(False)
@@ -204,7 +222,7 @@ class CombineForm(QWidget):
 
         combine_form_context[field] = value
 
-        sync_event_emitter.emit(
+        __event_emitter__.emit(
             UserActionEvent.COMBINE_FORM_STATE_CHANGE.value, combine_form_context
         )
 
@@ -264,7 +282,7 @@ class CombineForm(QWidget):
                     "created_by": auth_context["employee_name"],
                 }
             )
-            sync_event_emitter.emit(
+            __event_emitter__.emit(
                 UserActionEvent.COMBINED_EPC_CREATED.value,
                 {
                     "mo_no": combine_form_context["mo_no"],
@@ -289,7 +307,7 @@ class CombineForm(QWidget):
                 preset=ToastPreset.ERROR_DARK,
             )
             toast.show()
-            sync_event_emitter.emit(
+            __event_emitter__.emit(
                 UserActionEvent.CHECK_COMBINABLE_FAILED.value, error_data["data"]
             )
 

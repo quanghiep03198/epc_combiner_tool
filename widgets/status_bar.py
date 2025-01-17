@@ -17,8 +17,7 @@ class StatusBar(QToolBar):
         self.setStyleSheet(
             """
             QToolBar{
-                padding-left: 8px;
-                padding-right: 8px;
+                padding:4px 8px;
                 spacing: 16px;
                 background-color: #171717;
                 border-top: 1px solid #52525b;

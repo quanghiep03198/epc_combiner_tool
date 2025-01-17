@@ -32,7 +32,7 @@ class SizingRepository:
                         "cancelled_qty": query.value("cancelled_qty"),
                     }
                 )
-
+            logger.debug(f"Found sizing detail: {result}")
         except Exception as e:
             logger.error(f"Error finding sizing detail: {e}")
         finally:
