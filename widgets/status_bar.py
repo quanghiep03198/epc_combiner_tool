@@ -3,6 +3,8 @@ from PyQt6.QtGui import *
 from PyQt6.QtCore import *
 from helpers.configuration import ConfigService
 from widgets.switch import QToggle
+from events import __event_emitter__, UserActionEvent
+from i18n import I18nService
 
 
 class StatusBar(QToolBar):
@@ -24,11 +26,6 @@ class StatusBar(QToolBar):
             }
         """
         )
-        # self.spacer = QWidget()
-        # self.spacer.setSizePolicy(
-        #     QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
-        # )
-        # self.addWidget(self.spacer)
 
         # Database connection status
         # Primary database connection status
@@ -115,9 +112,14 @@ class StatusBar(QToolBar):
         self.auto_save_form = QWidget()
         self.auto_save_form.setLayout(self.auto_save_form_layout)
 
-        auto_save_label = QLabel("Tự động lưu")
-        auto_save_toggle = QToggle()
-        self.auto_save_form_layout.addWidget(auto_save_label)
-        self.auto_save_form_layout.addWidget(auto_save_toggle)
+        self.auto_save_label = QLabel()
+        self.auto_save_toggle = QToggle()
+        self.auto_save_form_layout.addWidget(self.auto_save_label)
+        self.auto_save_form_layout.addWidget(self.auto_save_toggle)
 
         self.addWidget(self.auto_save_form)
+
+        __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value, self.__translate__)
+
+    def __translate__(self):
+        self.auto_save_label.setText(I18nService.t("auto_save"))

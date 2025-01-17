@@ -19,6 +19,7 @@
    "size_numcode_placeholder": "选择鞋码",
    "mo_noseq_placeholder": "选择子指令",
    "search_placeholder": "搜索 ...",
+   "factory_placeholder": "选择工厂",
    
    "search": "搜索",
    "open_folder": "打开文件夹",
@@ -40,6 +41,7 @@
    "exit": "退出",
    "compensate": "补",
    "cancel": "取消",
+   "auto_save": "自动保存",
    
    "order_detail_title": "订单详情",
    "combination_detail_title": "尺码组合详情",

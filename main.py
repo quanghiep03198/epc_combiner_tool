@@ -141,7 +141,6 @@ class MainWindow(QMainWindow):
         )
 
     def __translate__(self):
-        logger.debug("Translating...")
         self.order_detail_title.setText(I18nService.t("order_detail_title"))
         self.sizing_detail_title.setText(I18nService.t("order_detail_title"))
         self.combine_form_title.setText(I18nService.t("combination_form_title"))
@@ -208,6 +207,7 @@ class MainWindow(QMainWindow):
             self.overlay.show()
             login_dialog = LoginDialog(parent=window)
             login_dialog.exec()
+            # I18nService.emit()
             return
         else:
             self.overlay.close()

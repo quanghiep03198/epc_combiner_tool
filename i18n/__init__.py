@@ -26,7 +26,6 @@ class I18nService:
     def on_language_change(lang: Language):
         try:
             ConfigService.set_conf(ConfigSection.LOCALE.value, "LANGUAGE", lang)
-            logger.debug(f"Selected language :>>>> {lang}")
             global __dictionary__
             with open(file=f"./i18n/{lang}.json", mode="r", encoding="utf-8") as file:
                 __dictionary__ = json.load(file)

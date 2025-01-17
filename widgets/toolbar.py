@@ -138,6 +138,9 @@ class AppToolBar(QToolBar):
         curr_lang = I18nService.get_current_language()
         self.user_locale_text.setText(curr_lang["label"])
 
+        if not auth_context["is_authenticated"]:
+            I18nService.t("login")
+
     def on_auth_state_change(self, data):
         if data["is_authenticated"]:
             self.user_factory_text.setText(data["factory_name"])

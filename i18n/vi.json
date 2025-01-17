@@ -18,7 +18,8 @@
    "mo_no_placeholder":"Chọn chỉ lệnh",
    "size_numcode_placeholder":"Chọn cỡ giày",
    "mo_noseq_placeholder":"Chọn tiểu chỉ lệnh",
-   "search_place_holder":"Tìm kiếm ...",
+   "search_placeholder":"Tìm kiếm ...",
+   "factory_placeholder":"Chọn nhà máy",
    
    "search":"Tìm kiếm",
    "open_folder":"Mở thư mục",
@@ -39,6 +40,7 @@
    "logout":"Đăng xuất",
    "compensate":"Bù",
    "cancel":"Hủy",
+   "auto_save":"Tự động lưu", 
    
    "order_detail_title":"Chi tiết đơn hàng",
    "combination_detail_title":"Chi tiết phối đôi theo cỡ",

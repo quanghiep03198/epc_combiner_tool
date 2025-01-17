@@ -18,7 +18,8 @@
    "mo_no_placeholder":"Select order",
    "size_numcode_placeholder":"Select shoe size",
    "mo_noseq_placeholder":"Select sub order",
-   "search":"Search",
+   "search_placeholder":"Search ...",
+   "factory_placeholder":"Select factory",
 
    "page":"Page",
    "open_folder":"Open folder",
@@ -38,6 +39,7 @@
    "login":"Login",
    "logout":"Logout",
    "exit":"Exit",
+   "auto_save":"Auto save",
    
    "order_detail_title":"Order details",
    "combination_detail_title":"Combination details by size",
@@ -46,6 +48,6 @@
    "username":"Username",
    "password":"Password",
    "factory":"Factory",
-   "scanned":"Scanned",
-   "total":"Total"
+   "scanned":"Scanned"
+
 }

@@ -24,8 +24,6 @@ class LoginDialog(QDialog):
 
         self.root = parent
 
-        self.setWindowTitle("Đăng Nhập")
-
         # Create form layout
         layout = QFormLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
@@ -41,7 +39,7 @@ class LoginDialog(QDialog):
         user_label_icon = QWidget()
         user_label_icon.setLayout(user_label_layout)
 
-        self.username_label = QLabel("Tên đăng nhập")
+        self.username_label = QLabel()
         icon_label = QLabel()
         scaled_pixmap = QPixmap("./assets/icons/user.svg").scaled(
             16,
@@ -65,7 +63,7 @@ class LoginDialog(QDialog):
         password_label_layout.setContentsMargins(0, 0, 0, 0)
         password_label_icon = QWidget()
         password_label_icon.setLayout(password_label_layout)
-        self.password_label = QLabel("Mật khẩu")
+        self.password_label = QLabel()
         icon_label = QLabel()
         scaled_pixmap = QPixmap("./assets/icons/key-round.svg").scaled(
             16,
@@ -106,7 +104,7 @@ class LoginDialog(QDialog):
             Qt.TransformationMode.SmoothTransformation,
         )
         icon_label.setPixmap(scaled_pixmap)
-        self.factory_code_label = QLabel("Nhà máy")
+        self.factory_code_label = QLabel()
 
         factory_label_layout.addWidget(icon_label)
         factory_label_layout.addWidget(self.factory_code_label)
@@ -154,11 +152,18 @@ class LoginDialog(QDialog):
         self.setLayout(layout)
 
         __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value)(self.__translate__)
+        self.__translate__()
 
     def __translate__(self):
+        logger.debug("Translating...")
+        self.setWindowTitle(I18nService.t("login"))
+
         self.username_label.setText(I18nService.t("username"))
         self.password_label.setText(I18nService.t("password"))
         self.factory_code_label.setText(I18nService.t("factory"))
+        self.factory_code_select.setPlaceholderText(
+            I18nService.t("factory_placeholder")
+        )
         self.exit_button.setText(I18nService.t("exit"))
         self.login_button.setText(I18nService.t("login"))
 
