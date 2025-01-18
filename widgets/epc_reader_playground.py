@@ -22,6 +22,7 @@ from services.rfid_service import RFIDService
 from events import UserActionEvent, __event_emitter__
 from helpers.configuration import ConfigService
 from typing import Callable
+from i18n import I18nService
 
 PAGE_SIZE: int = 50
 SCANNED_EPC_LABEL: str = "Đã Quét"
@@ -86,7 +87,7 @@ class EpcReaderPlayground(QFrame):
 
         self.scanned_epc_counter = QPushButton(parent=self.epc_counter_box)
         self.scanned_epc_counter.setObjectName("scanned_epc_counter")
-        self.scanned_epc_counter.setText(f"0/0 {SCANNED_EPC_LABEL}")
+
         self.scanned_epc_counter.clicked.connect(lambda: self.handle_view_curr_tab(1))
         self.scanned_epc_counter.setCheckable(True)
         self.scanned_epc_counter.setChecked(self._current_tab_index == 1)
@@ -142,7 +143,7 @@ class EpcReaderPlayground(QFrame):
         self.toggle_connect_button.setObjectName("toggle_connect_button")
         self.toggle_connect_button.setFixedSize(32, 32)
         self.toggle_connect_button.setIcon(self.plug_icon)
-        self.toggle_connect_button.setToolTip("Kết nối máy UHF")
+
         self.toggle_connect_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.toggle_connect_button.setCheckable(True)
         self.toggle_connect_button.setChecked(False)
@@ -252,6 +253,8 @@ class EpcReaderPlayground(QFrame):
 
         self.loading = LoadingWidget(parent, "")
 
+        __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value)(self.__translate__)
+
         __event_emitter__.on(UserActionEvent.COMBINE_FORM_STATE_CHANGE.value)(
             self.on_combine_form_state_change
         )
@@ -267,6 +270,28 @@ class EpcReaderPlayground(QFrame):
         __event_emitter__.on(UserActionEvent.NG_EPC_MUTATION.value)(
             self.on_ng_epc_mutation
         )
+
+    def __translate__(self):
+        self.scanned_epc_counter.setText(
+            f"{len(self._epc_datalist)} {I18nService.t('labels.scanned')}"
+        )
+        self.page_index.setText(
+            f"{I18nService.t('labels.page')} {self._current_page}/{self._total_page}"
+        )
+        self.next_page_button.setToolTip(I18nService.t("next_page"))
+        self.next_page_button.setToolTip(I18nService.t("prev_page"))
+        if self.toggle_connect_button.isChecked():
+            self.toggle_connect_button.setToolTip(
+                I18nService.t("actions.disconnect_uhf_reader")
+            )
+        else:
+            self.toggle_connect_button.setToolTip(
+                I18nService.t("actions.connect_uhf_reader")
+            )
+        if self.toggle_connect_button.isChecked():
+            self.toggle_play_button.setToolTip(I18nService.t("actions.stop_reading"))
+        else:
+            self.toggle_play_button.setToolTip(I18nService.t("actions.start_reading"))
 
     # region Event handlers
     def on_check_combinable_failed(self, error_data: dict[str]):
@@ -331,11 +356,12 @@ class EpcReaderPlayground(QFrame):
         self._has_next_page = self._current_page < self._total_page
         self._has_prev_page = self._current_page > 1
 
-        self.page_index.setText(f"Trang {self._current_page}/{self._total_page}")
+        self.page_index.setText(
+            f"{I18nService.t('page')} {self._current_page}/{self._total_page}"
+        )
         self.prev_page_button.setEnabled(self._has_prev_page)
         self.next_page_button.setEnabled(self._has_next_page)
 
-    #
     @pyqtSlot(int)
     def handle_goto_page(self, step: int):
         self._current_page += step
@@ -387,8 +413,8 @@ class EpcReaderPlayground(QFrame):
         if UHF_READER_TPC_IP == "" and UHF_READER_TPC_PORT == "":
             toast = Toaster(
                 parent=self.root,
-                title="Kết nối thất bại",
-                text="Vui lòng kiểm tra cấu hình máy UHF",
+                title=I18nService.t("notification.failure_connection_uhf_title"),
+                text=I18nService.t("notification.failure_connection_uhf_text"),
                 preset=ToastPreset.ERROR,
             )
             toast.show()
@@ -486,8 +512,8 @@ class EpcReaderPlayground(QFrame):
         )
         toast = Toaster(
             parent=self.root,
-            title="Đã đặt lại danh sách quét.",
-            text="Thực hiện quét lại để tiếp tục phối đôi.",
+            title=I18nService.t("notification.reset_epc_success_title"),
+            text=I18nService.t("notification.reset_epc_success_text"),
         )
         toast.show()
 

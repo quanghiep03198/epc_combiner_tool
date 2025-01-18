@@ -122,4 +122,4 @@ class StatusBar(QToolBar):
         __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value, self.__translate__)
 
     def __translate__(self):
-        self.auto_save_label.setText(I18nService.t("auto_save"))
+        self.auto_save_label.setText(I18nService.t("labels.auto_save"))

@@ -155,17 +155,16 @@ class LoginDialog(QDialog):
         self.__translate__()
 
     def __translate__(self):
-        logger.debug("Translating...")
-        self.setWindowTitle(I18nService.t("login"))
+        self.setWindowTitle(I18nService.t("labels.login"))
 
-        self.username_label.setText(I18nService.t("username"))
-        self.password_label.setText(I18nService.t("password"))
-        self.factory_code_label.setText(I18nService.t("factory"))
+        self.username_label.setText(I18nService.t("labels.username"))
+        self.password_label.setText(I18nService.t("labels.password"))
+        self.factory_code_label.setText(I18nService.t("labels.factory"))
         self.factory_code_select.setPlaceholderText(
-            I18nService.t("factory_placeholder")
+            I18nService.t("placeholders.factory_placeholder")
         )
-        self.exit_button.setText(I18nService.t("exit"))
-        self.login_button.setText(I18nService.t("login"))
+        self.exit_button.setText(I18nService.t("actions.exit"))
+        self.login_button.setText(I18nService.t("actions.login"))
 
     def keyPressEvent(self, event):
         # Kiểm tra nếu phím được nhấn là Esc
@@ -250,7 +249,7 @@ class LoginDialog(QDialog):
                     )
                     toast = Toaster(
                         parent=self.root,
-                        title="Đăng nhập thất bại",
+                        title=I18nService.t("notification.login_failed"),
                         text=e.message,
                         preset=ToastPreset.ERROR_DARK,
                     )
@@ -261,8 +260,8 @@ class LoginDialog(QDialog):
         __event_emitter__.emit(UserActionEvent.AUTH_STATE_CHANGE.value, auth_context)
         toast = Toaster(
             parent=self.root,
-            title="Đăng nhập thành công",
-            text=None,
+            title=None,
+            text=I18nService.t("notification.login_success"),
             preset=ToastPreset.SUCCESS_DARK,
         )
         toast.show()

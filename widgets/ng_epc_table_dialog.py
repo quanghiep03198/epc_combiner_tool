@@ -10,6 +10,7 @@ from widgets.loading_widget import LoadingWidget
 from widgets.toaster import Toaster, ToastPreset
 from events import __event_emitter__, UserActionEvent
 from helpers.logger import logger
+from i18n import I18nService
 
 MIN_WINDOW_WIDTH = 900
 MIN_WINDOW_HEIGHT = 500
@@ -55,13 +56,6 @@ class MutateNgEpcWorker(QRunnable):
 
 
 class NgEpcTableDialog(QDialog):
-    _horizontal_header_labels = [
-        "EPC",
-        "Chỉ Lệnh",
-        "Size",
-        "Ngày Phối",
-        "Trạm Đang Sử Dụng",
-    ]
 
     _mutation_form_values: dict[str, str] = {
         "mo_no": None,
@@ -116,8 +110,8 @@ class NgEpcTableDialog(QDialog):
         # ComboBox for "action" field
         self.action_select = QComboBox()
         self.action_select.setPlaceholderText("Thao tác tem NG")
-        self.action_select.addItem("Bù tem", NgAction.COMPENSATE.value)
-        self.action_select.addItem("Hủy", NgAction.CANCEL.value)
+        self.action_select.addItem(NgAction.COMPENSATE.value, NgAction.COMPENSATE.value)
+        self.action_select.addItem(NgAction.CANCEL.value, NgAction.CANCEL.value)
         self.action_select.currentIndexChanged.connect(self.handle_ng_action_change)
 
         # Submit button
@@ -174,7 +168,7 @@ class NgEpcTableDialog(QDialog):
         self.pagination_group.setLayout(self.pagination_group_layout)
         self.pagination_group.setObjectName("pagination_group")
 
-        self.page_index = QLabel("Trang 1/1")
+        self.page_index = QLabel(f"{I18nService.t("labels.page")} 1/1")
 
         self.first_page_icon = QIcon()
         self.first_page_icon.addPixmap(
@@ -214,10 +208,6 @@ class NgEpcTableDialog(QDialog):
         self.last_page_button.setFixedSize(32, 32)
         self.prev_page_button.setFixedSize(32, 32)
         self.next_page_button.setFixedSize(32, 32)
-        self.first_page_button.setToolTip("Trang đầu")
-        self.last_page_button.setToolTip("Trang trước")
-        self.prev_page_button.setToolTip("Trang sau")
-        self.next_page_button.setToolTip("Trang cuối")
 
         self.first_page_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.last_page_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
@@ -241,9 +231,9 @@ class NgEpcTableDialog(QDialog):
 
         self.page_size_select = QComboBox()
         self.page_size_select.setFixedWidth(100)
-        self.page_size_select.addItem("10 hàng", 10)
-        self.page_size_select.addItem("20 hàng", 20)
-        self.page_size_select.addItem("50 hàng", 50)
+        self.page_size_select.addItem("10", 10)
+        self.page_size_select.addItem("30", 30)
+        self.page_size_select.addItem("50", 50)
         self.page_size_select.setCurrentIndex(0)
         self.page_size_select.currentIndexChanged.connect(self.handle_page_size_change)
 
@@ -272,12 +262,45 @@ class NgEpcTableDialog(QDialog):
         self.dialog_layout.addWidget(self.table)
         self.dialog_layout.addWidget(self.pagination_group)
 
+    def __translate__(self):
+        self.action_select.setPlaceholderText(
+            I18nService.t("placeholders.action_placeholder")
+        )
+        self.mo_no_select.setPlaceholderText(
+            I18nService.t("placeholders.mo_no_placeholder")
+        )
+        self.mo_no_select.setItemText(0, I18nService.t("all"))
+        self.size_select.setPlaceholderText(
+            I18nService.t("placeholders.size_numcode_placeholder")
+        )
+        self.submit_button.setText(I18nService.t("actions.confirm"))
+
+        horizontal_header_labels = [
+            "EPC",
+            I18nService.t("fields.mo_no"),
+            I18nService.t("fields.size_numcode"),
+            I18nService.t("fields.ri_date"),
+            I18nService.t("fields.stationNO"),
+        ]
+        self.table.setColumnCount(len(horizontal_header_labels))
+        self.table.setHorizontalHeaderLabels(horizontal_header_labels)
+        self.first_page_button.setToolTip("actions.first_page")
+        self.last_page_button.setToolTip("actions.last_page")
+        self.prev_page_button.setToolTip("actions.prev_page")
+        self.next_page_button.setToolTip("actions.next_page")
+        self.page_index.setText(
+            f"{I18nService.t("labels.page")} {self._current_page}/{self._total_page}"
+        )
+        self.page_size_select.setItemText(0, f"10 {I18nService.t("labels.per_page")}")
+        self.page_size_select.setItemText(1, f"30 {I18nService.t("labels.per_page")}")
+        self.page_size_select.setItemText(2, f"50 {I18nService.t("labels.per_page")}")
+
     def set_data(self, data: list[dict[str, str]]) -> None:
         self._original_data = data
         self._filtered_data = data
 
         self.mo_no_select.clear()
-        self.mo_no_select.addItem("Tất cả", "all")
+        self.mo_no_select.addItem("all", "all")
 
         for item in unique(list(map(lambda item: item["mo_no"], data))):
             self.mo_no_select.addItem(item, item)
@@ -300,7 +323,9 @@ class NgEpcTableDialog(QDialog):
         self._total_page = math.ceil(len(self._original_data) / self._page_size)
         self._has_next_page = self._current_page < self._total_page
         self._has_prev_page = self._current_page > 1
-        self.page_index.setText(f"Trang {self._current_page}/{self._total_page}")
+        self.page_index.setText(
+            f"{I18nService.t('labels.page')} {self._current_page}/{self._total_page}"
+        )
         self.prev_page_button.setEnabled(self._has_prev_page)
         self.next_page_button.setEnabled(self._has_next_page)
 
@@ -337,7 +362,6 @@ class NgEpcTableDialog(QDialog):
             and self._mutation_form_values["mo_no"] != "all"
             and (self._mutation_form_values["size_code"] is not None)
         )
-        logger.debug(is_cancellable)
         self._set_action_enabled(1, is_cancellable)
         return is_cancellable
 
@@ -496,7 +520,7 @@ class NgEpcTableDialog(QDialog):
 
             toast = Toaster(
                 parent=self.root,
-                title="Thành công",
+                title=I18nService.t("notification.success"),
                 text=message,
                 preset=ToastPreset.SUCCESS_DARK,
             )
@@ -511,7 +535,7 @@ class NgEpcTableDialog(QDialog):
         self.loading.close_loading()
         toast = Toaster(
             parent=self.root,
-            title="Thành công",
+            title=I18nService.t("notification.success"),
             text=message,
             preset=ToastPreset.ERROR_DARK,
         )

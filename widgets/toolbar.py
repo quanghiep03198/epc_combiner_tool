@@ -111,7 +111,7 @@ class AppToolBar(QToolBar):
         self.user_icon.setPixmap(scaled_pixmap)
         self.user_info_layout.addWidget(self.user_icon)
 
-        self.user_display_name_text = QLabel("Đăng Nhập")
+        self.user_display_name_text = QLabel()
         self.user_info_layout.addWidget(self.user_display_name_text)
 
         self.addWidget(self.user_info)
@@ -139,7 +139,7 @@ class AppToolBar(QToolBar):
         self.user_locale_text.setText(curr_lang["label"])
 
         if not auth_context["is_authenticated"]:
-            I18nService.t("login")
+            self.user_display_name_text.setText(I18nService.t("actions.login"))
 
     def on_auth_state_change(self, data):
         if data["is_authenticated"]:
@@ -147,9 +147,8 @@ class AppToolBar(QToolBar):
             self.user_display_name_text.setText(data["employee_name"])
             self.addAction(self.logout_act)
         else:
-
             self.user_factory_text.setText("N/A")
-            self.user_display_name_text.setText("Đăng Nhập")
+            self.user_display_name_text.setText(I18nService.t("login"))
             self.removeAction(self.logout_act)
 
     def handle_logout(self):
@@ -160,8 +159,8 @@ class AppToolBar(QToolBar):
         auth_context.update(factory_name=None)
         toast = Toaster(
             parent=self.root,
-            title="Đăng xuất thành công",
-            text="Bạn có thể sử dụng tài khoản khác để tiếp tục sử dụng ứng dụng.",
+            title=I18nService.t("notification.logout_success_title"),
+            text=I18nService.t("notification.logout_success_text"),
             preset=ToastPreset.SUCCESS_DARK,
         )
         toast.show()

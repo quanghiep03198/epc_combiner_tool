@@ -40,9 +40,7 @@ class SideToolbar(QToolBar):
         )
 
         open_file_icon.addPixmap(scaled_pixmap, QIcon.Mode.Normal, QIcon.State.Off)
-        self.open_folder_action = QAction(
-            icon=open_file_icon, text="Thư Mục", parent=self
-        )
+        self.open_folder_action = QAction(icon=open_file_icon, parent=self)
         self.open_folder_action.setShortcut(QKeySequence.StandardKey.Open)
         self.open_folder_action.setObjectName("open_folder_action")
         self.open_folder_action.setToolTip("Ctrl + O")
@@ -60,9 +58,7 @@ class SideToolbar(QToolBar):
         )
         language_icon.addPixmap(scaled_pixmap, QIcon.Mode.Normal, QIcon.State.Off)
 
-        self.language_setting_action = QAction(
-            icon=language_icon, text="Ngôn Ngữ", parent=self
-        )
+        self.language_setting_action = QAction(icon=language_icon, parent=self)
 
         self.language_setting_action.setShortcut(QKeySequence("Ctrl+L"))
         self.language_setting_action.setToolTip("Ctrl + L")
@@ -80,7 +76,7 @@ class SideToolbar(QToolBar):
             Qt.TransformationMode.SmoothTransformation,
         )
         setting_icon.addPixmap(scaled_pixmap, QIcon.Mode.Normal, QIcon.State.Off)
-        self.setting_action = QAction(icon=setting_icon, text="Cài Đặt", parent=self)
+        self.setting_action = QAction(icon=setting_icon, parent=self)
         self.setting_action.triggered.connect(self.open_setting_dialog)
         self.addAction(self.setting_action)
 
@@ -94,9 +90,9 @@ class SideToolbar(QToolBar):
             Qt.TransformationMode.SmoothTransformation,
         )
         help_icon.addPixmap(scaled_pixmap, QIcon.Mode.Normal, QIcon.State.Off)
-        self.help_act = QAction(icon=help_icon, text="Trợ Giúp", parent=self)
-        # self.help_act.triggered.connect(self.handle_show_settings_window)
-        self.addAction(self.help_act)
+        self.help_action = QAction(icon=help_icon, parent=self)
+        self.help_action.setShortcut(QKeySequence("Ctrl+H"))
+        self.addAction(self.help_action)
 
         self.menu = QMenu(self)
         self.menu.setFixedWidth(150)
@@ -119,14 +115,16 @@ class SideToolbar(QToolBar):
         __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value)(self.__translate__)
 
     def __translate__(self):
-        self.open_folder_action.setToolTip(I18nService.t("open_folder") + " (Ctrl+O)")
-        self.language_setting_action.setToolTip(
-            I18nService.t("change_languague") + " (Ctrl+L)"
+        self.open_folder_action.setToolTip(
+            I18nService.t("actions.open_folder") + " (Ctrl+O)"
         )
-        self.setting_action.setToolTip(I18nService.t("change_languague") + " (Ctrl+S)")
         self.language_setting_action.setToolTip(
-            I18nService.t("change_languague") + " (Ctrl+S)"
+            I18nService.t("actions.change_languague") + " (Ctrl+L)"
         )
+        self.setting_action.setToolTip(
+            I18nService.t("actions.change_languague") + " (Ctrl+S)"
+        )
+        self.help_action.setToolTip(I18nService.t("actions.help") + " (Ctrl+H)")
 
     def open_setting_dialog(self):
         self.setting_window.exec()

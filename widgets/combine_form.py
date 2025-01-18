@@ -77,8 +77,13 @@ class CombineForm(QWidget):
         self.action_select = QComboBox(parent=self)
         self.action_select.setObjectName("actionSelect")
         self.action_select.setPlaceholderText("Chọn cách thức phối")
-        self.action_select.addItem("Phối mới", CombineAction.COMBINE_NEW.value)
-        self.action_select.addItem("Phối bù", CombineAction.COMPENSATE.value)
+        self.action_select.addItem(
+            CombineAction.COMBINE_NEW.value, CombineAction.COMBINE_NEW.value
+        )
+        self.action_select.addItem(
+            CombineAction.COMPENSATE.value, CombineAction.COMPENSATE.value
+        )
+
         self.action_select.currentIndexChanged.connect(
             lambda item: self.on_combine_from_state_change(
                 "ri_type", self.action_select.itemData(item)
@@ -96,7 +101,7 @@ class CombineForm(QWidget):
         self.mo_noseq_select = QComboBox(parent=self)
         self.mo_noseq_select.setObjectName("mo_noseq_select")
         self.mo_noseq_select.setPlaceholderText("Chọn tiểu chỉ lệnh")
-        self.mo_noseq_select.addItem("Tất cả", "all")
+        self.mo_noseq_select.addItem("all", "all")
         self.mo_noseq_select.currentIndexChanged.connect(self.handle_mo_noseq_change)
 
         # Combine proceed button
@@ -145,11 +150,21 @@ class CombineForm(QWidget):
 
     def __translate__(self):
         self.action_select.setPlaceholderText(
-            I18nService.t("combine_action_placeholder")
+            I18nService.t("placeholders.combine_action_placeholder")
         )
-        self.size_select.setPlaceholderText(I18nService.t("size_numcode_placeholder"))
-        self.mo_noseq_select.setPlaceholderText(I18nService.t("mo_noseq_placeholder"))
-        self.combine_proceed_button.setText(I18nService.t("confirm"))
+        self.size_select.setPlaceholderText(
+            I18nService.t("placeholders.size_numcode_placeholder")
+        )
+        self.mo_noseq_select.setPlaceholderText(
+            I18nService.t("placeholders.mo_noseq_placeholder")
+        )
+        self.mo_noseq_select.setItemText(0, I18nService.t("labels.all"))
+        self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
+        self.action_select.setItemText(0, I18nService.t("actions.new_combination"))
+        self.action_select.setItemText(
+            1, I18nService.t("actions.compensating_combination")
+        )
+        self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
 
     def on_size_list_change(self, data):
         self._size_list = data
@@ -158,7 +173,6 @@ class CombineForm(QWidget):
 
     def on_epc_data_change(self, data):
         self._epcs = data
-        logger.debug(self._epcs)
         self.on_combine_from_state_change(
             "has_epc", isinstance(data, list) and len(data) > 0
         )
@@ -238,8 +252,8 @@ class CombineForm(QWidget):
         ):
             toast = Toaster(
                 parent=self.root,
-                title="Số lượng EPC vượt quá số lượng cần phối",
-                text="Vui lòng quét lại với số lượng phối mới",
+                title=I18nService.t("notifications.over_scan_limit_title"),
+                text=I18nService.t("notifications.over_scan_limit_text"),
                 preset=ToastPreset.WARNING_DARK,
             )
             toast.show()
@@ -273,7 +287,6 @@ class CombineForm(QWidget):
         if isinstance(num_rows_affected, int):
             # Ensure the directory exists
             self.combine_proceed_button.setText(self.PROCEED_BUTTON_TEXT)
-            logger.debug(self._epcs)
             write_data(
                 {
                     "mo_no": combine_form_context["mo_no"],
@@ -302,7 +315,7 @@ class CombineForm(QWidget):
         ):
             toast = Toaster(
                 parent=self.root,
-                title="Phối EPC thất bại",
+                title="notification.combine_epc_failure_title",
                 text=error_data["message"],
                 preset=ToastPreset.ERROR_DARK,
             )

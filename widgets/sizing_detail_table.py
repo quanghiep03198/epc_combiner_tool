@@ -63,19 +63,18 @@ class SizingDetailTableWidget(QTableWidget):
 
     def __translate__(self):
         vertical_header_labels: list[str] = [
-            I18nService.t("size_numcode"),
-            I18nService.t("size_qty"),
-            I18nService.t("combined_qty"),
-            I18nService.t("in_use_qty"),
-            I18nService.t("compensated_qty"),
-            I18nService.t("cancelled_qty"),
+            I18nService.t("fields.size_numcode"),
+            I18nService.t("fields.size_qty"),
+            I18nService.t("fields.combined_qty"),
+            I18nService.t("fields.in_use_qty"),
+            I18nService.t("fields.compensated_qty"),
+            I18nService.t("fields.cancelled_qty"),
         ]
         self.setRowCount(len(vertical_header_labels))
         self.setVerticalHeaderLabels(vertical_header_labels)
 
     def handle_fetch_size_data(self, data: str):
         try:
-            logger.info(f"Fetching sizing data with mo_no: {data}")
             self.loading = LoadingWidget(self)
             self.loading.show_loading()
             worker = FetchSizeDataWorker(data, self.handle_render_row)
@@ -85,7 +84,6 @@ class SizingDetailTableWidget(QTableWidget):
             logger.error(f"Error reading SQL file: {e}")
 
     def handle_render_row(self, result: list[dict]):
-        logger.debug(result)
         self.setColumnCount(len(result))
         self._size_list = result
         __event_emitter__.emit(UserActionEvent.SIZE_LIST_CHANGE.value, result)

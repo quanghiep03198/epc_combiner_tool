@@ -90,8 +90,10 @@ class OrderAutoCompleteWidget(QPushButton):
 
     def __translate__(self):
         if combine_form_context["mo_no"] is None:
-            self.setText(I18nService.t("mo_no_placeholder"))
-        self.popover_input.setPlaceholderText(I18nService.t("search_placeholder"))
+            self.setText(I18nService.t("placeholders.mo_no_placeholder"))
+        self.popover_input.setPlaceholderText(
+            I18nService.t("placeholders.search_placeholder")
+        )
 
     @pyqtSlot(bool)
     def handle_toggle_open(self, checked_state: bool) -> None:
@@ -207,8 +209,7 @@ class OrderAutoCompleteWidget(QPushButton):
                         SELECT DISTINCT mo_no, created
                         FROM wuerp_vnrd.dbo.ta_manufacturmst
                         WHERE mo_no LIKE :search
-                            cofactory_code = :factory_code
-                        AND
+                        AND cofactory_code = :factory_code
                     ) AS subquery
                     ORDER BY created DESC
                 """,

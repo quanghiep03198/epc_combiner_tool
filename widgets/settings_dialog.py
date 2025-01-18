@@ -4,6 +4,7 @@ from helpers.configuration import ConfigService
 from events import __event_emitter__, UserActionEvent
 from widgets.toaster import Toaster
 from pyqttoast import ToastPreset
+from i18n import I18nService
 
 
 class AppSettingsDialog(QDialog):
@@ -241,8 +242,8 @@ class AppSettingsDialog(QDialog):
         self.button_group.setLayout(self.button_group_layout)
 
         _setting_form_layout.addWidget(self.button_group)
-        # endregion
         self.setLayout(_setting_form_layout)
+        # endregion
 
     @pyqtSlot(str, str)
     def on_form_state_change(self, field, value):
@@ -256,8 +257,8 @@ class AppSettingsDialog(QDialog):
             if value == "":
                 toast = Toaster(
                     parent=self.root,
-                    title="Thông tin cài đặt không hợp lệ",
-                    text=f"Vui lòng điền đầy đủ thông tin cài đặt.",
+                    title=I18nService.t("notification.setting_validation_error_title"),
+                    text=I18nService.t("notification.setting_validation_error_text"),
                     preset=ToastPreset.ERROR_DARK,
                 )
                 toast.show()
@@ -268,8 +269,8 @@ class AppSettingsDialog(QDialog):
         if err_count == 0:
             toast = Toaster(
                 parent=self.root,
-                title="Lưu thông tin cài đặt thành công",
-                text=f"Ứng dụng sẽ khởi động lại để cập nhật thông tin cài đặt.",
+                title=I18nService.t("notification.setting_validation_success_title"),
+                text=I18nService.t("notification.setting_validation_success_text"),
                 preset=ToastPreset.SUCCESS_DARK,
             )
             toast.setPositionRelativeToWidget(None)
@@ -279,11 +280,11 @@ class AppSettingsDialog(QDialog):
     @pyqtSlot()
     def handle_close(self):
         configurations = ConfigService.load_configs()
-        if all(value == "" for value in configurations.values()):
+        if any(value == "" for value in configurations.values()):
             reply = QMessageBox.question(
                 self.root,
-                "Cài đặt kết nối chưa được thiết lập",
-                "Bạn có muốn thiết lập lại ngay bây giờ không?",
+                I18nService.t("notification.missing_setting_title"),
+                I18nService.t("notification.missing_setting_text"),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
             if reply == QMessageBox.StandardButton.No:

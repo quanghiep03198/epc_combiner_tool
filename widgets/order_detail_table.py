@@ -27,6 +27,8 @@ class OrderDetailTableWidget(QTableWidget):
     Table for displaying order details
     """
 
+    order_detail_data = []
+
     def __init__(self, root: QWidget):
         super().__init__(
             root.container,
@@ -83,13 +85,13 @@ class OrderDetailTableWidget(QTableWidget):
 
     def __translate__(self):
         horizontal_headers = [
-            I18nService.t("customer_order_code"),
-            I18nService.t("shoes_style_code"),
-            I18nService.t("shoes_style_code_factory"),
-            I18nService.t("mo_noseq"),
-            I18nService.t("or_no"),
-            I18nService.t("or_custpo"),
-            I18nService.t("mo_qty"),
+            I18nService.t("fields.customer_order_code"),
+            I18nService.t("fields.shoes_style_code"),
+            I18nService.t("fields.shoes_style_code_factory"),
+            I18nService.t("fields.mo_noseq"),
+            I18nService.t("fields.or_no"),
+            I18nService.t("fields.or_custpo"),
+            I18nService.t("fields.mo_qty"),
         ]
         self.setColumnCount(len(horizontal_headers))
         self.setHorizontalHeaderLabels(horizontal_headers)

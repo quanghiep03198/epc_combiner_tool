@@ -8,7 +8,7 @@ class Toaster(Toast):
     def __init__(
         self,
         parent: QMainWindow,
-        title: str,
+        title: str | None,
         text: str | None,
         preset: ToastPreset = ToastPreset.INFORMATION_DARK,
         duration: int = 3000,

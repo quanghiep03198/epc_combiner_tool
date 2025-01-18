@@ -3,6 +3,7 @@ from helpers.configuration import ConfigService, ConfigSection
 from enum import Enum
 from events import UserActionEvent, __event_emitter__
 from helpers.logger import logger
+from helpers.flatten_dict import flatten_dict
 
 global __languages__
 
@@ -28,7 +29,7 @@ class I18nService:
             ConfigService.set_conf(ConfigSection.LOCALE.value, "LANGUAGE", lang)
             global __dictionary__
             with open(file=f"./i18n/{lang}.json", mode="r", encoding="utf-8") as file:
-                __dictionary__ = json.load(file)
+                __dictionary__ = flatten_dict(json.load(file))
         except FileNotFoundError as e:
             logger.error(e)
             __dictionary__ = {}
@@ -42,12 +43,20 @@ class I18nService:
             (lang for lang in __languages__ if lang["value"] == curr_lang_conf), None
         )
 
-        logger.debug(lang)
-
         return lang
 
     @staticmethod
-    def t(key, fallback=None):
+    def t(key, plurals=None, fallback=None):
+        if isinstance(plurals, dict):
+            translated_text = __dictionary__.get(key, fallback)
+            if translated_text and plurals:
+                for k, v in plurals.items():
+                    translated_text = translated_text.replace(f"{{{k}}}", str(v))
+            return translated_text
+
+        if fallback is None:
+            return __dictionary__.get(key, key)
+
         return __dictionary__.get(key, fallback)
 
     @staticmethod

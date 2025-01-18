@@ -141,9 +141,9 @@ class MainWindow(QMainWindow):
         )
 
     def __translate__(self):
-        self.order_detail_title.setText(I18nService.t("order_detail_title"))
-        self.sizing_detail_title.setText(I18nService.t("order_detail_title"))
-        self.combine_form_title.setText(I18nService.t("combination_form_title"))
+        self.order_detail_title.setText(I18nService.t("labels.order_detail_title"))
+        self.sizing_detail_title.setText(I18nService.t("labels.order_detail_title"))
+        self.combine_form_title.setText(I18nService.t("labels.combination_form_title"))
 
     # region Stylesheet setup
     def _set_stylesheet(self) -> None:
@@ -245,13 +245,13 @@ class MainWindow(QMainWindow):
 
     def bootstrap(self):
         self.on_application_bootstrap()
-        # * Enable High DPI support
-        QApplication.setHighDpiScaleFactorRoundingPolicy(
-            Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
-        )
 
 
 if __name__ == "__main__":
+    # * Enable High DPI support
+    QApplication.setHighDpiScaleFactorRoundingPolicy(
+        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+    )
     app = QApplication(sys.argv)
 
     # * Setup main window
@@ -260,5 +260,4 @@ if __name__ == "__main__":
 
     app.aboutToQuit.connect(window.on_application_shutdown)
     app.lastWindowClosed.connect(window.on_application_shutdown)
-
     sys.exit(app.exec())

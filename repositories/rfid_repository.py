@@ -124,8 +124,6 @@ class RFIDRepository:
 
             while query.next():
                 result.append(query.value("EPC_Code"))
-
-            logger.debug(f"Lifecycle ended EPCs: {result}")
             return result
         except Exception as e:
             logger.error(e)
@@ -256,8 +254,6 @@ class RFIDRepository:
                 raise Exception(query.lastError().text())
 
             DATA_SOURCE_DL.commit()
-
-            logger.info("--------------- Insert match successfully ---------------")
 
             return query.numRowsAffected()
 
