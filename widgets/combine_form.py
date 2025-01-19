@@ -53,15 +53,13 @@ class StoreDataWorker(QRunnable):
             self.signals.error.emit(error_data)
 
 
-class CombineForm(QWidget):
+class CombineForm(QFrame):
     """
     EPC combination form submission
     """
 
-    _size_list: list[dict[str, str]] = []
-    _epcs: list[str] = []
-
-    PROCEED_BUTTON_TEXT = "Tiến hành phối"
+    __size_list: list[dict[str, str]] = []
+    __epcs: list[str] = []
 
     def __init__(self, root):
         super().__init__(root.container)
@@ -69,6 +67,7 @@ class CombineForm(QWidget):
 
         # region Combine submission form
         self.setObjectName("combine_form")
+        self.setContentsMargins(0, 0, 0, 0)
         self.combine_form_layout = QHBoxLayout(self)
         self.combine_form_layout.setContentsMargins(0, 0, 0, 0)
         self.combine_form_layout.setSpacing(4)
@@ -76,7 +75,6 @@ class CombineForm(QWidget):
         # Action select
         self.action_select = QComboBox(parent=self)
         self.action_select.setObjectName("actionSelect")
-        self.action_select.setPlaceholderText("Chọn cách thức phối")
         self.action_select.addItem(
             CombineAction.COMBINE_NEW.value, CombineAction.COMBINE_NEW.value
         )
@@ -94,13 +92,11 @@ class CombineForm(QWidget):
         self.size_select = QComboBox(parent=self)
         self.size_select.setAutoFillBackground(False)
         self.size_select.setObjectName("size_select")
-        self.size_select.setPlaceholderText("Chọn cỡ giày")
         self.size_select.currentTextChanged.connect(self.handle_selected_size_change)
 
         # Sub-order select
         self.mo_noseq_select = QComboBox(parent=self)
         self.mo_noseq_select.setObjectName("mo_noseq_select")
-        self.mo_noseq_select.setPlaceholderText("Chọn tiểu chỉ lệnh")
         self.mo_noseq_select.addItem("all", "all")
         self.mo_noseq_select.currentIndexChanged.connect(self.handle_mo_noseq_change)
 
@@ -109,7 +105,6 @@ class CombineForm(QWidget):
         self.combine_proceed_button.setObjectName("combine_procedd_button")
         self.combine_proceed_button.setFixedWidth(150)
         self.combine_proceed_button.setEnabled(False)
-        self.combine_proceed_button.setText(self.PROCEED_BUTTON_TEXT)
         self.combine_proceed_button.setCursor(
             QCursor(Qt.CursorShape.PointingHandCursor)
         )
@@ -164,15 +159,14 @@ class CombineForm(QWidget):
         self.action_select.setItemText(
             1, I18nService.t("actions.compensating_combination")
         )
-        self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
 
     def on_size_list_change(self, data):
-        self._size_list = data
+        self.__size_list = data
         self.size_select.clear()
         self.size_select.addItems(map(lambda item: item["size_numcode"], data))
 
     def on_epc_data_change(self, data):
-        self._epcs = data
+        self.__epcs = data
         self.on_combine_from_state_change(
             "has_epc", isinstance(data, list) and len(data) > 0
         )
@@ -207,7 +201,7 @@ class CombineForm(QWidget):
         size_item = next(
             (
                 item
-                for item in self._size_list
+                for item in self.__size_list
                 if "size_numcode" in item and item["size_numcode"] == value
             ),
             None,
@@ -248,7 +242,7 @@ class CombineForm(QWidget):
     def on_combine_proceed(self):
         if (
             combine_form_context["ri_type"] == CombineAction.COMBINE_NEW.value
-            and len(self._epcs) > combine_form_context["size_qty"]
+            and len(self.__epcs) > combine_form_context["size_qty"]
         ):
             toast = Toaster(
                 parent=self.root,
@@ -261,15 +255,17 @@ class CombineForm(QWidget):
 
         try:
             self.combine_proceed_button.setEnabled(False)
-            self.combine_proceed_button.setText("Đang xử lý...")
+            self.combine_proceed_button.setText(
+                I18nService.t("notification.processing")
+            )
             payload = list(
                 map(
                     lambda item: {
                         **combine_form_context,
                         "EPC_Code": item,
-                        "remark": "combined by quanghiep03198",
+                        "remark": f"Combined by {auth_context['user_code']}",
                     },
-                    self._epcs,
+                    self.__epcs,
                 )
             )
             worker = StoreDataWorker(
@@ -286,12 +282,12 @@ class CombineForm(QWidget):
     def on_mutate_success(self, num_rows_affected: int | None):
         if isinstance(num_rows_affected, int):
             # Ensure the directory exists
-            self.combine_proceed_button.setText(self.PROCEED_BUTTON_TEXT)
+            self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
             write_data(
                 {
                     "mo_no": combine_form_context["mo_no"],
                     "size_numcode": combine_form_context["size_numcode"],
-                    "epcs": self._epcs,
+                    "epcs": self.__epcs,
                     "created_by": auth_context["employee_name"],
                 }
             )
@@ -306,7 +302,7 @@ class CombineForm(QWidget):
 
     @pyqtSlot(dict)
     def on_mutate_error(self, error_data):
-        self.combine_proceed_button.setText(self.PROCEED_BUTTON_TEXT)
+        self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
 
         if (
             isinstance(error_data, dict)

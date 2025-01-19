@@ -30,8 +30,6 @@ class SizingDetailTableWidget(QTableWidget):
     Table for displaying sizing details
     """
 
-    _size_list: list[dict] = []
-
     def __init__(self, root):
         super().__init__(root.container)
         self.root = root
@@ -85,7 +83,6 @@ class SizingDetailTableWidget(QTableWidget):
 
     def handle_render_row(self, result: list[dict]):
         self.setColumnCount(len(result))
-        self._size_list = result
         __event_emitter__.emit(UserActionEvent.SIZE_LIST_CHANGE.value, result)
         col: int = 0
         for record in result:

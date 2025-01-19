@@ -1,9 +1,7 @@
-import asyncio
-from database import get_raw_sql
 from PyQt6.QtSql import *
 from helpers.logger import logger
 from pathlib import Path
-from database import DATA_SOURCE_ERP
+from database import DatabaseService, DATA_SOURCE_ERP
 
 
 class SizingRepository:
@@ -14,8 +12,7 @@ class SizingRepository:
         try:
             current_dir = Path(__file__).parent.resolve()
             sql_file_path = current_dir / "./sql/get_size_qty.sql"
-            # sql_statement = await asyncio.to_thread(get_raw_sql, sql_file_path)
-            sql_statement = get_raw_sql(sql_file_path)
+            sql_statement = DatabaseService.get_raw_sql(sql_file_path)
             query = QSqlQuery(DATA_SOURCE_ERP)
             query.prepare(sql_statement)
             query.bindValue(":mo_no", mo_no)

@@ -1,10 +1,10 @@
 from enum import Enum, unique
 
-global DB_DRIVER
-global DB_SERVER_DEFAULT
+global DB_DRIVER, DB_SERVER_DEFAULT, DB_PORT
 
 DB_DRIVER = "SQL Server"
 DB_SERVER_DEFAULT = "10.30.0.21"
+DB_PORT = 1433
 
 
 @unique

@@ -25,10 +25,11 @@ from helpers.logger import logger
 from events import __event_emitter__, UserActionEvent
 from contexts.auth_context import auth_context
 from i18n import I18nService, Language
+from helpers.resolve_path import resolve_path
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, app):
+    def __init__(self, app: QApplication):
         super().__init__()
 
         self.__app__ = app
@@ -107,6 +108,7 @@ class MainWindow(QMainWindow):
         # region Combine submission form
         self.combine_form_layout = QVBoxLayout()
         self.combine_form_layout.setSpacing(10)
+        self.combine_form_layout.setContentsMargins(0, 0, 0, 0)
         self.combine_form_widget = QWidget(self.container)
         self.combine_form_widget.setLayout(self.combine_form_layout)
         self.combine_form_title = QLabel()
@@ -125,7 +127,7 @@ class MainWindow(QMainWindow):
         self.app_layout.setStretch(1, 3)
 
         self.setCentralWidget(self.container)
-        self.setWindowTitle("EPC CI - v1.0.0 Beta")
+        self.setWindowTitle("EPC IC - v1.0.0 Beta")
         self.addToolBar(self.toolbar)
 
         QMetaObject.connectSlotsByName(self)
@@ -134,7 +136,7 @@ class MainWindow(QMainWindow):
 
         __event_emitter__.on(
             UserActionEvent.SETTINGS_CHANGE.value,
-        )(lambda _: self.setEnabled(True))
+        )(self.reload)
 
         __event_emitter__.on(UserActionEvent.AUTH_STATE_CHANGE.value)(
             self.on_auth_state_change
@@ -146,24 +148,22 @@ class MainWindow(QMainWindow):
         self.combine_form_title.setText(I18nService.t("labels.combination_form_title"))
 
     # region Stylesheet setup
-    def _set_stylesheet(self) -> None:
+    def __set_stylesheet(self) -> None:
         """
         Set the stylesheet of the application to the global stylesheet.
         """
-        with open("./themes/global.qss", "r", encoding="utf-8") as f:
+        with open(resolve_path("themes/global.qss"), "r", encoding="utf-8") as f:
             stylesheet = f.read()
             self.__app__.setStyleSheet(stylesheet)
-        try:
-            window.show()
-        except Exception as e:
-            logger.error(e)
 
     # region Font setup
-    def _set_font(self) -> None:
+    def __set_font(self) -> None:
         """
         Set the font of the application to Inter.
         """
-        font_id = QFontDatabase.addApplicationFont("./assets/fonts/Inter-Regular.ttf")
+        font_id = QFontDatabase.addApplicationFont(
+            resolve_path("assets/fonts/Inter-Regular.ttf")
+        )
         if font_id == -1:
             print("Failed to load font.")
             sys.exit(1)
@@ -176,19 +176,20 @@ class MainWindow(QMainWindow):
             font.setPixelSize(14)
             font.setWeight(QFont.Weight.Normal)
             self.__app__.setFont(font)
-            window.setFont(font)
+            self.setFont(font)
             QApplication.setFont(QFont("Inter"))
 
-    def _ensure_connection_ready(self):
+    def __ensure_connection_ready(self):
         configuration = ConfigService.load_configs()
         if "" in configuration.values():
             self.overlay = QWidget(self)
             self.overlay.setStyleSheet("background-color: rgba(0, 0, 0, 128);")
-            self.overlay.setGeometry(self.rect())
+            self.overlay.setGeometry(window.rect())
+            self.overlay.show()
             QMessageBox.warning(
                 self,
-                "Cài đặt kết nối chưa được thiết lập",
-                "Vui lòng cài đặt kết nối đến cơ sở dữ liệu và máy đọc UHF trước khi sử dụng ứng dụng.",
+                I18nService.t("notification.settings_not_established_title"),
+                I18nService.t("notification.settings_not_established_text"),
             )
             self.side_toolbar.open_setting_dialog()
             self.side_toolbar.setting_window.setWindowFlag(
@@ -201,13 +202,12 @@ class MainWindow(QMainWindow):
     # region Auth event handler
     def on_auth_state_change(self, data):
         if not data.get("is_authenticated"):
-            self.overlay = QWidget(window)
+            self.overlay = QWidget(self)
             self.overlay.setStyleSheet("background-color: rgba(0, 0, 0, 128);")
-            self.overlay.setGeometry(window.rect())
+            self.overlay.setGeometry(self.rect())
             self.overlay.show()
-            login_dialog = LoginDialog(parent=window)
+            login_dialog = LoginDialog(parent=self)
             login_dialog.exec()
-            # I18nService.emit()
             return
         else:
             self.overlay.close()
@@ -218,19 +218,20 @@ class MainWindow(QMainWindow):
         Bootstrap the application with the necessary configurations and settings.
         """
 
-        self._set_font()
-        self._set_stylesheet()
+        self.__set_font()
+        self.__set_stylesheet()
 
         # * Setup language
         current_language = ConfigService.get_conf(
             ConfigSection.LOCALE.value, "LANGUAGE", Language.ENGLISH.value
         )
-        I18nService.on_language_change(current_language)
+        I18nService.set_language(current_language)
         I18nService.emit()
 
-        if not self._ensure_connection_ready():
+        if not self.__ensure_connection_ready():
             return
 
+        self.show()
         self.on_auth_state_change(auth_context)
 
     # region Application shutdown
@@ -243,21 +244,27 @@ class MainWindow(QMainWindow):
         ):
             self.epc_reader_playground.uhf_reader_instance.close()
 
+    def reload(self):
+        self.close()
+        QMetaObject.invokeMethod(self.__app__, "quit", Qt.QueuedConnection)
+        QProcess.startDetached(sys.executable, sys.argv)
+
     def bootstrap(self):
         self.on_application_bootstrap()
 
 
 if __name__ == "__main__":
-    # * Enable High DPI support
-    QApplication.setHighDpiScaleFactorRoundingPolicy(
-        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
-    )
-    app = QApplication(sys.argv)
+    try:
+        app = QApplication(sys.argv)
 
-    # * Setup main window
-    window = MainWindow(app)
-    window.bootstrap()
+        # * Setup main window
+        window = MainWindow(app)
+        window.bootstrap()
 
-    app.aboutToQuit.connect(window.on_application_shutdown)
-    app.lastWindowClosed.connect(window.on_application_shutdown)
-    sys.exit(app.exec())
+        app.aboutToQuit.connect(window.on_application_shutdown)
+        app.lastWindowClosed.connect(window.on_application_shutdown)
+
+        sys.exit(app.exec())
+    except Exception as e:
+        logger.error(f"Error occurred: {e}")
+        input("Press Enter to exit...")

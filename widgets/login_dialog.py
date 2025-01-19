@@ -6,14 +6,14 @@ from services.auth_service import AuthService
 from contexts.auth_context import auth_context
 from widgets.toaster import Toaster, ToastPreset
 from constants import StatusCode
-from helpers.logger import logger
+from helpers.resolve_path import resolve_path
 from events import __event_emitter__, UserActionEvent
 from i18n import I18nService
 
 
 class LoginDialog(QDialog):
 
-    _form_values = {
+    __form_values = {
         "username": None,
         "password": None,
         "factory_code": None,
@@ -41,13 +41,15 @@ class LoginDialog(QDialog):
 
         self.username_label = QLabel()
         icon_label = QLabel()
-        scaled_pixmap = QPixmap("./assets/icons/user.svg").scaled(
-            16,
-            16,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
+        pixmap = QPixmap(resolve_path("assets/icons/user.svg"))
+        icon_label.setPixmap(
+            pixmap.scaled(
+                16,
+                16,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
         )
-        icon_label.setPixmap(scaled_pixmap)
         user_label_layout.addWidget(icon_label)
         user_label_layout.addWidget(self.username_label)
 
@@ -65,13 +67,13 @@ class LoginDialog(QDialog):
         password_label_icon.setLayout(password_label_layout)
         self.password_label = QLabel()
         icon_label = QLabel()
-        scaled_pixmap = QPixmap("./assets/icons/key-round.svg").scaled(
+        pixmap = QPixmap(resolve_path("assets/icons/key-round.svg")).scaled(
             16,
             16,
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
-        icon_label.setPixmap(scaled_pixmap)
+        icon_label.setPixmap(pixmap)
         password_label_layout.addWidget(icon_label)
         password_label_layout.addWidget(self.password_label)
 
@@ -97,13 +99,13 @@ class LoginDialog(QDialog):
         factory_label_icon.setLayout(factory_label_layout)
 
         icon_label = QLabel()
-        scaled_pixmap = QPixmap("./assets/icons/factory.svg").scaled(
+        pixmap = QPixmap(resolve_path("assets/icons/factory.svg")).scaled(
             16,
             16,
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
-        icon_label.setPixmap(scaled_pixmap)
+        icon_label.setPixmap(pixmap)
         self.factory_code_label = QLabel()
 
         factory_label_layout.addWidget(icon_label)
@@ -120,10 +122,9 @@ class LoginDialog(QDialog):
 
         self.exit_button = QPushButton("Thoát")
         self.exit_button.setFixedWidth(120)
-        # self.exit_button.setToolTip("Thoát")
         self.exit_icon = QIcon()
         self.exit_icon.addPixmap(
-            QPixmap("./assets/icons/log-out.svg"),
+            QPixmap(resolve_path("assets/icons/log-out.svg")),
             QIcon.Mode.Normal,
             QIcon.State.Off,
         )
@@ -155,8 +156,7 @@ class LoginDialog(QDialog):
         self.__translate__()
 
     def __translate__(self):
-        self.setWindowTitle(I18nService.t("labels.login"))
-
+        self.setWindowTitle(I18nService.t("actions.login"))
         self.username_label.setText(I18nService.t("labels.username"))
         self.password_label.setText(I18nService.t("labels.password"))
         self.factory_code_label.setText(I18nService.t("labels.factory"))
@@ -198,7 +198,7 @@ class LoginDialog(QDialog):
             self.login_button.setEnabled(False)
 
     def handle_form_values_change(self, key: str, value: str) -> None:
-        self._form_values[key] = value
+        self.__form_values[key] = value
 
     def handle_debounce_change(self, key: str, value: str) -> None:
         self.handle_form_values_change(key, value)
@@ -206,9 +206,9 @@ class LoginDialog(QDialog):
 
     def handle_authenticate(self):
         try:
-            if self._form_values["username"] and self._form_values["password"]:
+            if self.__form_values["username"] and self.__form_values["password"]:
                 result: dict | None = AuthService.login(
-                    self._form_values["username"], self._form_values["password"]
+                    self.__form_values["username"], self.__form_values["password"]
                 )
                 if result:
                     user: dict = result.get("user")

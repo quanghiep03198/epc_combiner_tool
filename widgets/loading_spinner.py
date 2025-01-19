@@ -1,6 +1,3 @@
-# from PyQt6.QtCore import QTimer, Qt
-# from PyQt6.QtGui import QPainter, QPen
-# from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import *
 from PyQt6.QtSql import *
 from PyQt6.QtGui import *

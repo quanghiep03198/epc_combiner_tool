@@ -10,6 +10,7 @@ from widgets.loading_widget import LoadingWidget
 from widgets.toaster import Toaster, ToastPreset
 from events import __event_emitter__, UserActionEvent
 from helpers.logger import logger
+from helpers.resolve_path import resolve_path
 from i18n import I18nService
 
 MIN_WINDOW_WIDTH = 900
@@ -57,24 +58,20 @@ class MutateNgEpcWorker(QRunnable):
 
 class NgEpcTableDialog(QDialog):
 
-    _mutation_form_values: dict[str, str] = {
+    __mutation_form_values: dict[str, str] = {
         "mo_no": None,
         "size_code": None,
         "action": None,
     }
 
-    _is_compensable: bool = False
+    __original_data: list = []
+    __filtered_data: list = []
 
-    _original_data: list = []
-    _filtered_data: list = []
-    _filtered_size_data: list = []
-
-    _current_page: int = 1
-    _total_page: int = 1
-    _page_size: int = 10
-    _has_next_page: bool = False
-    _has_prev_page: bool = False
-    _ng_action: NgAction = None
+    __current_page: int = 1
+    __total_page: int = 1
+    __page_size: int = 10
+    __has_next_page: bool = False
+    __has_prev_page: bool = False
 
     # region UI Initialization
     def __init__(self, parent=None):
@@ -172,25 +169,25 @@ class NgEpcTableDialog(QDialog):
 
         self.first_page_icon = QIcon()
         self.first_page_icon.addPixmap(
-            QPixmap("./assets/icons/chevron-first.svg"),
+            QPixmap(resolve_path("assets/icons/chevron-first.svg")),
             QIcon.Mode.Normal,
             QIcon.State.Off,
         )
         self.last_page_icon = QIcon()
         self.last_page_icon.addPixmap(
-            QPixmap("./assets/icons/chevron-last.svg"),
+            QPixmap(resolve_path("assets/icons/chevron-last.svg")),
             QIcon.Mode.Normal,
             QIcon.State.Off,
         )
         self.prev_page_icon = QIcon()
         self.prev_page_icon.addPixmap(
-            QPixmap("./assets/icons/chevron-left.svg"),
+            QPixmap(resolve_path("assets/icons/chevron-left.svg")),
             QIcon.Mode.Normal,
             QIcon.State.Off,
         )
         self.next_page_icon = QIcon()
         self.next_page_icon.addPixmap(
-            QPixmap("./assets/icons/chevron-right.svg"),
+            QPixmap(resolve_path("assets/icons/chevron-right.svg")),
             QIcon.Mode.Normal,
             QIcon.State.Off,
         )
@@ -289,15 +286,15 @@ class NgEpcTableDialog(QDialog):
         self.prev_page_button.setToolTip("actions.prev_page")
         self.next_page_button.setToolTip("actions.next_page")
         self.page_index.setText(
-            f"{I18nService.t("labels.page")} {self._current_page}/{self._total_page}"
+            f"{I18nService.t("labels.page")} {self.__current_page}/{self.__total_page}"
         )
         self.page_size_select.setItemText(0, f"10 {I18nService.t("labels.per_page")}")
         self.page_size_select.setItemText(1, f"30 {I18nService.t("labels.per_page")}")
         self.page_size_select.setItemText(2, f"50 {I18nService.t("labels.per_page")}")
 
     def set_data(self, data: list[dict[str, str]]) -> None:
-        self._original_data = data
-        self._filtered_data = data
+        self.__original_data = data
+        self.__filtered_data = data
 
         self.mo_no_select.clear()
         self.mo_no_select.addItem("all", "all")
@@ -305,7 +302,7 @@ class NgEpcTableDialog(QDialog):
         for item in unique(list(map(lambda item: item["mo_no"], data))):
             self.mo_no_select.addItem(item, item)
 
-        self._current_page = 1
+        self.__current_page = 1
         self._handle_pagination()
         self._render_page_row()
         self._check_is_cancellable()
@@ -313,26 +310,26 @@ class NgEpcTableDialog(QDialog):
         self._validate_mutation_form()
 
     def set_form_field_value(self, field: str, value: str) -> None:
-        self._mutation_form_values[field] = value
+        self.__mutation_form_values[field] = value
         self._check_is_cancellable()
         self._check_is_compensable()
         can_submit = self._validate_mutation_form()
         self.submit_button.setEnabled(can_submit)
 
     def _handle_pagination(self) -> None:
-        self._total_page = math.ceil(len(self._original_data) / self._page_size)
-        self._has_next_page = self._current_page < self._total_page
-        self._has_prev_page = self._current_page > 1
+        self.__total_page = math.ceil(len(self.__original_data) / self.__page_size)
+        self.__has_next_page = self.__current_page < self.__total_page
+        self.__has_prev_page = self.__current_page > 1
         self.page_index.setText(
-            f"{I18nService.t('labels.page')} {self._current_page}/{self._total_page}"
+            f"{I18nService.t('labels.page')} {self.__current_page}/{self.__total_page}"
         )
-        self.prev_page_button.setEnabled(self._has_prev_page)
-        self.next_page_button.setEnabled(self._has_next_page)
+        self.prev_page_button.setEnabled(self.__has_prev_page)
+        self.next_page_button.setEnabled(self.__has_next_page)
 
     def _render_page_row(self) -> None:
-        start_index = (self._current_page - 1) * self._page_size
-        end_index = start_index + self._page_size
-        page_data = self._filtered_data[start_index:end_index]
+        start_index = (self.__current_page - 1) * self.__page_size
+        end_index = start_index + self.__page_size
+        page_data = self.__filtered_data[start_index:end_index]
         self.table.setRowCount(len(page_data))
         for index, row in enumerate(page_data):
             self.table.setItem(index, 0, QTableWidgetItem(row["EPC_Code"]))
@@ -345,22 +342,22 @@ class NgEpcTableDialog(QDialog):
 
     def _check_is_compensable(self) -> bool:
         is_compensable = (
-            all(item["stationNO"] is not None for item in self._filtered_data)
+            all(item["stationNO"] is not None for item in self.__filtered_data)
             # and (self._mutation_form_values["action"] == NgAction.COMPENSATE.value)
-            and (self._mutation_form_values["mo_no"] is not None)
-            and self._mutation_form_values["mo_no"] != "all"
-            and (self._mutation_form_values["size_code"] is not None)
+            and (self.__mutation_form_values["mo_no"] is not None)
+            and self.__mutation_form_values["mo_no"] != "all"
+            and (self.__mutation_form_values["size_code"] is not None)
         )
         self._set_action_enabled(0, is_compensable)
         return is_compensable
 
     def _check_is_cancellable(self) -> bool:
         is_cancellable = (
-            all(item["stationNO"] is None for item in self._filtered_data)
+            all(item["stationNO"] is None for item in self.__filtered_data)
             # and (self._mutation_form_values["action"] == NgAction.CANCEL.value)
-            and (self._mutation_form_values["mo_no"] is not None)
-            and self._mutation_form_values["mo_no"] != "all"
-            and (self._mutation_form_values["size_code"] is not None)
+            and (self.__mutation_form_values["mo_no"] is not None)
+            and self.__mutation_form_values["mo_no"] != "all"
+            and (self.__mutation_form_values["size_code"] is not None)
         )
         self._set_action_enabled(1, is_cancellable)
         return is_cancellable
@@ -377,7 +374,7 @@ class NgEpcTableDialog(QDialog):
         """
         Validates the mutation form based on the current form values.
         """
-        match self._mutation_form_values["action"]:
+        match self.__mutation_form_values["action"]:
             case None:
                 return False
             case NgAction.COMPENSATE.value:
@@ -396,22 +393,22 @@ class NgEpcTableDialog(QDialog):
         # Filter data based on selected mo_no
         self.size_select.clear()
         if mo_no == "all":
-            self._filtered_data = self._original_data
+            self.__filtered_data = self.__original_data
             self.size_select.setEnabled(False)
             self.set_form_field_value("size_code", None)
         else:
             self.size_select.setEnabled(True)
-            self._filtered_data = list(
-                filter(lambda item: item["mo_no"] == mo_no, self._original_data)
+            self.__filtered_data = list(
+                filter(lambda item: item["mo_no"] == mo_no, self.__original_data)
             )
             # Get size list that match with selected mo_no
             size_datalist = unique(
-                list(map(lambda item: item["size_numcode"], self._filtered_data))
+                list(map(lambda item: item["size_numcode"], self.__filtered_data))
             )
             for item in size_datalist:
                 self.size_select.addItem(item, item)
 
-        self._current_page = 1
+        self.__current_page = 1
         self._render_page_row()
         self._handle_pagination()
 
@@ -419,39 +416,39 @@ class NgEpcTableDialog(QDialog):
     def handle_size_change(self, index: int):
         size_code = self.size_select.itemData(index)
         if size_code is not None:
-            self._filtered_data = list(
+            self.__filtered_data = list(
                 filter(
-                    lambda item: item["size_numcode"] == size_code, self._original_data
+                    lambda item: item["size_numcode"] == size_code, self.__original_data
                 )
             )
             self.set_form_field_value("size_code", size_code)
         else:
-            self._filtered_data = self._original_data
+            self.__filtered_data = self.__original_data
             self.set_form_field_value("size_code", None)
 
     @pyqtSlot(int)
     def handle_goto_page(self, step):
-        self._current_page += step
+        self.__current_page += step
         self._render_page_row()
         self._handle_pagination()
 
     @pyqtSlot()
     def handle_goto_first_page(self):
-        self._current_page = 1
+        self.__current_page = 1
         self._render_page_row()
         self._handle_pagination()
 
     @pyqtSlot()
     def handle_goto_last_page(self):
-        self._current_page = self._total_page
+        self.__current_page = self.__total_page
         self._render_page_row()
         self._handle_pagination()
 
     @pyqtSlot(int)
     def handle_page_size_change(self, index: int):
-        self._page_size = self.page_size_select.itemData(index)
-        if self._page_size > self._total_page:
-            self._current_page = 1
+        self.__page_size = self.page_size_select.itemData(index)
+        if self.__page_size > self.__total_page:
+            self.__current_page = 1
         self._handle_pagination()
         self._render_page_row()
 
@@ -466,11 +463,11 @@ class NgEpcTableDialog(QDialog):
         self.loading.show_loading()
 
         worker = MutateNgEpcWorker(
-            action=self._mutation_form_values["action"],
+            action=self.__mutation_form_values["action"],
             payload={
-                "epcs": list(map(lambda item: item["EPC_Code"], self._filtered_data)),
-                "mo_no": self._mutation_form_values["mo_no"],
-                "size_code": str(int(self._mutation_form_values["size_code"])),
+                "epcs": list(map(lambda item: item["EPC_Code"], self.__filtered_data)),
+                "mo_no": self.__mutation_form_values["mo_no"],
+                "size_code": str(int(self.__mutation_form_values["size_code"])),
             },
             on_success=self.on_mutate_fulfill,
             on_error=self.on_mutate_error,
@@ -499,17 +496,17 @@ class NgEpcTableDialog(QDialog):
 
             revoked_epcs = list(
                 filter(
-                    lambda item: is_matching_epc(item, self._mutation_form_values),
-                    self._filtered_data,
+                    lambda item: is_matching_epc(item, self.__mutation_form_values),
+                    self.__filtered_data,
                 )
             )
 
-            remain_ng_epcs = filter_epc_codes(self._filtered_data, revoked_epcs)
+            remain_ng_epcs = filter_epc_codes(self.__filtered_data, revoked_epcs)
             self.set_data(remain_ng_epcs)
 
             message = (
                 f"{num_row_affected} tem đã được bù"
-                if self._mutation_form_values["action"] == NgAction.COMPENSATE.value
+                if self.__mutation_form_values["action"] == NgAction.COMPENSATE.value
                 else f"{num_row_affected} tem đã được hủy"
             )
 

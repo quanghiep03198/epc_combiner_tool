@@ -3,12 +3,12 @@ from PyQt6.QtGui import *
 from PyQt6.QtCore import *
 from pyqttoast import *
 from widgets.toaster import Toaster
-
+from helpers.resolve_path import resolve_path
 from contexts.auth_context import auth_context
 from events import __event_emitter__, UserActionEvent
 from i18n import __languages__, I18nService
 from helpers.configuration import ConfigService
-from helpers.logger import logger
+
 
 # from qtwidgets import AnimatedToggle
 
@@ -45,13 +45,14 @@ class AppToolBar(QToolBar):
         self.user_locale.setLayout(self.user_locale_layout)
 
         self.globe_icon = QLabel()
-        scaled_pixmap = QPixmap("./assets/icons/globe.svg").scaled(
+
+        pixmap = QPixmap(resolve_path("assets/icons/globe.svg")).scaled(
             18,
             18,
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
-        self.globe_icon.setPixmap(scaled_pixmap)
+        self.globe_icon.setPixmap(pixmap)
 
         self.user_locale_text = QLabel()
         self.user_locale_layout.addWidget(self.globe_icon)
@@ -67,13 +68,14 @@ class AppToolBar(QToolBar):
 
         # region Users actions
         self.factory_icon = QLabel()
-        scaled_pixmap = QPixmap("./assets/icons/factory.svg").scaled(
+
+        pixmap = QPixmap(resolve_path("assets/icons/factory.svg")).scaled(
             16,
             16,
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
-        self.factory_icon.setPixmap(scaled_pixmap)
+        self.factory_icon.setPixmap(pixmap)
 
         self.user_factory_layout = QHBoxLayout()
         self.user_factory_layout.setSpacing(4)
@@ -101,14 +103,13 @@ class AppToolBar(QToolBar):
         self.user_info.setLayout(self.user_info_layout)
 
         self.user_icon = QLabel()
-        pixmap = QPixmap("./assets/icons/user.svg")
-        scaled_pixmap = pixmap.scaled(
+        pixmap = QPixmap(resolve_path("assets/icons/user.svg")).scaled(
             16,
             16,
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
-        self.user_icon.setPixmap(scaled_pixmap)
+        self.user_icon.setPixmap(pixmap)
         self.user_info_layout.addWidget(self.user_icon)
 
         self.user_display_name_text = QLabel()
@@ -117,17 +118,20 @@ class AppToolBar(QToolBar):
         self.addWidget(self.user_info)
 
         logout_icon = QIcon()
-        pixmap = QPixmap("./assets/icons/log-out.svg")
-        scaled_pixmap = pixmap.scaled(
-            16,
-            16,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
+        pixmap = QPixmap(resolve_path("assets/icons/log-out.svg"))
+        logout_icon.addPixmap(
+            pixmap.scaled(
+                16,
+                16,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            ),
+            QIcon.Mode.Normal,
+            QIcon.State.Off,
         )
-        logout_icon.addPixmap(scaled_pixmap, QIcon.Mode.Normal, QIcon.State.Off)
-        self.logout_act = QAction(icon=logout_icon, text="Đăng Xuất", parent=self)
-        self.logout_act.setObjectName("logout_act")
-        self.logout_act.triggered.connect(self.handle_logout)
+        self.logout_action = QAction(icon=logout_icon, text="Logout", parent=self)
+        self.logout_action.setObjectName("logout_act")
+        self.logout_action.triggered.connect(self.handle_logout)
 
         __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value)(self.__translate__)
         __event_emitter__.on(UserActionEvent.AUTH_STATE_CHANGE.value)(
@@ -135,9 +139,9 @@ class AppToolBar(QToolBar):
         )
 
     def __translate__(self):
-        curr_lang = I18nService.get_current_language()
+        curr_lang = I18nService.get_i18n_context()
         self.user_locale_text.setText(curr_lang["label"])
-
+        self.logout_action.setToolTip(I18nService.t("actions.logout"))
         if not auth_context["is_authenticated"]:
             self.user_display_name_text.setText(I18nService.t("actions.login"))
 
@@ -145,11 +149,11 @@ class AppToolBar(QToolBar):
         if data["is_authenticated"]:
             self.user_factory_text.setText(data["factory_name"])
             self.user_display_name_text.setText(data["employee_name"])
-            self.addAction(self.logout_act)
+            self.addAction(self.logout_action)
         else:
             self.user_factory_text.setText("N/A")
             self.user_display_name_text.setText(I18nService.t("login"))
-            self.removeAction(self.logout_act)
+            self.removeAction(self.logout_action)
 
     def handle_logout(self):
         auth_context.update(is_authenticated=False)

@@ -5,8 +5,8 @@ from PyQt6.QtGui import *
 from PyQt6.QtCore import *
 from widgets.settings_dialog import AppSettingsDialog
 from i18n import I18nService, Language, __languages__
-from helpers.logger import logger
 from events import __event_emitter__, UserActionEvent
+from helpers.resolve_path import resolve_path
 
 
 class SideToolbar(QToolBar):
@@ -21,8 +21,8 @@ class SideToolbar(QToolBar):
         self.setStyleSheet(
             """
             QToolBar{
-                padding-left: 8px;
-                padding-right: 8px;
+                padding-left: 4px;
+                padding-right: 4px;
                 spacing: 12px;
                 background-color: #404040;
             }
@@ -31,15 +31,18 @@ class SideToolbar(QToolBar):
 
         # region File actions
         open_file_icon = QIcon()
-        pixmap = QPixmap("./assets/icons/folder-open.svg")
-        scaled_pixmap = pixmap.scaled(
-            18,
-            18,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
+        pixmap = QPixmap(resolve_path("assets/icons/folder-open.svg"))
 
-        open_file_icon.addPixmap(scaled_pixmap, QIcon.Mode.Normal, QIcon.State.Off)
+        open_file_icon.addPixmap(
+            pixmap.scaled(
+                18,
+                18,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            ),
+            QIcon.Mode.Normal,
+            QIcon.State.Off,
+        )
         self.open_folder_action = QAction(icon=open_file_icon, parent=self)
         self.open_folder_action.setShortcut(QKeySequence.StandardKey.Open)
         self.open_folder_action.setObjectName("open_folder_action")
@@ -49,14 +52,17 @@ class SideToolbar(QToolBar):
 
         # region Language actions
         language_icon = QIcon()
-        pixmap = QPixmap("./assets/icons/languages.svg")
-        scaled_pixmap = pixmap.scaled(
-            18,
-            18,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
+        pixmap = QPixmap(resolve_path("assets/icons/languages.svg"))
+        language_icon.addPixmap(
+            pixmap.scaled(
+                18,
+                18,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            ),
+            QIcon.Mode.Normal,
+            QIcon.State.Off,
         )
-        language_icon.addPixmap(scaled_pixmap, QIcon.Mode.Normal, QIcon.State.Off)
 
         self.language_setting_action = QAction(icon=language_icon, parent=self)
 
@@ -68,28 +74,34 @@ class SideToolbar(QToolBar):
         # region Settings actions
         self.setting_window = AppSettingsDialog(self.root)
         setting_icon = QIcon()
-        pixmap = QPixmap("./assets/icons/settings.svg")
-        scaled_pixmap = pixmap.scaled(
-            18,
-            18,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
+        pixmap = QPixmap(resolve_path("assets/icons/settings.svg"))
+        setting_icon.addPixmap(
+            pixmap.scaled(
+                18,
+                18,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            ),
+            QIcon.Mode.Normal,
+            QIcon.State.Off,
         )
-        setting_icon.addPixmap(scaled_pixmap, QIcon.Mode.Normal, QIcon.State.Off)
         self.setting_action = QAction(icon=setting_icon, parent=self)
         self.setting_action.triggered.connect(self.open_setting_dialog)
         self.addAction(self.setting_action)
 
         # region Help actions
         help_icon = QIcon()
-        pixmap = QPixmap("./assets/icons/circle-help.svg")
-        scaled_pixmap = pixmap.scaled(
-            18,
-            18,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
+        pixmap = QPixmap(resolve_path("assets/icons/circle-help.svg"))
+        help_icon.addPixmap(
+            pixmap.scaled(
+                18,
+                18,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            ),
+            QIcon.Mode.Normal,
+            QIcon.State.Off,
         )
-        help_icon.addPixmap(scaled_pixmap, QIcon.Mode.Normal, QIcon.State.Off)
         self.help_action = QAction(icon=help_icon, parent=self)
         self.help_action.setShortcut(QKeySequence("Ctrl+H"))
         self.addAction(self.help_action)
@@ -108,7 +120,7 @@ class SideToolbar(QToolBar):
         for language in __languages__:
             action = QAction(language["label"], self)
             action.triggered.connect(
-                lambda checked, lang=language: self.on_language_change(lang["value"])
+                lambda _, lang=language: self.on_language_change(lang["value"])
             )
             self.menu.addAction(action)
 
@@ -149,7 +161,7 @@ class SideToolbar(QToolBar):
 
     def on_language_change(self, lang: Language):
         try:
-            I18nService.on_language_change(lang)
+            I18nService.set_language(lang)
             I18nService.emit()
         except Exception as e:
             print(e)

@@ -234,6 +234,7 @@ QMessageBox QPushButton[text="&No"]:hover,QPushButton[text="&Cancel"]:hover {
    background-color: #404040;
 }
 
+
 QMenuBar{
    background-color: #171717;
 }
@@ -352,7 +353,7 @@ QToolBar::handle {
    font-family: "Inter";
    font-weight: 600;
    font-style: normal;
-   font-size: 16px;
+   font-size: 14px;
 }
 
 #settings_dialog #fieldset_legend{

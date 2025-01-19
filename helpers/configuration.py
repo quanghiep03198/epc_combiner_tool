@@ -1,10 +1,10 @@
 from os import path
 from dotenv import dotenv_values, set_key
-from constants import DB_DRIVER, DB_SERVER_DEFAULT
+from constants import DB_DRIVER, DB_SERVER_DEFAULT, DB_PORT
 from configparser import ConfigParser
 from helpers.logger import logger
 from enum import Enum
-from typing import Any
+from typing import Any, Callable
 
 # from pathlib import Path
 
@@ -19,19 +19,22 @@ __configs__.read(filenames=__cfg_file__)
 
 class ConfigSection(Enum):
     LOCALE = "LOCALE"
+    DATA = "DATA"
 
 
 class ConfigService:
 
     @staticmethod
     def load_configs() -> dict[str, str | None]:
-
+        """
+        Load configurations from .env file
+        """
         if not path.exists(".env"):
             with open(".env", "w") as configfile:
                 configfile.write(f"DB_DRIVER='{DB_DRIVER}'\n")
                 configfile.write(f"DB_SERVER_DEFAULT='{DB_SERVER_DEFAULT}'\n")
                 configfile.write("DB_SERVER=\n")
-                configfile.write("DB_PORT=\n")
+                configfile.write(f"DB_PORT='{DB_PORT}'\n")
                 configfile.write("DB_UID=\n")
                 configfile.write("DB_PWD=\n\n")
                 configfile.write("UHF_READER_TCP_IP=\n")
@@ -52,9 +55,18 @@ class ConfigService:
         set_key(".env", key, value)
 
     @staticmethod
-    def get_conf(section: str, key: str, default: Any = None) -> str:
+    def get_conf(
+        section: str,
+        key: str,
+        default: Any = None,
+        serializer: Callable[[str], Any] | None = None,
+    ) -> str:
         if __configs__.has_option(section, key):
-            return __configs__.get(section, key, fallback=default)
+            value = __configs__.get(section, key, fallback=default)
+            if serializer:
+                return serializer(value)
+            return value
+
         logger.warning(f"Config key {key} not found in section {section}")
         return default
 

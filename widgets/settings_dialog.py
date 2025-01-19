@@ -12,7 +12,7 @@ class AppSettingsDialog(QDialog):
     Setting dialog form for application connection settings
     """
 
-    _form_state = ConfigService.load_configs()
+    __form_state = ConfigService.load_configs()
 
     def __init__(self, root: QMainWindow):
         super().__init__(root)
@@ -51,8 +51,8 @@ class AppSettingsDialog(QDialog):
         self.reader_ip_input = QLineEdit(self.reader_ip_field_control)
         self.reader_ip_input.setPlaceholderText("0.0.0.0")
         self.reader_ip_input.setFixedHeight(36)
-        if self._form_state.get("UHF_READER_TCP_IP"):
-            self.reader_ip_input.setText(self._form_state.get("UHF_READER_TCP_IP"))
+        if self.__form_state.get("UHF_READER_TCP_IP"):
+            self.reader_ip_input.setText(self.__form_state.get("UHF_READER_TCP_IP"))
 
         self.reader_ip_input.textChanged.connect(
             lambda value: self.on_form_state_change("UHF_READER_TCP_IP", value)
@@ -73,8 +73,8 @@ class AppSettingsDialog(QDialog):
         self.reader_port_input = QLineEdit(self.reader_port_field_control)
         self.reader_port_input.setPlaceholderText("8160")
         self.reader_port_input.setFixedHeight(36)
-        if self._form_state.get("UHF_READER_TCP_PORT"):
-            self.reader_port_input.setText(self._form_state.get("UHF_READER_TCP_PORT"))
+        if self.__form_state.get("UHF_READER_TCP_PORT"):
+            self.reader_port_input.setText(self.__form_state.get("UHF_READER_TCP_PORT"))
         self.reader_port_input.textChanged.connect(
             lambda value: self.on_form_state_change("UHF_READER_TCP_PORT", value)
         )
@@ -126,8 +126,8 @@ class AppSettingsDialog(QDialog):
         self.db_server_input = QLineEdit(self.db_server_field_control)
         self.db_server_input.setPlaceholderText("0.0.0.0")
         self.db_server_input.setFixedHeight(36)
-        if self._form_state.get("DB_SERVER"):
-            self.db_server_input.setText(self._form_state.get("DB_SERVER"))
+        if self.__form_state.get("DB_SERVER"):
+            self.db_server_input.setText(self.__form_state.get("DB_SERVER"))
         self.db_server_input.textChanged.connect(
             lambda value: self.on_form_state_change("DB_SERVER", value)
         )
@@ -144,8 +144,8 @@ class AppSettingsDialog(QDialog):
         self.db_port_input = QLineEdit(self.db_port_field_control)
         self.db_port_input.setPlaceholderText("1433")
         self.db_port_input.setFixedHeight(36)
-        if self._form_state.get("DB_PORT"):
-            self.db_port_input.setText(self._form_state.get("DB_PORT"))
+        if self.__form_state.get("DB_PORT"):
+            self.db_port_input.setText(self.__form_state.get("DB_PORT"))
         self.db_port_input.textChanged.connect(
             lambda value: self.on_form_state_change("DB_PORT", value)
         )
@@ -163,8 +163,8 @@ class AppSettingsDialog(QDialog):
         self.db_uid_input = QLineEdit(self.db_uid_field_control)
         self.db_uid_input.setPlaceholderText("user")
         self.db_uid_input.setFixedHeight(36)
-        if self._form_state.get("DB_UID"):
-            self.db_uid_input.setText(self._form_state.get("DB_UID"))
+        if self.__form_state.get("DB_UID"):
+            self.db_uid_input.setText(self.__form_state.get("DB_UID"))
         self.db_uid_input.textChanged.connect(
             lambda value: self.on_form_state_change("DB_UID", value)
         )
@@ -190,8 +190,8 @@ class AppSettingsDialog(QDialog):
             """
         )
         self.db_pwd_input.setFixedHeight(36)
-        if self._form_state.get("DB_PWD"):
-            self.db_pwd_input.setText(self._form_state.get("DB_PWD"))
+        if self.__form_state.get("DB_PWD"):
+            self.db_pwd_input.setText(self.__form_state.get("DB_PWD"))
         self.db_pwd_input.textChanged.connect(
             lambda value: self.on_form_state_change("DB_PWD", value)
         )
@@ -247,13 +247,13 @@ class AppSettingsDialog(QDialog):
 
     @pyqtSlot(str, str)
     def on_form_state_change(self, field, value):
-        self._form_state[field] = value
+        self.__form_state[field] = value
 
     @pyqtSlot()
     def save_settings(self):
         err_count = 0
-        print(self._form_state)
-        for key, value in self._form_state.items():
+        print(self.__form_state)
+        for key, value in self.__form_state.items():
             if value == "":
                 toast = Toaster(
                     parent=self.root,
@@ -275,7 +275,7 @@ class AppSettingsDialog(QDialog):
             )
             toast.setPositionRelativeToWidget(None)
             toast.show()
-            __event_emitter__.emit(UserActionEvent.SETTINGS_CHANGE.value, None)
+            __event_emitter__.emit(UserActionEvent.SETTINGS_CHANGE.value)
 
     @pyqtSlot()
     def handle_close(self):
@@ -290,5 +290,6 @@ class AppSettingsDialog(QDialog):
             if reply == QMessageBox.StandardButton.No:
                 self.close()
                 self.root.close()
+                QApplication.instance().quit()
         else:
             self.close()

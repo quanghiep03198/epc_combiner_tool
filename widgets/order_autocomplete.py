@@ -7,11 +7,8 @@ from contexts.combine_form_context import combine_form_context
 from contexts.auth_context import auth_context
 from database import DATA_SOURCE_ERP
 from events import __event_emitter__, UserActionEvent
-from widgets.loading import LoadingWidget
 from i18n import I18nService
-
-
-# mo_no_change_event = AsyncIOEventEmitter()
+from helpers.resolve_path import resolve_path
 
 
 class OrderAutoCompleteWidget(QPushButton):
@@ -19,32 +16,31 @@ class OrderAutoCompleteWidget(QPushButton):
     Custom autocomplete for searching manufacturing order
     """
 
+    __is_closing: bool = False
+
     def __init__(self, root):
         super().__init__(root.container)
 
-        self._is_closing = False
         """
         A flag that indicates whether the popover content is closing or not.
         """
 
         self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.setStyleSheet(
-            "height: 32px; background-color: #171717; border: 1px solid #404040; color: #fafafa; text-align: left; padding: 2px 8px; font-weight: 400;"
+            "height: 36px; background-color: #171717; border: 1px solid #404040; color: #fafafa; text-align: left; padding: 2px 8px; font-weight: 400;"
         )
 
         chevron_icon = QIcon()
         chevron_icon.addPixmap(
-            QPixmap("./assets/icons/chevrons-up-down.svg"),
+            QPixmap(resolve_path("assets/icons/chevrons-up-down.svg")),
             QIcon.Mode.Normal,
             QIcon.State.Off,
         )
         self.setIcon(chevron_icon)
         self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self.setIconSize(QSize(14, 14))
-        self.setObjectName("manuOrderPopoverTrigger")
         self.setCheckable(True)
         self.setChecked(False)
-        # self.setFixedWidth(300)
         self.toggled.connect(self.handle_toggle_open)
         self.popover_content = QDialog(self)
         self.popover_content.setGraphicsEffect(None)
@@ -52,7 +48,6 @@ class OrderAutoCompleteWidget(QPushButton):
             "border: 1px solid #404040; border-radius: 4px; background-color: #171717"
         )
         self.popover_content.finished.connect(lambda: self.on_popover_content_close())
-        self.popover_content.setMaximumHeight(190)
         self.popover_content.setWindowFlags(
             Qt.WindowType.Popup
             | Qt.WindowType.FramelessWindowHint
@@ -81,8 +76,6 @@ class OrderAutoCompleteWidget(QPushButton):
         )
         self.popover_content.layout().addWidget(self.popover_menu_list)
 
-        self.loading = LoadingWidget(root, "Đang tải dữ liệu ...")
-
         __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value)(self.__translate__)
         __event_emitter__.on(UserActionEvent.AUTH_STATE_CHANGE.value)(
             lambda _: self.handle_find_mo_no("")
@@ -105,8 +98,8 @@ class OrderAutoCompleteWidget(QPushButton):
         displays the popover content. If an exception occurs during this process,
         it logs the error.
         """
-        if self._is_closing:
-            self._is_closing = False
+        if self.__is_closing:
+            self.__is_closing = False
             return
 
         button_geometry = self.geometry()
@@ -119,7 +112,7 @@ class OrderAutoCompleteWidget(QPushButton):
             animation.setStartValue(
                 QRect(
                     global_position.x() - button_geometry.x(),
-                    global_position.y(),
+                    global_position.y() - 24,
                     button_geometry.width(),
                     0,
                 )
@@ -127,7 +120,7 @@ class OrderAutoCompleteWidget(QPushButton):
             animation.setEndValue(
                 QRect(
                     global_position.x() - button_geometry.x(),
-                    global_position.y(),
+                    global_position.y() - 12,
                     button_geometry.width(),
                     250,
                 )
@@ -138,7 +131,7 @@ class OrderAutoCompleteWidget(QPushButton):
             self.popover_content.exec()
 
         else:
-            self._is_closing = True
+            self.__is_closing = True
             animation.setStartValue(
                 QRect(
                     global_position.x() - button_geometry.x(),
@@ -161,7 +154,7 @@ class OrderAutoCompleteWidget(QPushButton):
 
     @pyqtSlot()
     def on_popover_content_close(self):
-        self._is_closing = True
+        self.__is_closing = True
         self.setChecked(False)
 
     @pyqtSlot(str)
@@ -179,22 +172,12 @@ class OrderAutoCompleteWidget(QPushButton):
     def on_value_change(self, item: QListWidgetItem) -> None:
         """
         Handles the event when the value of the item changes.
-
-        This method is triggered when the value of the item changes. It displays a loading indicator,
-        retrieves the text value from the item, sets the text value, closes the popover content, emits
-        a "mo_no_change" event, processes any pending events, and waits for the event to complete.
         """
-        self.loading.open()
-        try:
-            value = item.text()
-            self.setText(value)
-            self.popover_content.close()
-            combine_form_context.update(mo_no=value)
-            __event_emitter__.emit(UserActionEvent.MO_NO_CHANGE.value, value)
-        except Exception as e:
-            logger.error(f"Error in on_mo_no_selected: {e}")
-        finally:
-            self.loading.close()
+        value = item.text()
+        self.setText(value)
+        self.popover_content.close()
+        combine_form_context.update(mo_no=value)
+        __event_emitter__.emit(UserActionEvent.MO_NO_CHANGE.value, value)
 
     # * Handle find manufacturing order from database
 

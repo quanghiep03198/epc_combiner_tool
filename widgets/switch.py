@@ -1,7 +1,4 @@
 """
-Author: Luan Dias - https://github.com/luandiasrj
-Url: https://github.com/luandiasrj/QToggle_-_Advanced_QCheckbox_for_PyQT6
-
 This code implements a custom QToggle class, which is a toggle switch derived
 from QCheckBox. The QToggle class features customizable colors, and properties.
 It includes smooth transitions when toggling between states.
@@ -45,7 +42,7 @@ from PyQt6.QtGui import (
     QPainterPath,
     QBrush,
     QPen,
-    QFont,
+    QCursor,
 )
 from PyQt6.QtWidgets import QCheckBox
 
@@ -93,6 +90,7 @@ class QToggle(QCheckBox):
             QColor("#171717"),
         )
         self._circle_pos, self._intermediate_bg_color = None, None
+        self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.setFixedHeight(18)
         self._animation_duration = 200  # milliseconds
         self.stateChanged.connect(self.start_transition)

@@ -6,7 +6,6 @@ from helpers.logger import logger
 from contexts.combine_form_context import combine_form_context
 from widgets.loading_widget import LoadingWidget
 from i18n import I18nService
-
 from events import UserActionEvent, __event_emitter__
 
 
@@ -27,7 +26,7 @@ class OrderDetailTableWidget(QTableWidget):
     Table for displaying order details
     """
 
-    order_detail_data = []
+    __order_detail_data = []
 
     def __init__(self, root: QWidget):
         super().__init__(
@@ -41,8 +40,7 @@ class OrderDetailTableWidget(QTableWidget):
         self.setColumnWidth(4, 200)
         self.setColumnWidth(5, 200)
         self.setColumnWidth(6, 250)
-        # self.setColumnCount(len(horizontal_headers))
-        # self.setHorizontalHeaderLabels(horizontal_headers)
+        self.resizeColumnsToContents()
         self.setSortingEnabled(False)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
@@ -74,8 +72,6 @@ class OrderDetailTableWidget(QTableWidget):
         self.empty_state_label = QLabel("No data available")
         self.empty_state_label.setStyleSheet("font-size: 16px; color: gray;")
         self.empty_state_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # self._retranslate_ui(__dictionary__)
 
         __event_emitter__.on(UserActionEvent.MO_NO_CHANGE.value)(self.on_mo_no_change)
         __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value)(self.__translate__)
@@ -127,12 +123,12 @@ class OrderDetailTableWidget(QTableWidget):
 
     def on_mo_noseq_change(self, selected_mo_noseq: str):
         if selected_mo_noseq == "all":
-            self.render_row(self.order_detail_data)
+            self.render_row(self.__order_detail_data)
         else:
             filtered_data = list(
                 filter(
                     lambda item: item["mo_noseq"] == selected_mo_noseq,
-                    self.order_detail_data,
+                    self.__order_detail_data,
                 )
             )
             self.render_row(filtered_data)
@@ -164,7 +160,7 @@ class OrderDetailTableWidget(QTableWidget):
             UserActionEvent.GET_ORDER_DETAIL_SUCCESS.value,
             list(map(lambda item: item["mo_noseq"], query_result)),
         )
-        self.order_detail_data = query_result
+        self.__order_detail_data = query_result
         # Render order detail to UI
 
         self.render_row(query_result)
