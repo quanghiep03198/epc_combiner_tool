@@ -2,6 +2,7 @@ cn_dictionary: dict = {
     "actions": {
         "cancel": "取消",
         "change_languague": "更改语言",
+        "close": "关闭",
         "compensate": "补",
         "compensating_combination": "补配对",
         "confirm": "确认",
@@ -20,6 +21,7 @@ cn_dictionary: dict = {
         "open_folder": "打开文件夹",
         "prev_page": "上一页",
         "reset": "重置",
+        "save": "保存",
         "search": "搜索",
         "setting": "设置",
         "start": "开始",

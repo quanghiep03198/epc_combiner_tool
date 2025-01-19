@@ -4,6 +4,7 @@ from PyQt6.QtSql import *
 import numpy
 from database import DATA_SOURCE_DL
 from contexts.auth_context import auth_context
+from i18n import I18nService
 
 
 class RFIDService:
@@ -31,7 +32,9 @@ class RFIDService:
                 if len(ng_epcs) > 0:
                     raise Exception(
                         {
-                            "message": "Tồn tại tem vừa mới phối, không thể phối lại.",
+                            "message": I18nService.t(
+                                "notification.recent_combined_epc_exists"
+                            ),
                             "data": {
                                 "ng_epcs": ng_epcs,
                                 "ok_epcs": ok_epcs,
@@ -51,7 +54,7 @@ class RFIDService:
                 if len(ng_epcs) > 0:
                     raise Exception(
                         {
-                            "message": "Tồn tại tem chưa sử dụng hết vòng đời, chưa thể phối lại.",
+                            "message": I18nService.t("notification.in_use_epc_exists"),
                             "data": {
                                 "ng_epcs": ng_epcs,
                                 "ok_epcs": ok_epcs,

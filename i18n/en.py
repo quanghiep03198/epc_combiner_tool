@@ -2,6 +2,7 @@ en_dictionary: dict = {
     "actions": {
         "cancel": "Cancel",
         "change_languague": "Change language",
+        "close": "Close",
         "compensate": "Compensate",
         "compensating_combination": "Compensating combination",
         "confirm": "Confirm",
@@ -20,6 +21,7 @@ en_dictionary: dict = {
         "open_folder": "Open folder",
         "prev_page": "Previous page",
         "reset": "Reset",
+        "save": "Save",
         "search": "Search",
         "setting": "Settings",
         "start": "Start",

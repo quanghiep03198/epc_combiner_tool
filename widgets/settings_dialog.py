@@ -26,9 +26,9 @@ class AppSettingsDialog(QDialog):
         self.setSizeGripEnabled(False)
         self.setContentsMargins(8, 8, 8, 8)
 
-        _setting_form_layout = QVBoxLayout()
-        _setting_form_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        _setting_form_layout.setSpacing(24)
+        setting_form_layout = QVBoxLayout()
+        setting_form_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        setting_form_layout.setSpacing(24)
         # region UHF Reader settings
 
         # UHF Reader IP setting field control
@@ -84,7 +84,7 @@ class AppSettingsDialog(QDialog):
         self.reader_fieldset_layout.addWidget(self.reader_ip_field_control)
         self.reader_fieldset_layout.addWidget(self.reader_port_field_control)
 
-        _setting_form_layout.addWidget(self.reader_fieldset)
+        setting_form_layout.addWidget(self.reader_fieldset)
         # endregion
 
         # region Database settings
@@ -204,7 +204,7 @@ class AppSettingsDialog(QDialog):
         self.db_fieldset_layout.addWidget(self.db_uid_field_control)
         self.db_fieldset_layout.addWidget(self.db_pwd_field_control)
 
-        _setting_form_layout.addWidget(self.db_fieldset)
+        setting_form_layout.addWidget(self.db_fieldset)
         # endregion
 
         # region Form dialog actions buttons
@@ -241,9 +241,15 @@ class AppSettingsDialog(QDialog):
         self.button_group_layout.addWidget(self.close_button)
         self.button_group.setLayout(self.button_group_layout)
 
-        _setting_form_layout.addWidget(self.button_group)
-        self.setLayout(_setting_form_layout)
+        setting_form_layout.addWidget(self.button_group)
+        self.setLayout(setting_form_layout)
+
+        __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value, self.__translate__)
         # endregion
+
+    def __translate__(self):
+        self.save_button.setText(I18nService.t("actions.save"))
+        self.close_button.setText(I18nService.t("actions.close"))
 
     @pyqtSlot(str, str)
     def on_form_state_change(self, field, value):

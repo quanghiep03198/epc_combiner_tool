@@ -2,6 +2,7 @@ vi_dictionary: dict = {
     "actions": {
         "cancel": "Hủy",
         "change_languague": "Thay đổi ngôn ngữ",
+        "close": "Đóng",
         "compensate": "Bù",
         "compensating_combination": "Phối bù",
         "confirm": "Xác nhận",
@@ -20,6 +21,7 @@ vi_dictionary: dict = {
         "open_folder": "Mở thư mục",
         "prev_page": "Trang trước",
         "reset": "Đặt lại",
+        "save": "Lưu",
         "search": "Tìm kiếm",
         "setting": "Cài đặt",
         "start_reading": "Bắt đầu đọc",

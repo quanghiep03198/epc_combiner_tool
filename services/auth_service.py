@@ -1,6 +1,7 @@
 from repositories.auth_repository import AuthRepository
 from helpers.logger import logger
 from constants import StatusCode
+from i18n import I18nService
 
 
 class AuthService:
@@ -11,14 +12,14 @@ class AuthService:
             if all(value is None for value in user.values()):
                 raise Exception(
                     {
-                        "message": "Tài khoản không tồn tại.",
+                        "message": I18nService.t("notification.user_not_found"),
                         "status": StatusCode.UNAUTHORIZED.value,
                     }
                 )
             if user.get("password") != password:
                 raise Exception(
                     {
-                        "message": "Mật khẩu không đúng.",
+                        "message": I18nService.t("notification.incorrect_password"),
                         "status": StatusCode.UNAUTHORIZED.value,
                     }
                 )
