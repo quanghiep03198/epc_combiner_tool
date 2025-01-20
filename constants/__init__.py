@@ -21,8 +21,9 @@ class NgAction(Enum):
 
 @unique
 class FactoryNames(Enum):
-    VA1 = "Liên Dinh"
-    VB2 = "Liên Thuấn 2"
+    VA1 = "Lian Ying"
+    VB1 = "Lian Shun 1"
+    VB2 = "Lian Shun 2"
     CA1 = "Cambodia"
 
 
