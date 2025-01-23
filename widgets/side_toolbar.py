@@ -142,8 +142,10 @@ class SideToolbar(QToolBar):
         self.setting_window.exec()
 
     def handle_reveal_data_folder(self):
-        folder_path = os.path.abspath("./data")
-        print(folder_path)
+        folder_path = resolve_path("data")
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+
         if os.name == "nt":
             # Windows
             os.startfile(folder_path)
