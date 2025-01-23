@@ -83,7 +83,7 @@ OUTER APPLY (
 WHERE b.size_qty <> 0
     AND a.isactive= 'Y'
     AND a1.mo_no = :mo_no
-GROUP BY a.size_code,b.size_numcode
+GROUP BY a.size_code, b.size_numcode
 ORDER BY 
     CASE 
         WHEN ISNUMERIC(b.size_numcode) = 1 THEN CAST(b.size_numcode AS FLOAT)  -- Nếu là số, chuyển thành dạng số
