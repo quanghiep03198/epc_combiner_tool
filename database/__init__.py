@@ -103,7 +103,7 @@ def __init_datasources() -> None:
         connection_name=DatabaseConnection.DATA_LAKE.value,
     )
     DATA_SOURCE_SYSCLOUD = DatabaseService.connnect_database(
-        server=configuration.get("DB_SERVER_DEFAULT"),
+        server=configuration.get("DB_SERVER"),
         database=DataSources.SYSCLOUD.value,
         connection_name=DatabaseConnection.SYSCLOUD.value,
     )
