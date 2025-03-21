@@ -79,6 +79,7 @@ class RFIDService:
 
         try:
             query = QSqlQuery(DATA_SOURCE_DL)
+
             query.prepare(
                 """--sql
                 UPDATE DV_DATA_LAKE.dbo.dv_RFIDrecordmst
@@ -110,7 +111,8 @@ class RFIDService:
                 remark = :remark
                 WHERE matchkeyid IN (
                     SELECT keyid as matchkeyid 
-                    FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst WHERE EPC_Code IN ( 
+                    FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst 
+                    WHERE EPC_Code IN ( 
                         SELECT value AS EPC_Code 
                         FROM STRING_SPLIT(CAST(:epc_list AS NVARCHAR(MAX)), ',')
                     )
@@ -130,7 +132,8 @@ class RFIDService:
             if not query.exec():
                 raise Exception(query.lastError().text())
 
-            return query.numRowsAffected()
+            result = query.numRowsAffected()
+            return result
         except Exception as e:
             logger.error(e)
             raise Exception(e)

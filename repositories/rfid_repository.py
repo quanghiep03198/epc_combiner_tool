@@ -113,7 +113,6 @@ class RFIDRepository:
                         )
                         AND b.ri_cancel = 0
                         AND a.stationNO LIKE '%P%103'
-                        AND DATEDIFF(DAY, CAST(b.ri_date AS DATE), CAST(GETDATE() AS DATE)) >= 3
                 """
             )
 
@@ -124,7 +123,6 @@ class RFIDRepository:
 
             while query.next():
                 result.append(query.value("EPC_Code"))
-            return result
         except Exception as e:
             logger.error(e)
         finally:
@@ -224,8 +222,6 @@ class RFIDRepository:
                 )
             )
 
-            DATA_SOURCE_DL.transaction()
-
             query.prepare(
                 f"""--sql
                     -- Cancel old records
@@ -238,16 +234,16 @@ class RFIDRepository:
                     WHERE EPC_Code IN ({epc_params_str});    
                     -- Insert new records    
                     INSERT INTO DV_DATA_LAKE.dbo.dv_rfidmatchmst (
-                            EPC_Code, mo_no, mo_noseq, mat_code,  or_no, or_custpo, 
-                            shoestyle_codefactory, cust_shoestyle, size_numcode, size_code, size_qty,
-                            factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, 
-                            ri_date, ri_cancel, ri_type, ri_foot, 
-                            sole_tag, sole_tag_rate, sole_tag_round, 
-                            user_code_created, user_name_created, 
-                            dept_code, dept_name,
-                            isactive, remark
-                        )
-                        VALUES {insert_values}   
+                        EPC_Code, mo_no, mo_noseq, mat_code,  or_no, or_custpo, 
+                        shoestyle_codefactory, cust_shoestyle, size_numcode, size_code, size_qty,
+                        factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, 
+                        ri_date, ri_cancel, ri_type, ri_foot, 
+                        sole_tag, sole_tag_rate, sole_tag_round, 
+                        user_code_created, user_name_created, 
+                        dept_code, dept_name,
+                        isactive, remark
+                    )
+                    VALUES {insert_values}   
                 """
             )
             if not query.exec():
