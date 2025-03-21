@@ -38,6 +38,25 @@ class AppToolBar(QToolBar):
             }
         """
         )
+        self.version_layout = QHBoxLayout()
+        self.version_layout.setContentsMargins(6, 0, 0, 0)
+        self.version_layout.setSpacing(8)
+        self.version_layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        self.version_icon = QLabel()
+        pixmap = QPixmap(resolve_path("assets/icons/tag.svg")).scaled(
+            18,
+            18,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        self.version_icon.setPixmap(pixmap)
+        self.version_text = QLabel()
+        self.version_text.setText("Version 1.0.0 Beta")
+        self.version = QWidget()
+        self.version.setLayout(self.version_layout)
+        self.version_layout.addWidget(self.version_icon)
+        self.version_layout.addWidget(self.version_text)
+
         self.user_locale_layout = QHBoxLayout()
         self.user_locale_layout.setContentsMargins(6, 0, 0, 0)
         self.user_locale_layout.setSpacing(8)
@@ -58,6 +77,7 @@ class AppToolBar(QToolBar):
         self.user_locale_layout.addWidget(self.globe_icon)
         self.user_locale_layout.addWidget(self.user_locale_text)
 
+        self.addWidget(self.version)
         self.addWidget(self.user_locale)
 
         self.spacer = QWidget()

@@ -6,7 +6,6 @@ from helpers.resolve_path import resolve_path
 from widgets.switch import QToggle
 from events import __event_emitter__, UserActionEvent
 from i18n import I18nService
-from helpers.write_data import write_data
 
 
 class StatusBar(QToolBar):
@@ -38,8 +37,8 @@ class StatusBar(QToolBar):
         self.db_primary_text = QLabel(text=self.configurations.get("DB_SERVER", "N/A"))
         database_icon = QLabel()
         pixmap = QPixmap(resolve_path("assets/icons/database.svg")).scaled(
-            16,
-            16,
+            18,
+            18,
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
@@ -47,27 +46,6 @@ class StatusBar(QToolBar):
         self.db_primary_connection_layout.addWidget(database_icon)
         self.db_primary_connection_layout.addWidget(self.db_primary_text)
         self.addWidget(self.db_primary_connection_status)
-
-        # Database master connection status
-        self.db_master_connection_layout = QHBoxLayout()
-        self.db_master_connection_layout.setContentsMargins(0, 0, 0, 0)
-        self.db_master_connection_layout.setSpacing(4)
-        self.db_master_connection_status = QWidget()
-        self.db_master_connection_status.setLayout(self.db_master_connection_layout)
-        self.db_master_text = QLabel(
-            text=self.configurations.get("DB_SERVER_DEFAULT", "N/A")
-        )
-        database_icon = QLabel()
-        pixmap = QPixmap(resolve_path("assets/icons/database.svg")).scaled(
-            16,
-            16,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-        database_icon.setPixmap(pixmap)
-        self.db_master_connection_layout.addWidget(database_icon)
-        self.db_master_connection_layout.addWidget(self.db_master_text)
-        self.addWidget(self.db_master_connection_status)
 
         # UHF Reader connection status
         self.reader_connection_layout = QHBoxLayout()
@@ -77,8 +55,8 @@ class StatusBar(QToolBar):
         self.reader_connection_status.setLayout(self.reader_connection_layout)
         self.reader_icon = QLabel()
         pixmap = QPixmap(resolve_path("assets/icons/hard-drive.svg")).scaled(
-            16,
-            16,
+            18,
+            18,
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
