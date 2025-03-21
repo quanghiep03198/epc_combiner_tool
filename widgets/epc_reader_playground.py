@@ -142,7 +142,7 @@ class EpcReaderPlayground(QFrame):
         )
         self.toggle_connect_button = QPushButton(parent=self.reader_actions_group)
         self.toggle_connect_button.setObjectName("toggle_connect_button")
-        self.toggle_connect_button.setFixedSize(32, 32)
+        self.toggle_connect_button.setFixedSize(36, 36)
         self.toggle_connect_button.setIcon(self.plug_icon)
 
         self.toggle_connect_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
@@ -169,7 +169,7 @@ class EpcReaderPlayground(QFrame):
         self.toggle_play_button.setChecked(False)
         self.toggle_play_button.setToolTip("Bắt đầu đọc")
         self.toggle_play_button.setIcon(self.play_icon)
-        self.toggle_play_button.setFixedSize(32, 32)
+        self.toggle_play_button.setFixedSize(36, 36)
         self.toggle_play_button.setEnabled(False)
         self.toggle_play_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.toggle_play_button.toggled.connect(self.handle_toggle_play)
@@ -183,7 +183,7 @@ class EpcReaderPlayground(QFrame):
         )
         self.reset_btn = QPushButton(parent=self.reader_actions_group)
         self.reset_btn.setIcon(self.reset_icon)
-        self.reset_btn.setFixedSize(32, 32)
+        self.reset_btn.setFixedSize(36, 36)
         self.reset_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.reset_btn.setObjectName("reset_btn")
         self.reset_btn.setToolTip("Đặt lại danh sách quét")
@@ -197,7 +197,7 @@ class EpcReaderPlayground(QFrame):
         self.pagination_layout = QHBoxLayout()
         self.pagination_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.pagination_layout.setContentsMargins(0, 0, 0, 0)
-        self.pagination_layout.setSpacing(2)
+        self.pagination_layout.setSpacing(4)
         self.pagination_group = QFrame(parent=self)
         self.pagination_group.setLayout(self.pagination_layout)
         self.page_index = QLabel(parent=self.pagination_group)
@@ -226,8 +226,8 @@ class EpcReaderPlayground(QFrame):
         )
         self.prev_page_button.setIcon(self.prev_icon)
         self.next_page_button.setIcon(self.next_icon)
-        self.prev_page_button.setFixedSize(32, 32)
-        self.next_page_button.setFixedSize(32, 32)
+        self.prev_page_button.setFixedSize(36, 36)
+        self.next_page_button.setFixedSize(36, 36)
         self.prev_page_button.setToolTip("Trang trước")
         self.next_page_button.setToolTip("Trang sau")
 
@@ -340,8 +340,7 @@ class EpcReaderPlayground(QFrame):
 
     def on_combine_form_state_change(self, data):
         # * Only when size is selected, enable the connect button
-        self.__max_epc_qty = data["size_qty"]
-
+        self.__max_epc_qty = data["size_qty"] - data["in_use_qty"]
         self.scanned_epc_counter.setText(
             self.__get_counter_text(
                 data["ri_type"], len(self.__epc_datalist), SCANNED_EPC_LABEL
@@ -534,6 +533,9 @@ class EpcReaderPlayground(QFrame):
         if self.__current_tab_index == 2:
             ng_epcs_detail_table_dialog = NgEpcTableDialog(self.root)
             ng_epcs_detail_table_dialog.set_data(self.__ng_epc_detail_datalist)
+            ng_epcs_detail_table_dialog.setWindowTitle(
+                I18nService.t("titles.combination_history")
+            )
             ng_epcs_detail_table_dialog.exec()
 
     def on_ng_epc_mutation(self, data: list[str]):

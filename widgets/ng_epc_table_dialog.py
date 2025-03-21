@@ -48,7 +48,6 @@ class MutateNgEpcWorker(QRunnable):
                 num_rows_affected = RFIDService.force_end_lifecycle(self._payload)
             elif self._action == NgAction.CANCEL.value:
                 num_rows_affected = RFIDService.force_cancel(self._payload["epcs"])
-
             self.signals.fulfill.emit(num_rows_affected)
         except Exception as e:
             logger.error(e)
@@ -73,12 +72,19 @@ class NgEpcTableDialog(QDialog):
     __has_next_page: bool = False
     __has_prev_page: bool = False
 
+    __horizontal_header_labels: list = [
+        "EPC",
+        "mo_no",
+        "size_numcode",
+        "ri_date",
+        "stationNO",
+    ]
+
     # region UI Initialization
     def __init__(self, parent=None):
         super().__init__(parent)
         self.root = parent
 
-        self.setWindowTitle("Lịch sử phối")
         self.minimumWidth = QSize(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
         self.resize(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
 
@@ -107,8 +113,8 @@ class NgEpcTableDialog(QDialog):
         # ComboBox for "action" field
         self.action_select = QComboBox()
         self.action_select.setPlaceholderText("Thao tác tem NG")
-        self.action_select.addItem(NgAction.COMPENSATE.value, NgAction.COMPENSATE.value)
-        self.action_select.addItem(NgAction.CANCEL.value, NgAction.CANCEL.value)
+        self.action_select.addItem("Bù thành hình", NgAction.COMPENSATE.value)
+        self.action_select.addItem("Hủy", NgAction.CANCEL.value)
         self.action_select.currentIndexChanged.connect(self.handle_ng_action_change)
 
         # Submit button
@@ -125,8 +131,8 @@ class NgEpcTableDialog(QDialog):
         # region EPC Combination Table
         self.table = QTableWidget(self)
         self.table.setMaximumHeight(350)
-        self.table.setColumnCount(len(self._horizontal_header_labels))
-        self.table.setHorizontalHeaderLabels(self._horizontal_header_labels)
+        self.table.setColumnCount(len(self.__horizontal_header_labels))
+        self.table.setHorizontalHeaderLabels(self.__horizontal_header_labels)
         self.table.setSortingEnabled(False)
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
@@ -259,6 +265,8 @@ class NgEpcTableDialog(QDialog):
         self.dialog_layout.addWidget(self.table)
         self.dialog_layout.addWidget(self.pagination_group)
 
+        __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value)(self.__translate__)
+
     def __translate__(self):
         self.action_select.setPlaceholderText(
             I18nService.t("placeholders.action_placeholder")
@@ -266,21 +274,21 @@ class NgEpcTableDialog(QDialog):
         self.mo_no_select.setPlaceholderText(
             I18nService.t("placeholders.mo_no_placeholder")
         )
-        self.mo_no_select.setItemText(0, I18nService.t("all"))
+        self.mo_no_select.setItemText(0, I18nService.t("labels.all"))
         self.size_select.setPlaceholderText(
             I18nService.t("placeholders.size_numcode_placeholder")
         )
         self.submit_button.setText(I18nService.t("actions.confirm"))
 
-        horizontal_header_labels = [
+        self.__horizontal_header_labels = [
             "EPC",
             I18nService.t("fields.mo_no"),
             I18nService.t("fields.size_numcode"),
             I18nService.t("fields.ri_date"),
-            I18nService.t("fields.stationNO"),
+            I18nService.t("fields.station_no"),
         ]
-        self.table.setColumnCount(len(horizontal_header_labels))
-        self.table.setHorizontalHeaderLabels(horizontal_header_labels)
+        self.table.setColumnCount(len(self.__horizontal_header_labels))
+        self.table.setHorizontalHeaderLabels(self.__horizontal_header_labels)
         self.first_page_button.setToolTip("actions.first_page")
         self.last_page_button.setToolTip("actions.last_page")
         self.prev_page_button.setToolTip("actions.prev_page")
@@ -288,6 +296,10 @@ class NgEpcTableDialog(QDialog):
         self.page_index.setText(
             f"{I18nService.t("labels.page")} {self.__current_page}/{self.__total_page}"
         )
+
+        self.action_select.setItemText(0, I18nService.t("actions.compensate"))
+        self.action_select.setItemText(1, I18nService.t("actions.cancel"))
+
         self.page_size_select.setItemText(0, f"10 {I18nService.t("labels.per_page")}")
         self.page_size_select.setItemText(1, f"30 {I18nService.t("labels.per_page")}")
         self.page_size_select.setItemText(2, f"50 {I18nService.t("labels.per_page")}")
@@ -297,26 +309,28 @@ class NgEpcTableDialog(QDialog):
         self.__filtered_data = data
 
         self.mo_no_select.clear()
-        self.mo_no_select.addItem("all", "all")
+        self.mo_no_select.addItem(I18nService.t("labels.all"), "all")
 
         for item in unique(list(map(lambda item: item["mo_no"], data))):
             self.mo_no_select.addItem(item, item)
 
         self.__current_page = 1
-        self._handle_pagination()
-        self._render_page_row()
-        self._check_is_cancellable()
-        self._check_is_compensable()
-        self._validate_mutation_form()
+        self.__handle_pagination()
+        self.__render_page_row()
+        self.__check_is_cancellable()
+        self.__check_is_compensable()
+        self.__validate_mutation_form()
+
+        self.__translate__()
 
     def set_form_field_value(self, field: str, value: str) -> None:
         self.__mutation_form_values[field] = value
-        self._check_is_cancellable()
-        self._check_is_compensable()
-        can_submit = self._validate_mutation_form()
+        self.__check_is_cancellable()
+        self.__check_is_compensable()
+        can_submit = self.__validate_mutation_form()
         self.submit_button.setEnabled(can_submit)
 
-    def _handle_pagination(self) -> None:
+    def __handle_pagination(self) -> None:
         self.__total_page = math.ceil(len(self.__original_data) / self.__page_size)
         self.__has_next_page = self.__current_page < self.__total_page
         self.__has_prev_page = self.__current_page > 1
@@ -326,10 +340,12 @@ class NgEpcTableDialog(QDialog):
         self.prev_page_button.setEnabled(self.__has_prev_page)
         self.next_page_button.setEnabled(self.__has_next_page)
 
-    def _render_page_row(self) -> None:
+    def __render_page_row(self) -> None:
         start_index = (self.__current_page - 1) * self.__page_size
         end_index = start_index + self.__page_size
         page_data = self.__filtered_data[start_index:end_index]
+        page_data = self.__filtered_data
+
         self.table.setRowCount(len(page_data))
         for index, row in enumerate(page_data):
             self.table.setItem(index, 0, QTableWidgetItem(row["EPC_Code"]))
@@ -340,18 +356,18 @@ class NgEpcTableDialog(QDialog):
         # Always resize columns to fit content
         self.table.resizeColumnsToContents()
 
-    def _check_is_compensable(self) -> bool:
+    def __check_is_compensable(self) -> bool:
         is_compensable = (
             all(item["stationNO"] is not None for item in self.__filtered_data)
-            # and (self._mutation_form_values["action"] == NgAction.COMPENSATE.value)
+            # and (self.__mutation_form_values["action"] == NgAction.COMPENSATE.value)
             and (self.__mutation_form_values["mo_no"] is not None)
             and self.__mutation_form_values["mo_no"] != "all"
             and (self.__mutation_form_values["size_code"] is not None)
         )
-        self._set_action_enabled(0, is_compensable)
+        self.__set_action_enabled(0, is_compensable)
         return is_compensable
 
-    def _check_is_cancellable(self) -> bool:
+    def __check_is_cancellable(self) -> bool:
         is_cancellable = (
             all(item["stationNO"] is None for item in self.__filtered_data)
             # and (self._mutation_form_values["action"] == NgAction.CANCEL.value)
@@ -359,18 +375,21 @@ class NgEpcTableDialog(QDialog):
             and self.__mutation_form_values["mo_no"] != "all"
             and (self.__mutation_form_values["size_code"] is not None)
         )
-        self._set_action_enabled(1, is_cancellable)
+        self.__set_action_enabled(1, is_cancellable)
         return is_cancellable
 
-    def _set_action_enabled(self, index, is_enabled: bool):
-        model = self.action_select.model()
-        item = model.item(index)
-        if is_enabled:
-            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEnabled)
-        else:
-            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
+    def __set_action_enabled(self, index, is_enabled: bool):
+        try:
+            model = self.action_select.model()
+            item = model.item(index)
+            if is_enabled:
+                item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEnabled)
+            else:
+                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
+        except Exception as e:
+            logger.error(e)
 
-    def _validate_mutation_form(self) -> bool:
+    def __validate_mutation_form(self) -> bool:
         """
         Validates the mutation form based on the current form values.
         """
@@ -378,10 +397,10 @@ class NgEpcTableDialog(QDialog):
             case None:
                 return False
             case NgAction.COMPENSATE.value:
-                return self._check_is_compensable()
+                return self.__check_is_compensable()
             case NgAction.CANCEL.value:
                 # Only cancel EPCs that have not been moved to a station
-                return self._check_is_cancellable()
+                return self.__check_is_cancellable()
 
     @pyqtSlot(int)
     def handle_mo_no_change(self, index: int):
@@ -409,8 +428,8 @@ class NgEpcTableDialog(QDialog):
                 self.size_select.addItem(item, item)
 
         self.__current_page = 1
-        self._render_page_row()
-        self._handle_pagination()
+        self.__render_page_row()
+        self.__handle_pagination()
 
     @pyqtSlot(int)
     def handle_size_change(self, index: int):
@@ -429,28 +448,28 @@ class NgEpcTableDialog(QDialog):
     @pyqtSlot(int)
     def handle_goto_page(self, step):
         self.__current_page += step
-        self._render_page_row()
-        self._handle_pagination()
+        self.__render_page_row()
+        self.__handle_pagination()
 
     @pyqtSlot()
     def handle_goto_first_page(self):
         self.__current_page = 1
-        self._render_page_row()
-        self._handle_pagination()
+        self.__render_page_row()
+        self.__handle_pagination()
 
     @pyqtSlot()
     def handle_goto_last_page(self):
         self.__current_page = self.__total_page
-        self._render_page_row()
-        self._handle_pagination()
+        self.__render_page_row()
+        self.__handle_pagination()
 
     @pyqtSlot(int)
     def handle_page_size_change(self, index: int):
         self.__page_size = self.page_size_select.itemData(index)
         if self.__page_size > self.__total_page:
             self.__current_page = 1
-        self._handle_pagination()
-        self._render_page_row()
+        self.__handle_pagination()
+        self.__render_page_row()
 
     @pyqtSlot(int)
     def handle_ng_action_change(self, index: int):

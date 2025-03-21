@@ -44,6 +44,7 @@ vi_dictionary: dict = {
         "shoes_style_code_factory": "Hình thể xưởng",
         "size_numcode": "Cỡ giày",
         "size_qty": "Số lượng đặt đơn",
+        "station_no": "Trạm",
     },
     "labels": {
         "all": "Tất cả",
@@ -95,5 +96,8 @@ vi_dictionary: dict = {
         "mo_noseq_placeholder": "Chọn tiểu chỉ lệnh",
         "search_placeholder": "Tìm kiếm ...",
         "size_numcode_placeholder": "Chọn cỡ giày",
+    },
+    "titles": {
+        "combination_history": "Lịch sử phối",
     },
 }

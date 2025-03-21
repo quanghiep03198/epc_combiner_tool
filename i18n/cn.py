@@ -44,6 +44,7 @@ cn_dictionary: dict = {
         "shoes_style_code_factory": "工厂型体",
         "size_numcode": "尺码",
         "size_qty": "尺码数量",
+        "station_no": "站点名称",
     },
     "labels": {
         "all": "全部",
@@ -95,5 +96,8 @@ cn_dictionary: dict = {
         "mo_noseq_placeholder": "选择子指令",
         "search_placeholder": "搜索 ...",
         "size_numcode_placeholder": "选择鞋码",
+    },
+    "titles": {
+        "combination_history": "配双记录",
     },
 }

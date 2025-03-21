@@ -81,7 +81,7 @@ class CombineForm(QFrame):
         self.action_select.addItem(
             CombineAction.COMPENSATE.value, CombineAction.COMPENSATE.value
         )
-
+        self.action_select.setCurrentIndex(0)
         self.action_select.currentIndexChanged.connect(
             lambda item: self.on_combine_from_state_change(
                 "ri_type", self.action_select.itemData(item)
@@ -138,6 +138,7 @@ class CombineForm(QFrame):
         __event_emitter__.on(UserActionEvent.AUTH_STATE_CHANGE.value)(
             self.on_auth_state_change
         )
+
         # * On selected size change
         __event_emitter__.on(UserActionEvent.SELECTED_SIZE_CHANGE.value)(
             self.resume_combination
@@ -211,6 +212,7 @@ class CombineForm(QFrame):
             self.on_combine_from_state_change("size_numcode", size_item["size_numcode"])
             self.on_combine_from_state_change("size_code", size_item["size_code"])
             self.on_combine_from_state_change("size_qty", size_item["size_qty"])
+            self.on_combine_from_state_change("in_use_qty", size_item["in_use_qty"])
 
     @pyqtSlot(int)
     def handle_mo_noseq_change(self, selected_index: int):

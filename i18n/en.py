@@ -33,9 +33,9 @@ en_dictionary: dict = {
         "compensated_qty": "Compensated quantity",
         "customer_order_code": "Customer order",
         "in_use_qty": "In use quantity",
-        "mo_no": "Order",
-        "mo_noseq": "Sub order",
-        "mo_qty": "Order quantity",
+        "mo_no": "Command number",
+        "mo_noseq": "Sub command number",
+        "mo_qty": "Command number quantity",
         "or_custpo": "Order purchase order",
         "or_no": "Order code",
         "ri_date": "Combination date",
@@ -44,6 +44,7 @@ en_dictionary: dict = {
         "shoes_style_code_factory": "Factory style",
         "size_numcode": "Shoe size",
         "size_qty": "Size quantity",
+        "station_no": "Station NO",
     },
     "labels": {
         "all": "All",
@@ -89,11 +90,14 @@ en_dictionary: dict = {
         "user_not_found": "User not found",
     },
     "placeholders": {
-        "combine_action_placeholder": "Select combine action",
+        "action_placeholder": "Select combine action",
         "factory_placeholder": "Select factory",
         "mo_no_placeholder": "Select order",
         "mo_noseq_placeholder": "Select sub order",
         "search_placeholder": "Search ...",
         "size_numcode_placeholder": "Select shoe size",
+    },
+    "titles": {
+        "combination_history": "Combination history",
     },
 }
