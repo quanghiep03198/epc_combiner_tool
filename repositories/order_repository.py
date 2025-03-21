@@ -5,14 +5,15 @@ from database import DatabaseService, DATA_SOURCE_ERP
 
 
 class OrderRepository:
+    __sql_file_path = (
+        Path(__file__).parent.resolve() / "./sql/get_order_information.sql"
+    )
 
     @staticmethod
     def get_order_detail(mo_no: str):
         results = []
         try:
-            current_dir = Path(__file__).parent.resolve()
-            sql_file_path = current_dir / "./sql/get_order_information.sql"
-            sql_statement = DatabaseService.get_raw_sql(sql_file_path)
+            sql_statement = DatabaseService.get_raw_sql(OrderRepository.__sql_file_path)
             query = QSqlQuery(DATA_SOURCE_ERP)
             query.prepare(sql_statement)
             query.bindValue(":mo_no", mo_no)

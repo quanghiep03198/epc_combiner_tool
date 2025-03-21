@@ -5,14 +5,15 @@ from database import DatabaseService, DATA_SOURCE_ERP
 
 
 class SizingRepository:
+    __sql_file_path = Path(__file__).parent.resolve() / "./sql/get_size_qty.sql"
 
     @staticmethod
     def find_size_qty(mo_no: str) -> list[dict]:
         result = []
         try:
-            current_dir = Path(__file__).parent.resolve()
-            sql_file_path = current_dir / "./sql/get_size_qty.sql"
-            sql_statement = DatabaseService.get_raw_sql(sql_file_path)
+            sql_statement = DatabaseService.get_raw_sql(
+                SizingRepository.__sql_file_path
+            )
             query = QSqlQuery(DATA_SOURCE_ERP)
             query.prepare(sql_statement)
             query.bindValue(":mo_no", mo_no)
