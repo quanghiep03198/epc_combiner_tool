@@ -1,3 +1,5 @@
+from constants import CombineAction
+
 global combine_form_context
 
 combine_form_context = {
@@ -11,6 +13,7 @@ combine_form_context = {
     "or_custpo": None,
     "cust_shoestyle": None,
     "size_qty": 0,
+    "in_use_qty": 0,
     "user_code_created": None,
     "user_name_created": None,
     "user_code_updated": None,
@@ -22,7 +25,7 @@ combine_form_context = {
     "factory_code_produce": None,
     "factory_name_produce": None,  # * This is a default value
     "ri_cancel": 0,
-    "ri_type": None,
+    "ri_type": CombineAction.COMBINE_NEW.value,
     "ri_foot": "A",
     "sole_tag": "A",
     "sole_tag_rate": 1,
