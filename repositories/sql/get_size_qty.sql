@@ -56,28 +56,29 @@ OUTER APPLY (
 ) b (
   [size_numcode],[size_qty]
 )
+-- tổng số lượng đã phối
 OUTER APPLY (
     SELECT COUNT(EPC_Code) AS combined_qty
     FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst
-    WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode 
+    WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode AND sole_tag = 'A' AND isactive = 'Y'
     GROUP BY size_code, size_numcode
 ) c ([combined_qty])
 OUTER APPLY (
     SELECT COUNT(EPC_Code) AS in_use_qty
     FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst
-    WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode AND ri_cancel = 0
+    WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode AND ri_cancel = 0 AND sole_tag = 'A' AND isactive = 'Y'
     GROUP BY size_code, size_numcode
 ) d ([in_use_qty])
 OUTER APPLY (
     SELECT COUNT(EPC_Code) AS compensated_qty
     FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst
-    WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode AND ri_type = 'D'
+    WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode AND ri_type = 'D' AND sole_tag = 'A' AND isactive = 'Y'
     GROUP BY size_code, size_numcode
 ) e ([compensated_qty])
 OUTER APPLY (
     SELECT COUNT(EPC_Code) AS cancelled_qty
     FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst
-    WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode AND ri_cancel = 1
+    WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode AND ri_cancel = 1 AND sole_tag = 'A' AND isactive = 'Y'
     GROUP BY size_code, size_numcode
 ) f ([cancelled_qty])
 WHERE b.size_qty <> 0
