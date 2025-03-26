@@ -78,7 +78,7 @@ OUTER APPLY (
 OUTER APPLY (
     SELECT COUNT(EPC_Code) AS cancelled_qty
     FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst
-    WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode AND ri_cancel = 1 AND sole_tag = 'A' AND isactive = 'Y'
+    WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode AND ri_cancel = 1 AND sole_tag = 'A'
     GROUP BY size_code, size_numcode
 ) f ([cancelled_qty])
 WHERE b.size_qty <> 0
