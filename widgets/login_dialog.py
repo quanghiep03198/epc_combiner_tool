@@ -117,6 +117,8 @@ class LoginDialog(QDialog):
             lambda index: self.on_factory_code_change(index)
         )
         self.login_button = QPushButton("Đăng nhập")
+        self.login_button.setAutoDefault(False)
+        self.login_button.setDefault(False)
         self.login_button.setEnabled(False)
         self.login_button.clicked.connect(self.handle_submit_login)
 
@@ -141,6 +143,8 @@ class LoginDialog(QDialog):
             }
             """
         )
+        self.exit_button.setAutoDefault(False)
+        self.exit_button.setDefault(False)
         self.exit_button.clicked.connect(self.handle_exit)
 
         # Add widgets to layout
@@ -168,7 +172,7 @@ class LoginDialog(QDialog):
 
     def keyPressEvent(self, event):
         # Kiểm tra nếu phím được nhấn là Esc
-        if event.key() == Qt.Key.Key_Escape:
+        if event.key() == Qt.Key.Key_Escape or event.key() == Qt.Key.Key_Enter:
             print("Esc pressed - Dialog will not close.")
             # Bỏ qua sự kiện để chặn đóng
             event.ignore()
@@ -194,6 +198,7 @@ class LoginDialog(QDialog):
         # Only enable login button if all values in auth context is not None
         if all(value is not None for value in auth_context.values()):
             self.login_button.setEnabled(True)
+            self.login_button.setDefault(True)
         else:
             self.login_button.setEnabled(False)
 
