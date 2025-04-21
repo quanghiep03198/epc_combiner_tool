@@ -67,7 +67,7 @@ class AuthRepository:
             INNER JOIN syscloud_vn.dbo.ts_employeedept ed ON ed.employee_code = e.employee_code
             INNER JOIN syscloud_vn.dbo.ts_dept d ON d.dept_code = ed.dept_code
             INNER JOIN syscloud_vn.dbo.ts_factory f ON f.factory_code = d.company_code
-            WHERE u.keyid = :id AND f.factory_extcode <> 'GL5'
+            WHERE u.keyid = :id AND f.factory_code IN ('VA1','VB1','VB2','CA1')
             ORDER BY f.factory_extcode ASC
         """
         )

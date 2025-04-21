@@ -16,7 +16,7 @@ class AuthService:
                         "status": StatusCode.UNAUTHORIZED.value,
                     }
                 )
-            if user.get("password") != password:
+            if str(user.get("password")) != str(password):
                 raise Exception(
                     {
                         "message": I18nService.t("notification.incorrect_password"),
