@@ -9,9 +9,9 @@ class RFIDRepository:
     @staticmethod
     def check_if_epc_new(epcs: list[str]) -> bool:
         epcs_list_str = ",".join([f"'{epc.strip()}'" for epc in epcs])
+        query = QSqlQuery(DATA_SOURCE_DL)
         try:
             total_qty = None
-            query = QSqlQuery(DATA_SOURCE_DL)
             query.prepare(
                 f"""--sql;
                 SELECT COUNT(DISTINCT EPC_Code) AS count
@@ -33,7 +33,8 @@ class RFIDRepository:
         except Exception as e:
             logger.error(e)
         finally:
-            query.finish()
+            if query is not None:
+                query.finish()
 
     @staticmethod
     def get_recently_combined_epcs(epcs: list[str]) -> list[str]:
@@ -41,8 +42,8 @@ class RFIDRepository:
         Check if the EPCs are recently combined
         """
         result = []
+        query = QSqlQuery(DATA_SOURCE_DL)
         try:
-            query = QSqlQuery(DATA_SOURCE_DL)
             query.prepare(
                 f"""--sql
                     WITH datalist AS (
@@ -69,14 +70,11 @@ class RFIDRepository:
             )
 
             query.bindValue(":epc_list", ",".join(epcs))
-
             query.exec()
-
             while query.next():
                 result.append(query.value("EPC_Code"))
 
             return result
-
         except Exception as e:
             logger.error(f"Error: {e}")
             raise Exception(e)
@@ -89,9 +87,8 @@ class RFIDRepository:
         Check if the EPCs are still in the lifecycle, if not allow user to combine them
         """
         result = []
+        query = QSqlQuery(DATA_SOURCE_DL)
         try:
-
-            query = QSqlQuery(DATA_SOURCE_DL)
             query.prepare(
                 f"""--sql
                     WITH datalist AS (
@@ -182,7 +179,6 @@ class RFIDRepository:
     @staticmethod
     def reset_and_add_combinations(data: dict):
         query = QSqlQuery(DATA_SOURCE_DL)
-
         try:
             epc_params_str = ",".join([f"'{item['EPC_Code']}'" for item in data])
 
