@@ -19,8 +19,9 @@ class UserActionEvent(Enum):
     CHECK_COMBINABLE_FAILED = "check_combinable_failed"
     SETTINGS_CHANGE = "settings_change"
     AUTH_STATE_CHANGE = "auth_state_change"
-    NG_EPC_MUTATION = ("ng_epc_mutation",)
+    NG_EPC_MUTATION = "ng_epc_mutation"
     LANGUAGE_CHANGE = "language_change"
+    DB_CONN_STATE_CHANGE = "db_conn_state_change"
 
 
 global __event_emitter__
