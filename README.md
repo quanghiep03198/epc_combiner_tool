@@ -7,7 +7,30 @@ EPC Combiner Tool is a desktop application developed in Python for combining EPC
 - Combine multiple EPC data sources
 - Track production stages
 - Generate reports
-- User-friendly interface
+
+## Folder structure
+```
+epc-combiner-tool/
+├── .inno/  (build scripts for production)
+├── assets/
+├── constants/
+├── contexts/
+├── database/
+├── events/
+├── helpers/
+├── i18n/
+├── repositories/
+├── scripts/
+├── services/
+├── themes/
+├── widgets/
+├── app.cfg
+├── requirements.txt
+├── README.md
+├── LICENSE
+├── .gitignore
+└── ...
+```
 
 ## Installation
 1. Clone the repository:
@@ -26,7 +49,7 @@ EPC Combiner Tool is a desktop application developed in Python for combining EPC
 ## Usage
 1. Run the application:
     ```bash
-    python app.py
+    python main.py
     ```
 2. Follow the on-screen instructions to combine EPC information and track the production process.
 
