@@ -13,6 +13,7 @@ from contexts.combine_form_context import combine_form_context
 from helpers.logger import logger
 from helpers.write_data import write_data
 from contexts.auth_context import auth_context
+from i18n import I18nContext
 
 
 class WorkerSignals(QObject):
@@ -53,9 +54,15 @@ class StoreDataWorker(QRunnable):
             self.signals.error.emit(error_data)
 
 
-class CombineForm(QFrame):
+class CombineForm(QFrame, I18nContext):
     """
     EPC combination form submission
+
+    Extends `QFrame`
+
+    Extends `I18nContext`
+
+    Implements `I18nContext.__translate__()`
     """
 
     __size_list: list[dict[str, str]] = []
@@ -190,6 +197,7 @@ class CombineForm(QFrame):
     def handle_get_mo_noseq(self, data: list[str]):
         try:
             self.mo_noseq_select.clear()
+            self.mo_noseq_select.addItem(I18nService.t("labels.all"), "all")
             for mo_noseq in data:
                 self.mo_noseq_select.addItem(mo_noseq, mo_noseq)
         except Exception as e:
@@ -217,8 +225,9 @@ class CombineForm(QFrame):
     @pyqtSlot(int)
     def handle_mo_noseq_change(self, selected_index: int):
         value = self.mo_noseq_select.itemData(selected_index)
-        __event_emitter__.emit(UserActionEvent.MO_NOSEQ_CHANGE.value, value)
+        logger.debug(f"Selected value :>>> {value}")
         self.on_combine_from_state_change("mo_noseq", value)
+        __event_emitter__.emit(UserActionEvent.MO_NOSEQ_CHANGE.value, value)
         if value == "all":
             self.combine_proceed_button.setEnabled(False)
 

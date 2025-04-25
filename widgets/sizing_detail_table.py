@@ -8,15 +8,16 @@ from repositories.sizing_repository import SizingRepository
 from helpers.logger import logger
 from events import __event_emitter__, UserActionEvent
 from widgets.loading_widget import LoadingWidget
-from i18n import I18nService
+from i18n import I18nService, I18nContext
 
 from contexts.combine_form_context import combine_form_context
 
 
-class FetchSizeDataWorker(QRunnable):
+class FetchSizeDataWorker(
+    QRunnable,
+):
     def __init__(self, params: dict, callback: Callable[[list[dict]], None]):
         super().__init__()
-        logger.debug(params)
         self.mo_no = params["mo_no"]
         self.mo_noseq = params["mo_noseq"]
         self.callback = callback
@@ -26,11 +27,10 @@ class FetchSizeDataWorker(QRunnable):
         query_result = SizingRepository.find_size_qty(
             {"mo_no": self.mo_no, "mo_noseq": self.mo_noseq}
         )
-        logger.debug(query_result)
         self.callback(query_result)
 
 
-class SizingDetailTableWidget(QTableWidget):
+class SizingDetailTableWidget(QTableWidget, I18nContext):
     """
     Table for displaying sizing details
     """
@@ -58,7 +58,12 @@ class SizingDetailTableWidget(QTableWidget):
             self.on_combined_epc_created
         )
         __event_emitter__.on(UserActionEvent.MO_NO_CHANGE.value)(
-            self.handle_fetch_size_data
+            lambda _: self.handle_fetch_size_data(
+                {
+                    "mo_no": combine_form_context["mo_no"],
+                    "mo_noseq": combine_form_context["mo_noseq"],
+                }
+            )
         )
         __event_emitter__.on(UserActionEvent.NG_EPC_MUTATION.value)(
             lambda _: self.handle_fetch_size_data(
@@ -69,10 +74,10 @@ class SizingDetailTableWidget(QTableWidget):
             )
         )
         __event_emitter__.on(UserActionEvent.MO_NOSEQ_CHANGE.value)(
-            lambda _: self.handle_fetch_size_data(
+            lambda value: self.handle_fetch_size_data(
                 {
                     "mo_no": combine_form_context["mo_no"],
-                    "mo_noseq": combine_form_context["mo_noseq"],
+                    "mo_noseq": value,
                 }
             )
         )
@@ -97,26 +102,32 @@ class SizingDetailTableWidget(QTableWidget):
             QThreadPool.globalInstance().start(worker)
 
         except Exception as e:
-            logger.error(f"Error reading SQL file: {e}")
+            logger.error(f"[SizingDetailTableWidget] Error reading SQL file: {e}")
 
     def handle_render_row(self, result: list[dict]):
-        self.setColumnCount(len(result))
-        __event_emitter__.emit(UserActionEvent.SIZE_LIST_CHANGE.value, result)
-        col: int = 0
-        for record in result:
-            self.setItem(0, col, QTableWidgetItem(str(record["size_numcode"])))
-            self.setItem(1, col, QTableWidgetItem(str(record["size_qty"])))
-            self.setItem(2, col, QTableWidgetItem(str(record["combined_qty"])))
-            self.setItem(3, col, QTableWidgetItem(str(record["in_use_qty"])))
-            self.setItem(4, col, QTableWidgetItem(str(record["compensated_qty"])))
-            self.setItem(5, col, QTableWidgetItem(str(record["cancelled_qty"])))
-            self.handle_highlight_qty(
-                2, col, record["size_qty"], record["combined_qty"]
-            )
-            self.handle_highlight_qty(3, col, record["size_qty"], record["in_use_qty"])
-            col += 1
+        try:
+            self.setColumnCount(len(result))
+            __event_emitter__.emit(UserActionEvent.SIZE_LIST_CHANGE.value, result)
+            col: int = 0
+            for record in result:
+                self.setItem(0, col, QTableWidgetItem(str(record["size_numcode"])))
+                self.setItem(1, col, QTableWidgetItem(str(record["size_qty"])))
+                self.setItem(2, col, QTableWidgetItem(str(record["combined_qty"])))
+                self.setItem(3, col, QTableWidgetItem(str(record["in_use_qty"])))
+                self.setItem(4, col, QTableWidgetItem(str(record["compensated_qty"])))
+                self.setItem(5, col, QTableWidgetItem(str(record["cancelled_qty"])))
+                self.handle_highlight_qty(
+                    2, col, record["size_qty"], record["combined_qty"]
+                )
+                self.handle_highlight_qty(
+                    3, col, record["size_qty"], record["in_use_qty"]
+                )
+                col += 1
+        except Exception as e:
+            logger.error(e)
 
-        self.loading.close_loading()
+        finally:
+            self.loading.close_loading()
 
     def on_combined_epc_created(self, data):
         self.handle_fetch_size_data(data["mo_no"])

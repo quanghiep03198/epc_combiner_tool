@@ -183,8 +183,8 @@ class OrderAutoCompleteWidget(QPushButton):
 
     @pyqtSlot(str)
     def handle_find_mo_no(self, q: str) -> None:
+        query = QSqlQuery(DATA_SOURCE_ERP)
         try:
-            query = QSqlQuery(DATA_SOURCE_ERP)
             query.prepare(
                 f"""--sql
                     SELECT TOP 5 mo_no
@@ -206,3 +206,5 @@ class OrderAutoCompleteWidget(QPushButton):
                 self.popover_menu_list.addItem(QListWidgetItem(query.value("mo_no")))
         except Exception as e:
             logger.error(e)
+        finally:
+            query.finish()

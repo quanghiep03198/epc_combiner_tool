@@ -5,10 +5,10 @@ from helpers.configuration import ConfigService, ConfigSection
 from helpers.resolve_path import resolve_path
 from widgets.switch import QToggle
 from events import __event_emitter__, UserActionEvent
-from i18n import I18nService
+from i18n import I18nService, I18nContext
 
 
-class StatusBar(QToolBar):
+class StatusBar(QToolBar, I18nContext):
     def __init__(self, parent=QMainWindow):
         super().__init__(parent)
 

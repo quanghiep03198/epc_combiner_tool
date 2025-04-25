@@ -8,10 +8,10 @@ from widgets.toaster import Toaster, ToastPreset
 from constants import StatusCode
 from helpers.resolve_path import resolve_path
 from events import __event_emitter__, UserActionEvent
-from i18n import I18nService
+from i18n import I18nService, I18nContext
 
 
-class LoginDialog(QDialog):
+class LoginDialog(QDialog, I18nContext):
 
     __form_values = {
         "username": None,

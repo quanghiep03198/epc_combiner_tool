@@ -1,7 +1,7 @@
 import asyncio
 import math
 
-# import json
+import json
 from pyqttoast import ToastPreset
 from PyQt6.QtCore import *
 from PyQt6.QtSql import *
@@ -22,7 +22,7 @@ from events import UserActionEvent, __event_emitter__
 from helpers.configuration import ConfigService
 from pathlib import Path
 from typing import Callable
-from i18n import I18nService
+from i18n import I18nService, I18nContext
 from helpers.resolve_path import resolve_path
 
 PAGE_SIZE: int = 50
@@ -41,7 +41,7 @@ class GetNgEpcDetailWorker(QRunnable):
         self.callback(result)
 
 
-class EpcReaderPlayground(QFrame):
+class EpcReaderPlayground(QFrame, I18nContext):
     """
     EPC reader widget for scanning EPC from UHF reader
     """
@@ -109,7 +109,41 @@ class EpcReaderPlayground(QFrame):
         self.epc_list = QListWidget(parent=self)
         self.epc_list.setObjectName("epc_list")
         self.epc_list.setSortingEnabled(False)
+        self.epc_list.setVisible(False)
+        self.epc_list.setVisible(False)
         self.epc_list.itemDoubleClicked.connect(self.handle_view_combination_history)
+
+        self.empty_state_layout = QHBoxLayout()
+        self.empty_state_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.empty_state_layout.setContentsMargins(0, 0, 0, 0)
+        self.empty_state_layout.setSpacing(8)
+
+        self.empty_state = QFrame(parent=self)
+        self.empty_state.setStyleSheet("background: #171717; border-radius: 4px")
+        self.empty_state.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        inbox_icon = QLabel(parent=self.empty_state)
+        pixmap = QPixmap(resolve_path("assets/icons/inbox.svg")).scaled(
+            24,
+            24,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        inbox_icon.setPixmap(pixmap)
+
+        self.empty_text = QLabel(parent=self.empty_state)
+        self.empty_text.setText("No data")
+        self.empty_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.empty_text.setStyleSheet("color: #a3a3a3")
+
+        self.empty_state.setLayout(self.empty_state_layout)
+        self.empty_state_layout.addWidget(
+            inbox_icon, alignment=Qt.AlignmentFlag.AlignCenter
+        )
+        self.empty_state_layout.addWidget(
+            self.empty_text, alignment=Qt.AlignmentFlag.AlignCenter
+        )
         # endregion
 
         # region EPC list actions group
@@ -236,21 +270,15 @@ class EpcReaderPlayground(QFrame):
 
         self.epc_list_action_group_layout.addWidget(self.reader_actions_group)
         self.epc_list_action_group_layout.addWidget(self.pagination_group)
+
         # endregion
 
         self.epc_reader_layout.addWidget(self.epc_counter_box)
         self.epc_reader_layout.addWidget(self.epc_list)
+        self.epc_reader_layout.addWidget(self.empty_state)
         self.epc_reader_layout.addWidget(self.epc_list_action_group)
 
         # Fake EPC data
-        # with open("./data/faker.json", "r", encoding="utf-8") as f:
-        #     data = json.load(f)
-        #     self._epc_datalist = data["epcs"][15:30]
-        #     self.scanned_epc_counter.setText(
-        #         f"{len(self._epc_datalist)}/{self._max_epc_qty} {SCANNED_EPC_LABEL}"
-        #     )
-        #     self._handle_pagination()
-        #     self._get_page_data()
 
         __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value)(self.__translate__)
 
@@ -291,6 +319,7 @@ class EpcReaderPlayground(QFrame):
         )
         self.next_page_button.setToolTip(I18nService.t("next_page"))
         self.next_page_button.setToolTip(I18nService.t("prev_page"))
+
         if self.toggle_connect_button.isChecked():
             self.toggle_connect_button.setToolTip(
                 I18nService.t("actions.disconnect_uhf_reader")
@@ -303,6 +332,20 @@ class EpcReaderPlayground(QFrame):
             self.toggle_play_button.setToolTip(I18nService.t("actions.stop_reading"))
         else:
             self.toggle_play_button.setToolTip(I18nService.t("actions.start_reading"))
+
+    def __fake_data(self):
+        """
+        Fake data
+        """
+        with open("./data/faker.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
+            self.__epc_datalist = data
+            self.scanned_epc_counter.setText(
+                f"{len(self.__epc_datalist)}/{self.__max_epc_qty} {SCANNED_EPC_LABEL}"
+            )
+            self.__handle_pagination()
+            self.__get_page_data()
+            __event_emitter__.emit(UserActionEvent.EPC_DATA_CHANGE, self.__epc_datalist)
 
     # region Event handlers
     def on_check_combinable_failed(self, error_data: dict[str]):
@@ -379,6 +422,7 @@ class EpcReaderPlayground(QFrame):
         self.__handle_pagination()
 
     def __get_page_data(self):
+        self.__handle_check_empty()
         process_data = (
             self.__epc_datalist
             if self.__current_tab_index == 1
@@ -500,18 +544,13 @@ class EpcReaderPlayground(QFrame):
         else:
             self.epc_list.setStyleSheet("QListWidget::item { color: #ef4444; }")
 
-        # TODO: Remove later
-        # * Fake data
-        # __event_emitter__.emit(
-        #     UserActionEvent.EPC_DATA_CHANGE.value, self._epc_datalist
-        # )
-
     @pyqtSlot()
     def handle_reset_scanned_epc(self):
         self.__epc_datalist.clear()
         self.__ng_epc_datalist.clear()
         self.epc_list.clear()
         self.__handle_pagination()
+        self.__handle_check_empty()
         self.scanned_epc_counter.setText(
             self.__get_counter_text(
                 combine_form_context["ri_type"], 0, SCANNED_EPC_LABEL
@@ -520,12 +559,18 @@ class EpcReaderPlayground(QFrame):
         self.ng_epc_counter.setText(
             self.__get_counter_text(combine_form_context["ri_type"], 0, NG_EPC_LABEL)
         )
+        self.empty_state.setVisible(len(self.__epc_datalist) == 0)
+        self.epc_list.setVisible(len(self.__epc_datalist) > 0)
         toast = Toaster(
             parent=self.root,
             title=I18nService.t("notification.reset_epc_success_title"),
             text=I18nService.t("notification.reset_epc_success_text"),
         )
         toast.show()
+
+    def __handle_check_empty(self):
+        self.empty_state.setVisible(len(self.__epc_datalist) == 0)
+        self.epc_list.setVisible(len(self.__epc_datalist) > 0)
 
     @pyqtSlot()
     def handle_view_combination_history(self):

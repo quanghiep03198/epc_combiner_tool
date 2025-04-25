@@ -141,29 +141,33 @@ class OrderDetailTableWidget(QTableWidget):
             QThreadPool.globalInstance().start(worker)
 
         except Exception as e:
-            logger.error(f"Error reading SQL file: {e}")
+            logger.error(f"[OrderDetailTableWidget] Error reading SQL file: {e}")
             return None
 
     def handle_query_result(self, query_result):
         self.setRowCount(0)
-        # logger.debug(query_result)
-        if isinstance(query_result, list) and len(query_result) > 0:
-            combine_form_context["mat_code"] = query_result[0]["mat_code"]
-            combine_form_context["shoestyle_codefactory"] = query_result[0][
-                "shoestyle_codefactory"
-            ]
-            combine_form_context["or_no"] = query_result[0]["or_no"]
-            combine_form_context["or_custpo"] = query_result[0]["or_custpo"]
-            combine_form_context["cust_shoestyle"] = query_result[0]["cust_shoestyle"]
+        try:
+            if isinstance(query_result, list) and len(query_result) > 0:
+                combine_form_context["mat_code"] = query_result[0]["mat_code"]
+                combine_form_context["shoestyle_codefactory"] = query_result[0][
+                    "shoestyle_codefactory"
+                ]
+                combine_form_context["or_no"] = query_result[0]["or_no"]
+                combine_form_context["or_custpo"] = query_result[0]["or_custpo"]
+                combine_form_context["cust_shoestyle"] = query_result[0][
+                    "cust_shoestyle"
+                ]
 
-        # Store order detail data
-        __event_emitter__.emit(
-            UserActionEvent.GET_ORDER_DETAIL_SUCCESS.value,
-            list(map(lambda item: item["mo_noseq"], query_result)),
-        )
-        self.__order_detail_data = query_result
-        # Render order detail to UI
+                # Store order detail data
+                __event_emitter__.emit(
+                    UserActionEvent.GET_ORDER_DETAIL_SUCCESS.value,
+                    list(map(lambda item: item["mo_noseq"], query_result)),
+                )
+                self.__order_detail_data = query_result
+                # Render order detail to UI
+                self.render_row(query_result)
 
-        self.render_row(query_result)
-
-        self.loading.close_loading()
+        except Exception as e:
+            logger.error(f"[OrderDetailTableWidget] Error reading SQL file: {e}")
+        finally:
+            self.loading.close_loading()

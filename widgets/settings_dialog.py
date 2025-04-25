@@ -4,10 +4,10 @@ from helpers.configuration import ConfigService
 from events import __event_emitter__, UserActionEvent
 from widgets.toaster import Toaster
 from pyqttoast import ToastPreset
-from i18n import I18nService
+from i18n import I18nService, I18nContext
 
 
-class AppSettingsDialog(QDialog):
+class AppSettingsDialog(QDialog, I18nContext):
     """
     Setting dialog form for application connection settings
     """
