@@ -10,13 +10,13 @@ class OrderRepository:
     )
 
     @staticmethod
-    def get_order_detail(mo_no: str):
+    def get_order_detail(params: dict):
         results = []
         try:
             sql_statement = DatabaseService.get_raw_sql(OrderRepository.__sql_file_path)
             query = QSqlQuery(DATA_SOURCE_ERP)
             query.prepare(sql_statement)
-            query.bindValue(":mo_no", mo_no)
+            query.bindValue(":mo_no", params["mo_no"])
             query.exec()
             while query.next():
                 print(query.record())

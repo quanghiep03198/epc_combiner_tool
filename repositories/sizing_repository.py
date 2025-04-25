@@ -8,7 +8,7 @@ class SizingRepository:
     __sql_file_path = Path(__file__).parent.resolve() / "./sql/get_size_qty.sql"
 
     @staticmethod
-    def find_size_qty(mo_no: str) -> list[dict]:
+    def find_size_qty(params: dict) -> list[dict]:
         result = []
         try:
             sql_statement = DatabaseService.get_raw_sql(
@@ -16,7 +16,11 @@ class SizingRepository:
             )
             query = QSqlQuery(DATA_SOURCE_ERP)
             query.prepare(sql_statement)
-            query.bindValue(":mo_no", mo_no)
+            query.bindValue(":mo_no", params["mo_no"])
+            # if params["mo_noseq"] is not None:
+            #     query.bindValue(":mo_noseq", params["mo_noseq"])
+            # else:
+            query.bindValue(":mo_noseq", params["mo_noseq"])
             query.exec()
             while query.next():
                 result.append(
@@ -30,6 +34,7 @@ class SizingRepository:
                         "cancelled_qty": query.value("cancelled_qty"),
                     }
                 )
+            logger.debug(f"Result: {result}")
         except Exception as e:
             logger.error(f"Error finding sizing detail: {e}")
         finally:

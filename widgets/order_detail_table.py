@@ -10,14 +10,14 @@ from events import UserActionEvent, __event_emitter__
 
 
 class OrderDetailWorker(QRunnable):
-    def __init__(self, param: str, callback: Callable[[list], None]):
+    def __init__(self, params: dict, callback: Callable[[list], None]):
         super().__init__()
-        self.param = param
+        self.params = params
         self.callback = callback
 
     @pyqtSlot()
     def run(self):
-        query_result = OrderRepository.get_order_detail(self.param)
+        query_result = OrderRepository.get_order_detail(self.params)
         self.callback(query_result)
 
 
@@ -146,8 +146,8 @@ class OrderDetailTableWidget(QTableWidget):
 
     def handle_query_result(self, query_result):
         self.setRowCount(0)
-
-        if len(query_result) > 0:
+        # logger.debug(query_result)
+        if isinstance(query_result, list) and len(query_result) > 0:
             combine_form_context["mat_code"] = query_result[0]["mat_code"]
             combine_form_context["shoestyle_codefactory"] = query_result[0][
                 "shoestyle_codefactory"
@@ -155,6 +155,7 @@ class OrderDetailTableWidget(QTableWidget):
             combine_form_context["or_no"] = query_result[0]["or_no"]
             combine_form_context["or_custpo"] = query_result[0]["or_custpo"]
             combine_form_context["cust_shoestyle"] = query_result[0]["cust_shoestyle"]
+
         # Store order detail data
         __event_emitter__.emit(
             UserActionEvent.GET_ORDER_DETAIL_SUCCESS.value,

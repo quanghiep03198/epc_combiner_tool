@@ -1,7 +1,9 @@
-SELECT TOP 1
+DECLARE @mo_no NVARCHAR(10) = :mo_no;
+
+SELECT
+	DISTINCT b.mo_noseq AS mo_noseq,
 	a.mo_no AS mo_no,
 	a.mat_code AS mat_code,
-	b.mo_noseq AS mo_noseq,
 	b.or_no AS or_no,
 	d.or_custpo AS or_custpo,
 	g.shoestyle_codefactory AS shoestyle_codefactory,
@@ -18,5 +20,5 @@ FROM wuerp_vnrd.dbo.ta_manufacturmst a
 	LEFT JOIN wuerp_vnrd.dbo.ta_ordersizerun h ON h.or_no = b.or_no AND h.isactive= 'Y'
 	LEFT JOIN wuerp_vnrd.dbo.ta_shoestylecolor i ON i.shoestyle_templink = f.shoestyle_templink and i.isactive = 'Y'
 	LEFT JOIN wuerp_vnrd.dbo.ta_ordersizerun k ON k.or_no = d.or_no AND k.isactive = 'Y'
-WHERE a.mo_no = :mo_no
-ORDER BY b.mo_noseq DESC
+WHERE a.mo_no = @mo_no
+ORDER BY b.mo_noseq ASC
