@@ -6,7 +6,6 @@ from enum import Enum
 from helpers.configuration import ConfigService
 from dotenv import load_dotenv
 from constants import DB_DRIVER
-from events import __event_emitter__, UserActionEvent
 
 load_dotenv()
 
@@ -50,6 +49,7 @@ class DatabaseService:
                     f"DATABASE={database};"
                     f"UID={configuration.get('DB_UID')};"
                     f"PWD={configuration.get('DB_PWD')};"
+                    f"MARS_Connection=yes;"
                 )
 
                 if QSqlDatabase.contains(connection_name):
@@ -66,7 +66,7 @@ class DatabaseService:
                         logger.error(f"Failed to connect: {error}")
                         return None
 
-                logger.info(f"Connected to database: {database}")
+                logger.info(f"Connected to database: {connection_name}")
                 return data_source
             except Exception as e:
                 logger.error(f"Failed to connect to database: {e}")
@@ -80,7 +80,7 @@ class DatabaseService:
             with open(file_path, "r", -1, "utf-8") as file:
                 return file.read()
         except Exception as e:
-            logger.error(f"Error reading SQL file: {e}")
+            logger.error(f"[DatabaseService] Error reading SQL file: {e}")
             return None
 
 
@@ -90,23 +90,32 @@ app = QApplication(sys.argv)
 QSqlDatabase.removeDatabase(QSqlDatabase.database().connectionName())
 
 
-def __init_datasources() -> None:
+def init_datasources() -> None:
     global DATA_SOURCE_ERP, DATA_SOURCE_DL, DATA_SOURCE_SYSCLOUD
     DATA_SOURCE_ERP = DatabaseService.connnect_database(
         server=configuration.get("DB_SERVER"),
         database=DataSources.ERP.value,
-        connection_name=DatabaseConnection.ERP.value,
+        connection_name=f"[Global]{DatabaseConnection.ERP.value}",
     )
     DATA_SOURCE_DL = DatabaseService.connnect_database(
         server=configuration.get("DB_SERVER"),
         database=DataSources.DATA_LAKE.value,
-        connection_name=DatabaseConnection.DATA_LAKE.value,
+        connection_name=f"[Global]{DatabaseConnection.DATA_LAKE.value}",
     )
     DATA_SOURCE_SYSCLOUD = DatabaseService.connnect_database(
         server=configuration.get("DB_SERVER"),
         database=DataSources.SYSCLOUD.value,
-        connection_name=DatabaseConnection.SYSCLOUD.value,
+        connection_name=f"[Global]{DatabaseConnection.SYSCLOUD.value}",
     )
 
 
-__init_datasources()
+def disconnect_datasources() -> None:
+    if DATA_SOURCE_ERP.isOpen():
+        DATA_SOURCE_ERP.close()
+    if DATA_SOURCE_DL.isOpen():
+        DATA_SOURCE_DL.close()
+    if DATA_SOURCE_SYSCLOUD.isOpen():
+        DATA_SOURCE_SYSCLOUD.close()
+
+
+init_datasources()
