@@ -177,7 +177,7 @@ class OrderAutoCompleteWidget(QPushButton):
         self.setText(value)
         self.popover_content.close()
         combine_form_context.update(mo_no=value)
-        __event_emitter__.emit(UserActionEvent.MO_NO_CHANGE.value, value)
+        __event_emitter__.emit(UserActionEvent.MO_NO_CHANGE.value, {"mo_no": value})
 
     # * Handle find manufacturing order from database
 

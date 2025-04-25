@@ -14,14 +14,19 @@ from contexts.combine_form_context import combine_form_context
 
 
 class FetchSizeDataWorker(QRunnable):
-    def __init__(self, param: str, callback: Callable[[list[dict]], None]):
+    def __init__(self, params: dict, callback: Callable[[list[dict]], None]):
         super().__init__()
-        self.param = param
+        logger.debug(params)
+        self.mo_no = params["mo_no"]
+        self.mo_noseq = params["mo_noseq"]
         self.callback = callback
 
     @pyqtSlot()
     def run(self):
-        query_result = SizingRepository.find_size_qty(self.param)
+        query_result = SizingRepository.find_size_qty(
+            {"mo_no": self.mo_no, "mo_noseq": self.mo_noseq}
+        )
+        logger.debug(query_result)
         self.callback(query_result)
 
 
@@ -56,7 +61,20 @@ class SizingDetailTableWidget(QTableWidget):
             self.handle_fetch_size_data
         )
         __event_emitter__.on(UserActionEvent.NG_EPC_MUTATION.value)(
-            lambda _: self.handle_fetch_size_data(combine_form_context["mo_no"])
+            lambda _: self.handle_fetch_size_data(
+                {
+                    "mo_no": combine_form_context["mo_no"],
+                    "mo_noseq": combine_form_context["mo_noseq"],
+                }
+            )
+        )
+        __event_emitter__.on(UserActionEvent.MO_NOSEQ_CHANGE.value)(
+            lambda _: self.handle_fetch_size_data(
+                {
+                    "mo_no": combine_form_context["mo_no"],
+                    "mo_noseq": combine_form_context["mo_noseq"],
+                }
+            )
         )
 
     def __translate__(self):
@@ -71,7 +89,7 @@ class SizingDetailTableWidget(QTableWidget):
         self.setRowCount(len(vertical_header_labels))
         self.setVerticalHeaderLabels(vertical_header_labels)
 
-    def handle_fetch_size_data(self, data: str):
+    def handle_fetch_size_data(self, data: dict):
         try:
             self.loading = LoadingWidget(self)
             self.loading.show_loading()

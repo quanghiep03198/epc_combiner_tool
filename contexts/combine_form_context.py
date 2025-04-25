@@ -5,7 +5,7 @@ global combine_form_context
 combine_form_context = {
     "has_epc": False,
     "mo_no": None,
-    "mo_noseq": None,
+    "mo_noseq": "001",
     "size_numcode": None,
     "size_code": None,
     "mat_code": None,

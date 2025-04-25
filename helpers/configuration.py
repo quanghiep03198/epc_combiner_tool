@@ -32,7 +32,6 @@ class ConfigService:
         if not path.exists(".env"):
             with open(".env", "w") as configfile:
                 configfile.write(f"DB_DRIVER='{DB_DRIVER}'\n")
-                configfile.write(f"DB_SERVER_DEFAULT='{DB_SERVER_DEFAULT}'\n")
                 configfile.write("DB_SERVER=\n")
                 configfile.write(f"DB_PORT='{DB_PORT}'\n")
                 configfile.write("DB_UID=\n")

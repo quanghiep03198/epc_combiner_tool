@@ -1,3 +1,6 @@
+DECLARE @0 NVARCHAR(10) = :mo_no;
+DECLARE @1 NVARCHAR(10) = :mo_noseq;
+
 SELECT
     a.size_code,
     CASE WHEN LEN(b.size_numcode) = 1 THEN CONCAT(0,b.size_numcode) ELSE b.size_numcode END [size_numcode], 
@@ -60,30 +63,34 @@ OUTER APPLY (
 OUTER APPLY (
     SELECT COUNT(EPC_Code) AS combined_qty
     FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst
-    WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode AND sole_tag = 'A' AND isactive = 'Y'
+    WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode AND sole_tag = 'A' AND isactive = 'Y' 
+    AND (@1 IS NULL OR mo_noseq = @1)
     GROUP BY size_code, size_numcode
 ) c ([combined_qty])
 OUTER APPLY (
     SELECT COUNT(EPC_Code) AS in_use_qty
     FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst
-    WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode AND ri_cancel = 0 AND sole_tag = 'A' AND isactive = 'Y'
+    WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode AND ri_cancel = 0 AND sole_tag = 'A' AND isactive = 'Y'  
+    AND (@1 IS NULL OR mo_noseq = @1)
     GROUP BY size_code, size_numcode
 ) d ([in_use_qty])
 OUTER APPLY (
     SELECT COUNT(EPC_Code) AS compensated_qty
     FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst
-    WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode AND ri_type = 'D' AND sole_tag = 'A' AND isactive = 'Y'
+    WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode AND ri_type = 'D' AND sole_tag = 'A' AND isactive = 'Y' 
+    AND (@1 IS NULL OR mo_noseq = @1)
     GROUP BY size_code, size_numcode
 ) e ([compensated_qty])
 OUTER APPLY (
     SELECT COUNT(EPC_Code) AS cancelled_qty
     FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst
     WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode AND ri_cancel = 1 AND sole_tag = 'A'
+    AND (@1 IS NULL OR mo_noseq = @1)
     GROUP BY size_code, size_numcode
 ) f ([cancelled_qty])
 WHERE b.size_qty <> 0
     AND a.isactive= 'Y'
-    AND a1.mo_no = :mo_no
+    AND a1.mo_no = @0
 GROUP BY a.size_code, b.size_numcode
 ORDER BY 
     CASE 
