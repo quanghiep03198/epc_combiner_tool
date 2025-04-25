@@ -26,6 +26,7 @@ from events import __event_emitter__, UserActionEvent
 from contexts.auth_context import auth_context
 from i18n import I18nService, Language
 from helpers.resolve_path import resolve_path
+from database import disconnect_datasources
 
 
 class MainWindow(QMainWindow):
@@ -127,7 +128,7 @@ class MainWindow(QMainWindow):
         self.app_layout.setStretch(1, 3)
 
         self.setCentralWidget(self.container)
-        self.setWindowTitle("EPC IC - v1.0.0 Beta")
+        self.setWindowTitle("EPC IC - v1.1")
         self.addToolBar(self.toolbar)
 
         QMetaObject.connectSlotsByName(self)
@@ -243,6 +244,10 @@ class MainWindow(QMainWindow):
             self.epc_reader_playground.uhf_reader_instance, GClient
         ):
             self.epc_reader_playground.uhf_reader_instance.close()
+        disconnect_datasources()
+        # Ensure the application exits completely
+        self.__app__.quit()
+        sys.exit(0)
 
     def reload(self):
         self.close()

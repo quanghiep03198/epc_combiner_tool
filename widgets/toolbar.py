@@ -6,14 +6,14 @@ from widgets.toaster import Toaster
 from helpers.resolve_path import resolve_path
 from contexts.auth_context import auth_context
 from events import __event_emitter__, UserActionEvent
-from i18n import __languages__, I18nService
+from i18n import __languages__, I18nService, I18nContext
 from helpers.configuration import ConfigService
 
 
 # from qtwidgets import AnimatedToggle
 
 
-class AppToolBar(QToolBar):
+class AppToolBar(QToolBar, I18nContext):
     """
     Custom QMenuBar for the application
     """
@@ -38,28 +38,10 @@ class AppToolBar(QToolBar):
             }
         """
         )
-        self.version_layout = QHBoxLayout()
-        self.version_layout.setContentsMargins(6, 0, 0, 0)
-        self.version_layout.setSpacing(8)
-        self.version_layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        self.version_icon = QLabel()
-        pixmap = QPixmap(resolve_path("assets/icons/tag.svg")).scaled(
-            18,
-            18,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-        self.version_icon.setPixmap(pixmap)
-        self.version_text = QLabel()
-        self.version_text.setText("Version 1.0.0 Beta")
-        self.version = QWidget()
-        self.version.setLayout(self.version_layout)
-        self.version_layout.addWidget(self.version_icon)
-        self.version_layout.addWidget(self.version_text)
 
         self.user_locale_layout = QHBoxLayout()
         self.user_locale_layout.setContentsMargins(6, 0, 0, 0)
-        self.user_locale_layout.setSpacing(8)
+        self.user_locale_layout.setSpacing(6)
         self.user_locale = QWidget()
         self.user_locale.setLayout(self.user_locale_layout)
 
@@ -77,7 +59,7 @@ class AppToolBar(QToolBar):
         self.user_locale_layout.addWidget(self.globe_icon)
         self.user_locale_layout.addWidget(self.user_locale_text)
 
-        self.addWidget(self.version)
+        # self.addWidget(self.version)
         self.addWidget(self.user_locale)
 
         self.spacer = QWidget()

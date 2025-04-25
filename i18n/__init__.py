@@ -3,6 +3,7 @@ from enum import Enum
 from events import UserActionEvent, __event_emitter__
 from helpers.logger import logger
 from helpers.flatten_dict import flatten_dict
+from abc import abstractmethod
 
 from i18n.cn import cn_dictionary
 from i18n.en import en_dictionary
@@ -29,6 +30,20 @@ __i18n_resource__: dict[str, dict] = {
 }
 
 
+class I18nContext:
+    """
+    Abstract class implements translate all i18n(internationalization) dictionary keys
+
+    - Methods:
+
+        __translate__(self) -> None
+    """
+
+    @abstractmethod
+    def __translate__(self):
+        pass
+
+
 class I18nService:
     """Internationalization service"""
 
@@ -38,7 +53,7 @@ class I18nService:
         Change the current language or Get current dictionary with saved language
 
         Args:
-        - lang: Language
+            - lang: str
         """
         try:
             ConfigService.set_conf(ConfigSection.LOCALE.value, "language", lang)

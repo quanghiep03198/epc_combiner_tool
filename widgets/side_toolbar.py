@@ -4,12 +4,12 @@ from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
 from widgets.settings_dialog import AppSettingsDialog
-from i18n import I18nService, Language, __languages__
+from i18n import I18nService, I18nContext, Language, __languages__
 from events import __event_emitter__, UserActionEvent
 from helpers.resolve_path import resolve_path
 
 
-class SideToolbar(QToolBar):
+class SideToolbar(QToolBar, I18nContext):
     def __init__(self, root):
         super().__init__()
 

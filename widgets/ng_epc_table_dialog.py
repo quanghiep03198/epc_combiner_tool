@@ -11,7 +11,7 @@ from widgets.toaster import Toaster, ToastPreset
 from events import __event_emitter__, UserActionEvent
 from helpers.logger import logger
 from helpers.resolve_path import resolve_path
-from i18n import I18nService
+from i18n import I18nService, I18nContext
 
 MIN_WINDOW_WIDTH = 900
 MIN_WINDOW_HEIGHT = 500
@@ -55,7 +55,7 @@ class MutateNgEpcWorker(QRunnable):
             self.signals.error.emit(e.message)
 
 
-class NgEpcTableDialog(QDialog):
+class NgEpcTableDialog(QDialog, I18nContext):
 
     __mutation_form_values: dict[str, str] = {
         "mo_no": None,
