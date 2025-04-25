@@ -77,9 +77,8 @@ class RFIDService:
         size_code = payload["size_code"]
         fallback_station_no = "%s_%s" % (auth_context.get("factory_code"), "PA103")
 
+        query = QSqlQuery(DATA_SOURCE_DL)
         try:
-            query = QSqlQuery(DATA_SOURCE_DL)
-
             query.prepare(
                 """--sql
                 UPDATE DV_DATA_LAKE.dbo.dv_RFIDrecordmst
@@ -143,8 +142,8 @@ class RFIDService:
 
     @staticmethod
     def force_cancel(epcs: list[str]) -> int:
+        query = QSqlQuery(DATA_SOURCE_DL)
         try:
-            query = QSqlQuery(DATA_SOURCE_DL)
             query.prepare(
                 """--sql
                 UPDATE DV_DATA_LAKE.dbo.dv_rfidmatchmst

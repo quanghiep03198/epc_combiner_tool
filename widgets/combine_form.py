@@ -225,7 +225,6 @@ class CombineForm(QFrame, I18nContext):
     @pyqtSlot(int)
     def handle_mo_noseq_change(self, selected_index: int):
         value = self.mo_noseq_select.itemData(selected_index)
-        logger.debug(f"Selected value :>>> {value}")
         self.on_combine_from_state_change("mo_noseq", value)
         __event_emitter__.emit(UserActionEvent.MO_NOSEQ_CHANGE.value, value)
         if value == "all":

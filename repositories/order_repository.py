@@ -12,9 +12,9 @@ class OrderRepository:
     @staticmethod
     def get_order_detail(params: dict):
         results = []
+        query = QSqlQuery(DATA_SOURCE_ERP)
         try:
             sql_statement = DatabaseService.get_raw_sql(OrderRepository.__sql_file_path)
-            query = QSqlQuery(DATA_SOURCE_ERP)
             query.prepare(sql_statement)
             query.bindValue(":mo_no", params["mo_no"])
             query.exec()
@@ -36,4 +36,5 @@ class OrderRepository:
         except Exception as e:
             logger.error(f"Error finding order detail: {e}")
         finally:
+            query.finish()
             return results
