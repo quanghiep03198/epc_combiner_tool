@@ -1,6 +1,6 @@
 from os import path
 from dotenv import dotenv_values, set_key
-from constants import DB_DRIVER, DB_SERVER_DEFAULT, DB_PORT
+from constants import DB_DRIVER, DB_PORT
 from configparser import ConfigParser
 from helpers.logger import logger
 from enum import Enum
