@@ -12,6 +12,7 @@ class AuthRepository:
 
     @staticmethod
     def find_user(username: str):
+        query = QSqlQuery(DATA_SOURCE_SYSCLOUD)
         try:
             user: dict[str, str | None] = {
                 "id": None,
@@ -20,8 +21,6 @@ class AuthRepository:
                 "user_code": None,
                 "password": None,
             }
-
-            query = QSqlQuery(DATA_SOURCE_SYSCLOUD)
 
             query.prepare(
                 f"""--sql
@@ -56,39 +55,43 @@ class AuthRepository:
     @staticmethod
     def get_factories(user_id: int | str):
         result = []
-
         query = QSqlQuery(DATA_SOURCE_SYSCLOUD)
+        try:
 
-        query.prepare(
-            f"""--sql
-            SELECT DISTINCT f.factory_code, f.factory_extcode
-            FROM syscloud_vn.dbo.ts_user u
-            INNER JOIN syscloud_vn.dbo.ts_employee e ON e.employee_code = u.employee_code
-            INNER JOIN syscloud_vn.dbo.ts_employeedept ed ON ed.employee_code = e.employee_code
-            INNER JOIN syscloud_vn.dbo.ts_dept d ON d.dept_code = ed.dept_code
-            INNER JOIN syscloud_vn.dbo.ts_factory f ON f.factory_code = d.company_code
-            WHERE u.keyid = :id AND f.factory_code IN ('VA1','VB1','VB2','CA1')
-            ORDER BY f.factory_extcode ASC
-        """
-        )
-
-        query.bindValue(":id", user_id)
-
-        if not query.exec():
-            logger.error(
-                {
-                    "message": query.lastError().text(),
-                    "status": StatusCode.INTERNAL_SERVER_ERROR.value,
-                }
+            query.prepare(
+                f"""--sql
+                SELECT DISTINCT f.factory_code, f.factory_extcode
+                FROM syscloud_vn.dbo.ts_user u
+                INNER JOIN syscloud_vn.dbo.ts_employee e ON e.employee_code = u.employee_code
+                INNER JOIN syscloud_vn.dbo.ts_employeedept ed ON ed.employee_code = e.employee_code
+                INNER JOIN syscloud_vn.dbo.ts_dept d ON d.dept_code = ed.dept_code
+                INNER JOIN syscloud_vn.dbo.ts_factory f ON f.factory_code = d.company_code
+                WHERE u.keyid = :id AND f.factory_code IN ('VA1','VB1','VB2','CA1')
+                ORDER BY f.factory_extcode ASC
+            """
             )
 
-        while query.next():
-            factory_code = query.value("factory_code")
-            result.append(
-                {
-                    "factory_code": factory_code,
-                    "factory_name": FactoryNames[factory_code].value,
-                }
-            )
+            query.bindValue(":id", user_id)
+            if not query.exec():
+                logger.error(
+                    {
+                        "message": query.lastError().text(),
+                        "status": StatusCode.INTERNAL_SERVER_ERROR.value,
+                    }
+                )
 
-        return result
+            while query.next():
+                factory_code = query.value("factory_code")
+                result.append(
+                    {
+                        "factory_code": factory_code,
+                        "factory_name": FactoryNames[factory_code].value,
+                    }
+                )
+
+        except Exception as e:
+            logger.error(f"Error: {e}")
+            raise Exception(e)
+        finally:
+            query.finish()
+            return result
