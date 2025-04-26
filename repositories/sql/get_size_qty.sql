@@ -1,14 +1,14 @@
-DECLARE @0 NVARCHAR(10) = :mo_no;
-DECLARE @1 NVARCHAR(10) = :mo_noseq;
+DECLARE @mo_no NVARCHAR(10) = :mo_no;
+DECLARE @mo_noseq NVARCHAR(10) = :mo_noseq;
 
 SELECT
     a.size_code,
-    CASE WHEN LEN(b.size_numcode) = 1 THEN CONCAT(0,b.size_numcode) ELSE b.size_numcode END [size_numcode], 
+    b.size_numcode, 
     SUM(CAST(b.size_qty AS INT)) AS size_qty,
-    ISNULL(SUM(CAST(c.combined_qty AS INT)), 0) AS combined_qty,
-    ISNULL(SUM(CAST(d.in_use_qty AS INT)), 0) AS in_use_qty,
-    ISNULL(SUM(CAST(e.compensated_qty AS INT)), 0) AS compensated_qty,
-    ISNULL(SUM(CAST(f.cancelled_qty AS INT)), 0) AS cancelled_qty
+    ISNULL(CAST(c.combined_qty AS INT), 0) AS combined_qty,
+    ISNULL(CAST(d.in_use_qty AS INT), 0) AS in_use_qty,
+    ISNULL(CAST(e.compensated_qty AS INT), 0) AS compensated_qty,
+    ISNULL(CAST(f.cancelled_qty AS INT), 0) AS cancelled_qty
 FROM wuerp_vnrd.dbo.ta_ordersizerun a
     LEFT JOIN wuerp_vnrd.dbo.ta_ordermst or1 ON or1.or_no= a.or_no
         AND or1.isactive= 'Y'
@@ -61,40 +61,47 @@ OUTER APPLY (
 )
 -- tổng số lượng đã phối
 OUTER APPLY (
-    SELECT COUNT(EPC_Code) AS combined_qty
+    SELECT COUNT(EPC_Code)
     FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst
-    WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode AND sole_tag = 'A' AND isactive = 'Y' 
-    AND (@1 IS NULL OR mo_noseq = @1)
+    WHERE mo_no = a1.mo_no
+        AND (@mo_noseq IS NULL OR mo_noseq = @mo_noseq)
+        AND size_numcode = b.size_numcode 
+        AND sole_tag = 'A' 
+        AND isactive = 'Y' 
     GROUP BY size_code, size_numcode
 ) c ([combined_qty])
 OUTER APPLY (
     SELECT COUNT(EPC_Code) AS in_use_qty
     FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst
-    WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode AND ri_cancel = 0 AND sole_tag = 'A' AND isactive = 'Y'  
-    AND (@1 IS NULL OR mo_noseq = @1)
+    WHERE mo_no = a1.mo_no
+        AND (@mo_noseq IS NULL OR mo_noseq = @mo_noseq)
+        AND size_numcode = b.size_numcode 
+        AND ri_cancel = 0 
+        AND sole_tag = 'A' 
+        AND isactive = 'Y'  
     GROUP BY size_code, size_numcode
 ) d ([in_use_qty])
 OUTER APPLY (
     SELECT COUNT(EPC_Code) AS compensated_qty
     FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst
-    WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode AND ri_type = 'D' AND sole_tag = 'A' AND isactive = 'Y' 
-    AND (@1 IS NULL OR mo_noseq = @1)
+    WHERE mo_no = a1.mo_no
+        AND size_numcode = b.size_numcode 
+        AND ri_type = 'D' 
+        AND sole_tag = 'A' 
+        AND isactive = 'Y' 
+        AND (@mo_noseq IS NULL OR mo_noseq = @mo_noseq)
     GROUP BY size_code, size_numcode
 ) e ([compensated_qty])
 OUTER APPLY (
     SELECT COUNT(EPC_Code) AS cancelled_qty
     FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst
-    WHERE mo_no = a1.mo_no AND size_numcode = b.size_numcode AND ri_cancel = 1 AND sole_tag = 'A'
-    AND (@1 IS NULL OR mo_noseq = @1)
+    WHERE mo_no = a1.mo_no
+        AND size_numcode = b.size_numcode AND ri_cancel = 1 AND sole_tag = 'A'
+        AND (@mo_noseq IS NULL OR mo_noseq = @mo_noseq)
     GROUP BY size_code, size_numcode
 ) f ([cancelled_qty])
 WHERE b.size_qty <> 0
     AND a.isactive= 'Y'
-    AND a1.mo_no = @0
-GROUP BY a.size_code, b.size_numcode
-ORDER BY 
-    CASE 
-        WHEN ISNUMERIC(b.size_numcode) = 1 THEN CAST(b.size_numcode AS FLOAT)  -- Nếu là số, chuyển thành dạng số
-        WHEN LEFT(b.size_numcode, 1) = 'K' THEN CAST(SUBSTRING(b.size_numcode, 2, LEN(b.size_numcode)) AS FLOAT) + 0.5 -- K6, K8 -> xử lý thêm 0.5
-        ELSE 9999  -- Nếu không phải số, đẩy xuống cuối
-END ASC;
+    AND a1.mo_no = @mo_no
+GROUP BY a.size_code, b.size_numcode, c.combined_qty, d.in_use_qty, e.compensated_qty, f.cancelled_qty
+ORDER BY RIGHT('0000' + IIF(CHARINDEX('.', b.size_numcode) > 0, b.size_numcode, b.size_numcode + '.0'), 5) ASC
