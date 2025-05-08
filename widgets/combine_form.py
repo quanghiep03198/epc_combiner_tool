@@ -305,6 +305,7 @@ class CombineForm(QFrame, I18nContext):
                 UserActionEvent.COMBINED_EPC_CREATED.value,
                 {
                     "mo_no": combine_form_context["mo_no"],
+                    "mo_noseq": combine_form_context["mo_noseq"],
                     "size_numcode": combine_form_context["size_numcode"],
                     "affected": num_rows_affected,
                 },

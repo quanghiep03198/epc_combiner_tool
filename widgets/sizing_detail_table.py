@@ -50,8 +50,6 @@ class SizingDetailTableWidget(QTableWidget, I18nContext):
         self.horizontalHeader().setVisible(False)
         self.verticalHeader().setVisible(True)
         self.verticalHeader().setFont(QFont("Inter", 12, QFont.Weight.Bold))
-        # self.setRowCount(len(self._vertical_header_labels))
-        # self.setVerticalHeaderLabels(self._vertical_header_labels)
 
         __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value)(self.__translate__)
         __event_emitter__.on(UserActionEvent.COMBINED_EPC_CREATED.value)(
@@ -129,8 +127,13 @@ class SizingDetailTableWidget(QTableWidget, I18nContext):
         finally:
             self.loading.close_loading()
 
-    def on_combined_epc_created(self, data):
-        self.handle_fetch_size_data(data["mo_no"])
+    def on_combined_epc_created(self, data: dict):
+        self.handle_fetch_size_data(
+            {
+                "mo_no": data.get("mo_no"),
+                "mo_noseq": data.get("mo_noseq"),
+            }
+        )
 
     def handle_highlight_qty(
         self, row: int, col: int, original_qty: int, actual_qty: int
