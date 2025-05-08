@@ -8,6 +8,7 @@ cn_dictionary: dict = {
         "confirm": "确认",
         "connect": "连接",
         "connect_uhf_reader": "连接 UHF Reader",
+        "delete": "删除",
         "disconnect": "断开连接",
         "disconnect_uhf_reader": "断开连接 UHF Reader",
         "exit": "退出",
