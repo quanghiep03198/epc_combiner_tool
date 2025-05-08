@@ -8,6 +8,7 @@ vi_dictionary: dict = {
         "confirm": "Xác nhận",
         "connect": "Kết nối",
         "connect_uhf_reader": "Kết nối máy UHF",
+        "delete": "Xóa",
         "disconnect": "Ngắt kết nối",
         "disconnect_uhf_reader": "Ngắt kết nối máy UHF",
         "exit": "Thoát",

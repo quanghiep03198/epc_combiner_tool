@@ -280,6 +280,31 @@ QToolBar::handle {
    font-size: 14px;            /* Kích thước chữ */
 }
 
+QSlider::groove:horizontal {
+   height: 4px;
+   background: #262626;
+   border-radius: 2px;
+}
+
+QSlider::handle:horizontal {
+   width: 12px;
+   height: 12px;
+   background: #0078d4;
+   border: 1px solid #005a9e;
+   border-radius: 6px;
+   margin: -4px 0;
+}
+
+QSlider::sub-page:horizontal {
+   background: #0078d4;
+   border-radius: 2px;
+}
+
+QSlider::add-page:horizontal {
+   background: #171717;
+   border-radius: 2px;
+}
+
 #epc_reader_playground{
    border: 1px solid #404040;
    border-radius: 4px;
@@ -362,3 +387,18 @@ QToolBar::handle {
    font-size: 14px;
    color: #a3a3a3
 }
+
+#delete_button {
+   background-color: #ef4444; 
+   color: #fafafa;
+}
+
+#delete_button:hover {
+   background-color: rgba(239,68,68,0.8);
+}
+
+#delete_button:disabled {
+   background-color: rgba(239,68,68,0.5);
+   color: #f5f5f5
+}
+

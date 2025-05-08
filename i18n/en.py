@@ -8,6 +8,7 @@ en_dictionary: dict = {
         "confirm": "Confirm",
         "connect": "Connect",
         "connect_uhf_reader": "Connect UHF Reader",
+        "delete": "Delete",
         "disconnect": "Disconnect",
         "disconnect_uhf_reader": "Disconnect UHF Reader",
         "exit": "Exit",
