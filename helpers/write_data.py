@@ -9,7 +9,10 @@ from helpers.disutils import strtobool
 
 
 def __write_file(csv_filepath: str, data: dict):
-    with open(csv_filepath, mode="w", newline="", encoding="utf-8-sig") as csv_file:
+    file_exists = os.path.isfile(csv_filepath) and os.path.getsize(csv_filepath) > 0
+    with open(
+        csv_filepath, mode="a" if file_exists else "w", newline="", encoding="utf-8-sig"
+    ) as csv_file:
         fieldnames = [
             "EPC",
             I18nService.t("fields.mo_no"),
@@ -18,7 +21,8 @@ def __write_file(csv_filepath: str, data: dict):
             I18nService.t("fields.user_name_created"),
         ]
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-        writer.writeheader()
+        if not file_exists:
+            writer.writeheader()
         for epc in data["epcs"]:
             writer.writerow(
                 {
@@ -41,39 +45,42 @@ def write_data(data: dict):
     - data (dict): Combination data
     """
 
-    is_auto_save_enabled = ConfigService.get_conf(
-        section=ConfigSection.DATA.value,
-        key="auto_save",
-        serializer=lambda value: strtobool(value),
-    )
-
-    if not is_auto_save_enabled:
-        file_dialog = QFileDialog()
-        options = QFileDialog.Options()
-        file_dialog.setMinimumWidth(800)
-        file_dialog.setDefaultSuffix("csv")
-        csv_filepath, _ = file_dialog.getSaveFileName(
-            parent=None,
-            caption="Save CSV File",
-            directory="",
-            filter="CSV Files (*.csv);;All Files (*)",
-            options=options,
+    try:
+        is_auto_save_enabled = ConfigService.get_conf(
+            section=ConfigSection.DATA.value,
+            key="AUTO_SAVE",
+            serializer=lambda value: strtobool(value),
         )
-        if csv_filepath:
-            try:
-                __write_file(csv_filepath, data)
-            except Exception as e:
-                print(e)
-    else:
-        data_folder = "data"
-        mo_no_folder = os.path.join(data_folder, data["mo_no"])
 
-        # Check if the folder exists, if not, create it
-        if not os.path.exists(mo_no_folder):
-            os.makedirs(mo_no_folder)
+        if not is_auto_save_enabled:
+            file_dialog = QFileDialog()
+            options = QFileDialog.Options()
+            file_dialog.setMinimumWidth(800)
+            file_dialog.setDefaultSuffix("csv")
+            csv_filepath, _ = file_dialog.getSaveFileName(
+                parent=None,
+                caption="Save CSV File",
+                directory="",
+                filter="CSV Files (*.csv);;All Files (*)",
+                options=options,
+            )
+            if csv_filepath:
+                try:
+                    __write_file(csv_filepath, data)
+                except Exception as e:
+                    print(e)
+        else:
+            data_folder = "data"
+            mo_no_folder = os.path.join(data_folder, data["mo_no"])
 
-        # Create the CSV file name
-        current_date = datetime.now().strftime("%Y%m%d")
-        csv_filename = f"s{data['size_numcode']}__{current_date}.csv"
-        csv_filepath = os.path.join(mo_no_folder, csv_filename)
-        __write_file(csv_filepath, data)
+            # Check if the folder exists, if not, create it
+            if not os.path.exists(mo_no_folder):
+                os.makedirs(mo_no_folder)
+
+            # Create the CSV file name
+            current_date = datetime.now().strftime("%Y%m%d")
+            csv_filename = f"s{data['size_numcode']}__{current_date}.csv"
+            csv_filepath = os.path.join(mo_no_folder, csv_filename)
+            __write_file(csv_filepath, data)
+    except Exception as e:
+        logger.error(e)
