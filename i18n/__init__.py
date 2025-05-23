@@ -56,7 +56,7 @@ class I18nService:
             - lang: str
         """
         try:
-            ConfigService.set_conf(ConfigSection.LOCALE.value, "language", lang)
+            ConfigService.set_conf(ConfigSection.LOCALE.value, "LANGUAGE", lang)
             global __dictionary__
 
             __dictionary__ = flatten_dict(__i18n_resource__[lang])

@@ -27,6 +27,8 @@ cn_dictionary: dict = {
         "setting": "设置",
         "start": "开始",
         "stop": "停止",
+        "start_reading": "开始读取",
+        "stop_reading": "停止读取",
     },
     "fields": {
         "cancelled_qty": "已取消数量",

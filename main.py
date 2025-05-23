@@ -1,5 +1,6 @@
 # Import built-in modules
 import sys
+import os
 
 # Import PyQt6 modules
 from PyQt6.QtCore import *
@@ -36,7 +37,7 @@ class MainWindow(QMainWindow):
         self.__app__ = app
 
         self.setObjectName("MainWindow")
-        self.resize(1366, 768)
+        self.resize(1440, 860)
         self.setAutoFillBackground(True)
 
         # Global overlay
@@ -235,6 +236,9 @@ class MainWindow(QMainWindow):
         self.show()
         self.on_auth_state_change(auth_context)
 
+    def disconnect_reader(reader_name):
+        pass
+
     # region Application shutdown
     def on_application_shutdown(self):
         """
@@ -243,11 +247,11 @@ class MainWindow(QMainWindow):
         if hasattr(self.epc_reader_playground, "uhf_reader_instance") and isinstance(
             self.epc_reader_playground.uhf_reader_instance, GClient
         ):
-            self.epc_reader_playground.uhf_reader_instance.close()
+            self.epc_reader_playground.uhf_reader_instance.callTcpDisconnect
         disconnect_datasources()
         # Ensure the application exits completely
         self.__app__.quit()
-        sys.exit(0)
+        os._exit(0)
 
     def reload(self):
         self.close()
@@ -259,6 +263,7 @@ class MainWindow(QMainWindow):
 
 
 if __name__ == "__main__":
+    app_ref: int = 0
     try:
         app = QApplication(sys.argv)
 
@@ -269,7 +274,9 @@ if __name__ == "__main__":
         app.aboutToQuit.connect(window.on_application_shutdown)
         app.lastWindowClosed.connect(window.on_application_shutdown)
 
-        sys.exit(app.exec())
+        app_ref = app.exec()
+        sys.exit(app_ref)
+        os._exit(app_ref)
     except Exception as e:
         logger.error(f"Error occurred: {e}")
         input("Press Enter to exit...")

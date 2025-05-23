@@ -1,7 +1,9 @@
 USE DV_DATA_LAKE;
 
-SELECT 1 AS result FROM dv_RFIDrecordmst a
-LEFT JOIN dv_rfidmatchmst b ON a.EPC_Code = b.EPC_Code
-WHERE a.EPC_Code IN ('E28069150000501D2B94E0EC', 'E28069150000501D2B926CF6')
-AND stationNO LIKE '%P103'
-AND DATEDIFF(DAY, CAST(GETDATE() AS DATE), CAST(b.ri_date AS DATE)) >= 3
+SELECT *
+FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst
+WHERE EPC_Code IN ('E28068940000502B3A04F88D')
+   AND ri_cancel = 0
+   AND sole_tag = 'A'
+   AND isactive = 'Y' 
+-- AND DATEDIFF(DAY, CAST(GETDATE() AS DATE), CAST(b.ri_date AS DATE)) >= 3

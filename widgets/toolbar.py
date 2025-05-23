@@ -22,7 +22,6 @@ class AppToolBar(QToolBar, I18nContext):
         super().__init__()
 
         self.root = root
-        self.configurations = ConfigService.load_configs()
 
         self.setObjectName("toolbar")
         self.setMovable(False)
@@ -48,8 +47,8 @@ class AppToolBar(QToolBar, I18nContext):
         self.globe_icon = QLabel()
 
         pixmap = QPixmap(resolve_path("assets/icons/globe.svg")).scaled(
-            18,
-            18,
+            20,
+            20,
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
@@ -58,6 +57,14 @@ class AppToolBar(QToolBar, I18nContext):
         self.user_locale_text = QLabel()
         self.user_locale_layout.addWidget(self.globe_icon)
         self.user_locale_layout.addWidget(self.user_locale_text)
+
+        # self.slider = QSlider(Qt.Orientation.Horizontal)
+        # self.slider.setMinimum(0)
+        # self.slider.setMaximum(100)
+        # self.slider.setValue(50)
+        # self.slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        # self.slider.setTickInterval(10)
+        # self.addWidget(self.slider)
 
         # self.addWidget(self.version)
         self.addWidget(self.user_locale)

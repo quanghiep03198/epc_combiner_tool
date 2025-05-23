@@ -44,8 +44,8 @@ class LoginDialog(QDialog, I18nContext):
         pixmap = QPixmap(resolve_path("assets/icons/user.svg"))
         icon_label.setPixmap(
             pixmap.scaled(
-                16,
-                16,
+                20,
+                20,
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
             )
@@ -68,8 +68,8 @@ class LoginDialog(QDialog, I18nContext):
         self.password_label = QLabel()
         icon_label = QLabel()
         pixmap = QPixmap(resolve_path("assets/icons/key-round.svg")).scaled(
-            16,
-            16,
+            20,
+            20,
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
@@ -100,8 +100,8 @@ class LoginDialog(QDialog, I18nContext):
 
         icon_label = QLabel()
         pixmap = QPixmap(resolve_path("assets/icons/factory.svg")).scaled(
-            16,
-            16,
+            20,
+            20,
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )

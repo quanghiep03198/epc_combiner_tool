@@ -14,64 +14,28 @@ class RFIDService:
         Cancel the previous combinations and add new the ones
         """
         try:
-            epcs_to_combine: list[str] = list(map(lambda item: item["EPC_Code"], data))
-
-            # ? Check if the EPCs are not cutting new
-            if not RFIDRepository.check_if_epc_new(epcs_to_combine):
-                # ? If EPCs have just been combined, do not allow to combine again
-                recently_combined_epcs = RFIDRepository.get_recently_combined_epcs(
-                    epcs_to_combine
-                )
-                # Combine both differences
-                ng_epcs = numpy.setxor1d(
-                    epcs_to_combine, recently_combined_epcs
-                ).tolist()
-                ok_epcs = numpy.intersect1d(
-                    epcs_to_combine, recently_combined_epcs
-                ).tolist()
-                if len(ng_epcs) > 0:
-                    raise Exception(
-                        {
-                            "message": I18nService.t(
-                                "notification.recent_combined_epc_exists"
-                            ),
-                            "data": {
-                                "ng_epcs": ng_epcs,
-                                "ok_epcs": ok_epcs,
-                            },
-                        }
-                    )
-
-                # ? Check if the EPCs are still in the lifecycle, if not allow user to combine them
-                lifecycle_ended_epcs = RFIDRepository.get_lifecycle_ended_epcs(
-                    epcs_to_combine
-                )
-                ng_epcs = numpy.setxor1d(epcs_to_combine, lifecycle_ended_epcs).tolist()
-                ok_epcs = numpy.intersect1d(
-                    epcs_to_combine, lifecycle_ended_epcs
-                ).tolist()
-
-                if len(ng_epcs) > 0:
-                    raise Exception(
-                        {
-                            "message": I18nService.t("notification.in_use_epc_exists"),
-                            "data": {
-                                "ng_epcs": ng_epcs,
-                                "ok_epcs": ok_epcs,
-                            },
-                        }
-                    )
-
             return RFIDRepository.reset_and_add_combinations(data)
         except Exception as e:
             raise Exception(e.args[0])
 
     @staticmethod
     def get_ng_epc_detail(epcs: list[str]) -> list[dict[str, str]]:
+        """
+        Deprecated
+
+        Get the EPCs that are not in the lifecycle
+        """
+
         return RFIDRepository.get_ng_epc_detail(epcs)
 
     @staticmethod
     def force_end_lifecycle(payload: dict) -> int:
+        """
+        Deprecated
+
+        Force end the lifecycle of the EPCs
+        """
+
         epcs = payload["epcs"]
         mo_no = payload["mo_no"]
         size_code = payload["size_code"]
@@ -142,6 +106,12 @@ class RFIDService:
 
     @staticmethod
     def force_cancel(epcs: list[str]) -> int:
+        """
+        Deprecated
+
+        Force cancel the EPCs
+        """
+
         query = QSqlQuery(DATA_SOURCE_DL)
         try:
             query.prepare(

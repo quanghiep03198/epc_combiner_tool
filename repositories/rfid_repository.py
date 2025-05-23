@@ -2,185 +2,16 @@ from PyQt6.QtSql import *
 from helpers.logger import logger
 from contexts.combine_form_context import combine_form_context
 from database import DATA_SOURCE_DL
+from contexts.auth_context import auth_context
 
 
 class RFIDRepository:
-
-    @staticmethod
-    def check_if_epc_new(epcs: list[str]) -> bool:
-        epcs_list_str = ",".join([f"'{epc.strip()}'" for epc in epcs])
-        query = QSqlQuery(DATA_SOURCE_DL)
-        try:
-            total_qty = None
-            query.prepare(
-                f"""--sql;
-                SELECT COUNT(DISTINCT EPC_Code) AS count
-                    FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst
-                    WHERE EPC_Code IN ({epcs_list_str})
-                        AND ri_cancel = 0
-                        AND isactive = 'Y' 
-                 
-            """
-            )
-
-            if not query.exec():
-                raise Exception(query.lastError().text())
-
-            if query.next():
-                total_qty = query.value("count")
-
-            return total_qty == 0
-        except Exception as e:
-            logger.error(e)
-        finally:
-            if query is not None:
-                query.finish()
-
-    @staticmethod
-    def get_recently_combined_epcs(epcs: list[str]) -> list[str]:
-        """
-        Check if the EPCs are recently combined
-        """
-        result = []
-        query = QSqlQuery(DATA_SOURCE_DL)
-        try:
-            query.prepare(
-                f"""--sql
-                    WITH datalist AS (
-                        SELECT DISTINCT EPC_Code, matchkeyid, mo_no, isactive
-                        FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst
-                        UNION ALL 
-                        SELECT EPC_Code, matchkeyid, mo_no, isactive 
-                        FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst_backup_Daily
-                    )
-                    SELECT DISTINCT a.EPC_Code FROM datalist a
-                    INNER JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst b
-                    ON a.matchkeyid = b.keyid 
-                        AND a.EPC_Code = b.EPC_Code
-                        AND a.mo_no = b.mo_no
-                    WHERE 
-                        a.EPC_Code IN (
-                            SELECT value AS EPC_Code 
-                            FROM STRING_SPLIT(CAST(:epc_list AS NVARCHAR(MAX)), ',')
-                        )
-                        AND a.isactive = 'Y'
-                        AND b.isactive = 'Y'
-                        AND b.ri_cancel = 0
-                """
-            )
-
-            query.bindValue(":epc_list", ",".join(epcs))
-            query.exec()
-            while query.next():
-                result.append(query.value("EPC_Code"))
-
-            return result
-        except Exception as e:
-            logger.error(f"Error: {e}")
-            raise Exception(e)
-        finally:
-            query.finish()
-
-    @staticmethod
-    def get_lifecycle_ended_epcs(epcs: list[str]):
-        """
-        Check if the EPCs are still in the lifecycle, if not allow user to combine them
-        """
-        result = []
-        query = QSqlQuery(DATA_SOURCE_DL)
-        try:
-            query.prepare(
-                f"""--sql
-                    WITH datalist AS (
-                        SELECT EPC_Code, mo_no, stationNO, matchkeyid 
-                        FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst
-                        UNION ALL
-                        SELECT EPC_Code, mo_no, stationNO, matchkeyid
-                        FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst_backup_Daily
-                    )
-                    SELECT DISTINCT a.EPC_Code FROM datalist a
-                    INNER JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst b
-                        ON a.matchkeyid = b.keyid 
-                        AND a.EPC_Code = b.EPC_Code
-                        AND a.mo_no = b.mo_no
-                    WHERE 
-                        a.EPC_Code IN (
-                            SELECT value AS EPC_Code 
-                            FROM STRING_SPLIT(CAST(:epc_list AS NVARCHAR(MAX)), ',')
-                        )
-                        AND b.ri_cancel = 0
-                        AND a.stationNO LIKE '%P%103'
-                """
-            )
-
-            query.bindValue(":epc_list", ",".join(epcs))
-
-            if not query.exec():
-                raise Exception(query.lastError().text())
-
-            while query.next():
-                result.append(query.value("EPC_Code"))
-        except Exception as e:
-            logger.error(e)
-        finally:
-            query.finish()
-            return result
-
-    @staticmethod
-    def get_ng_epc_detail(epcs: list[str]) -> list[dict[str, str]]:
-        """
-        Get combination history of an EPC
-        """
-        result = []
-        try:
-
-            query = QSqlQuery(DATA_SOURCE_DL)
-
-            query.prepare(
-                f"""--sql
-                    WITH datalist AS (
-                    SELECT EPC_Code, stationNO, matchkeyid 
-                    FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst
-                    UNION ALL
-                    SELECT EPC_Code, stationNO, matchkeyid
-                    FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst_backup_Daily
-                )
-                SELECT DISTINCT a.keyid, a.EPC_Code, a.mo_no, a.size_numcode, a.ri_date, b.stationNO
-                FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst a
-                LEFT JOIN datalist b
-                    ON a.keyid = b.matchkeyid AND a.EPC_Code = b.EPC_Code
-                WHERE a.EPC_Code IN (
-                        SELECT value AS EPC_Code 
-                        FROM STRING_SPLIT(CAST(:epc_list AS NVARCHAR(MAX)), ',')
-                    )
-                    AND a.ri_cancel = 0
-                """
-            )
-
-            query.bindValue(":epc_list", ",".join(epcs))
-
-            if not query.exec():
-                raise Exception(query.lastError().text())
-
-            while query.next():
-                result.append(
-                    {
-                        "EPC_Code": query.value("EPC_Code"),
-                        "mo_no": query.value("mo_no"),
-                        "size_numcode": query.value("size_numcode"),
-                        "ri_date": query.value("ri_date"),
-                        "stationNO": query.value("stationNO"),
-                    }
-                )
-        finally:
-            query.finish()
-            return result
-
     @staticmethod
     def reset_and_add_combinations(data: dict):
         query = QSqlQuery(DATA_SOURCE_DL)
         try:
             epc_params_str = ",".join([f"'{item['EPC_Code']}'" for item in data])
+            fallback_station_no = "%s_%s" % (auth_context.get("factory_code"), "PA103")
 
             insert_values = ",".join(
                 map(
@@ -219,15 +50,59 @@ class RFIDRepository:
             )
 
             query.prepare(
-                f"""--sql
+                f"""-- sql
+                    -- Force EPC's lifecycle end
+                    UPDATE DV_DATA_LAKE.dbo.dv_RFIDrecordmst
+                    SET stationNO = (
+                        SELECT COALESCE(
+                        -- find stationNO by both mo_no and size_code
+                            (
+                                SELECT TOP 1 stationNO
+                                FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst 
+                                WHERE mo_no = '{combine_form_context.get('mo_no')}'
+                                    AND size_code = '{combine_form_context.get('size_code')}'
+                                    AND stationNO LIKE '%P%103'
+                                ORDER BY record_time DESC
+                            ), 
+                            -- else if find stationNO by only mo_no
+                            (
+                                SELECT TOP 1 stationNO
+                                FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst 
+                                WHERE mo_no = '{combine_form_context.get('mo_no')}'
+                                    AND stationNO LIKE '%P%103'
+                                ORDER BY record_time DESC
+                            ), 
+                            -- else use the fallback stationNO
+                            '{fallback_station_no}'
+                            ) AS stationNO
+                        ),
+                        user_code_updated = '{combine_form_context.get("user_code_updated")}',
+                        user_name_updated = '{combine_form_context.get("user_name_updated")}',
+                        record_time = DATEADD(DAY, -7, GETDATE()),
+                        remark = 'Forced lifecycle end by {combine_form_context.get("user_name_updated")}'
+                    WHERE matchkeyid IN (
+                            SELECT a.keyid as matchkeyid 
+                            FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst a
+                            LEFT JOIN DV_DATA_LAKE.dbo.dv_RFIDrecordmst b
+                                ON a.EPC_Code = b.EPC_Code
+                                AND a.keyid = b.matchkeyid
+                            WHERE a.EPC_Code IN ({epc_params_str})
+                                AND a.ri_cancel = 0  
+                                AND b.stationNO LIKE '%P%103'
+                        )
+                    ;
+
                     -- Cancel old records
                     UPDATE DV_DATA_LAKE.dbo.dv_rfidmatchmst
                     SET ri_cancel = 1, 
                         ri_reason_cancel = 'EPC lifecycle ended', 
                         ri_cancel_date = GETDATE(),
-                        user_code_updated = '{combine_form_context["user_code_updated"]}',
-                        user_name_updated = '{combine_form_context["user_name_updated"]}'
-                    WHERE EPC_Code IN ({epc_params_str});    
+                        user_code_updated = '{combine_form_context.get("user_code_updated")}',
+                        user_name_updated = '{combine_form_context.get("user_name_updated")}'
+                    WHERE EPC_Code IN ({epc_params_str})
+                        AND ri_cancel = 0
+                        AND isactive = 'Y';   
+
                     -- Insert new records    
                     INSERT INTO DV_DATA_LAKE.dbo.dv_rfidmatchmst (
                         EPC_Code, mo_no, mo_noseq, mat_code,  or_no, or_custpo, 
@@ -246,9 +121,7 @@ class RFIDRepository:
                 raise Exception(query.lastError().text())
 
             DATA_SOURCE_DL.commit()
-
             return query.numRowsAffected()
-
         except Exception as e:
             DATA_SOURCE_DL.rollback()
             logger.error(f"Error: {e}")
