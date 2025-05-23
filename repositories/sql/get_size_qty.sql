@@ -9,10 +9,10 @@ SELECT
     ISNULL(CAST(d.in_use_qty AS INT), 0) AS in_use_qty,
     ISNULL(CAST(e.compensated_qty AS INT), 0) AS compensated_qty,
     ISNULL(CAST(f.cancelled_qty AS INT), 0) AS cancelled_qty
-FROM wuerp_vnrd.dbo.ta_ordersizerun a
-    LEFT JOIN wuerp_vnrd.dbo.ta_ordermst or1 ON or1.or_no= a.or_no
+FROM wuerp_vnrd.dbo.ta_ordersizerun a WITH (NOLOCK)
+    LEFT JOIN wuerp_vnrd.dbo.ta_ordermst or1 WITH (NOLOCK) ON or1.or_no= a.or_no
         AND or1.isactive= 'Y'
-    LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet a1 ON or1.or_no= a1.or_no
+    LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet a1 WITH (NOLOCK) ON or1.or_no= a1.or_no
         AND a1.isactive= 'Y'
 OUTER APPLY (
   VALUES
@@ -105,3 +105,4 @@ WHERE b.size_qty <> 0
     AND a1.mo_no = @mo_no
 GROUP BY a.size_code, b.size_numcode, c.combined_qty, d.in_use_qty, e.compensated_qty, f.cancelled_qty
 ORDER BY RIGHT('0000' + IIF(CHARINDEX('.', b.size_numcode) > 0, b.size_numcode, b.size_numcode + '.0'), 5) ASC
+OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 4);

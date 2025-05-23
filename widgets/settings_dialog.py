@@ -31,7 +31,7 @@ class AppSettingsDialog(QDialog, I18nContext):
         setting_form_layout.setSpacing(24)
         # region UHF Reader settings
 
-        # UHF Reader IP setting field control
+        # region Reader TCP/IP
         self.reader_fieldset_layout = QVBoxLayout()
         self.reader_fieldset_layout.setContentsMargins(0, 0, 0, 0)
         self.reader_fieldset_layout.setSpacing(12)
@@ -47,7 +47,7 @@ class AppSettingsDialog(QDialog, I18nContext):
         self.reader_ip_field_control = QWidget(self.reader_fieldset)
         self.reader_ip_field_control.setLayout(self.reader_ip_field_control_layout)
 
-        self.reader_ip_label = QLabel("UHF Reader TCP/IP", self.reader_ip_field_control)
+        self.reader_ip_label = QLabel("TCP/IP", self.reader_ip_field_control)
         self.reader_ip_input = QLineEdit(self.reader_ip_field_control)
         self.reader_ip_input.setPlaceholderText("0.0.0.0")
         self.reader_ip_input.setFixedHeight(36)
@@ -60,16 +60,15 @@ class AppSettingsDialog(QDialog, I18nContext):
 
         self.reader_ip_field_control_layout.addWidget(self.reader_ip_label)
         self.reader_ip_field_control_layout.addWidget(self.reader_ip_input)
+        # endregion
 
-        # UHF Reader port setting field control
+        # region Reader port
         self.reader_port_field_control_layout = QVBoxLayout()
         self.reader_port_field_control_layout.setContentsMargins(0, 0, 0, 0)
         self.reader_port_field_control_layout.setSpacing(4)
         self.reader_port_field_control = QWidget(self.reader_fieldset)
         self.reader_port_field_control.setLayout(self.reader_port_field_control_layout)
-        self.reader_port_label = QLabel(
-            "UHF Reader port", self.reader_port_field_control
-        )
+        self.reader_port_label = QLabel("Port", self.reader_port_field_control)
         self.reader_port_input = QLineEdit(self.reader_port_field_control)
         self.reader_port_input.setPlaceholderText("8160")
         self.reader_port_input.setFixedHeight(36)
@@ -83,8 +82,35 @@ class AppSettingsDialog(QDialog, I18nContext):
 
         self.reader_fieldset_layout.addWidget(self.reader_ip_field_control)
         self.reader_fieldset_layout.addWidget(self.reader_port_field_control)
+        # endregion
+
+        # region Reader power
+        self.reader_power_field_control_layout = QVBoxLayout()
+        self.reader_power_field_control_layout.setContentsMargins(0, 0, 0, 0)
+        self.reader_power_field_control_layout.setSpacing(4)
+        self.reader_power_field_control = QWidget(self.reader_fieldset)
+        self.reader_power_field_control.setLayout(
+            self.reader_power_field_control_layout
+        )
+        self.reader_power_label = QLabel("Power", self.reader_power_field_control)
+        self.reader_power_input = QLineEdit(self.reader_power_field_control)
+        self.reader_power_input.setPlaceholderText("20")
+        self.reader_power_input.setFixedHeight(36)
+        if self.__form_state.get("UHF_READER_POWER"):
+            self.reader_power_input.setText(self.__form_state.get("UHF_READER_POWER"))
+        self.reader_power_input.textChanged.connect(
+            lambda value: self.on_form_state_change("UHF_READER_POWER", value)
+        )
+        self.reader_power_field_control_layout.addWidget(self.reader_power_label)
+        self.reader_power_field_control_layout.addWidget(self.reader_power_input)
+
+        self.reader_fieldset_layout.addWidget(self.reader_ip_field_control)
+        self.reader_fieldset_layout.addWidget(self.reader_port_field_control)
+        self.reader_fieldset_layout.addWidget(self.reader_power_field_control)
+        # endregion
 
         setting_form_layout.addWidget(self.reader_fieldset)
+        # endregion
         # endregion
 
         # region Database settings

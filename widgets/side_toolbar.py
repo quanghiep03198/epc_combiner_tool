@@ -18,12 +18,14 @@ class SideToolbar(QToolBar, I18nContext):
         self.setObjectName("side_toolbar")
         self.setMovable(False)
         self.setFloatable(False)
+        self.setFixedWidth(50)
         self.setStyleSheet(
             """
             QToolBar{
+                padding-top: 8px;
                 padding-left: 4px;
                 padding-right: 4px;
-                spacing: 12px;
+                spacing: 18px;
                 background-color: #404040;
             }
             """
@@ -35,8 +37,8 @@ class SideToolbar(QToolBar, I18nContext):
 
         open_file_icon.addPixmap(
             pixmap.scaled(
-                18,
-                18,
+                24,
+                24,
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
             ),
@@ -55,8 +57,8 @@ class SideToolbar(QToolBar, I18nContext):
         pixmap = QPixmap(resolve_path("assets/icons/languages.svg"))
         language_icon.addPixmap(
             pixmap.scaled(
-                18,
-                18,
+                24,
+                24,
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
             ),
@@ -77,8 +79,8 @@ class SideToolbar(QToolBar, I18nContext):
         pixmap = QPixmap(resolve_path("assets/icons/settings.svg"))
         setting_icon.addPixmap(
             pixmap.scaled(
-                18,
-                18,
+                24,
+                24,
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
             ),
@@ -94,8 +96,8 @@ class SideToolbar(QToolBar, I18nContext):
         pixmap = QPixmap(resolve_path("assets/icons/circle-help.svg"))
         help_icon.addPixmap(
             pixmap.scaled(
-                18,
-                18,
+                24,
+                24,
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
             ),
@@ -108,7 +110,7 @@ class SideToolbar(QToolBar, I18nContext):
 
         self.menu = QMenu(self)
         self.menu.setFixedWidth(150)
-        self.menu.setContentsMargins(4, 4, 4, 4)
+        self.menu.setContentsMargins(4, 8, 4, 8)
         self.menu.setStyleSheet(
             """
             QMenu::item {

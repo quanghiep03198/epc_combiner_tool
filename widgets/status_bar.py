@@ -6,6 +6,7 @@ from helpers.resolve_path import resolve_path
 from widgets.switch import QToggle
 from events import __event_emitter__, UserActionEvent
 from i18n import I18nService, I18nContext
+from helpers.disutils import strtobool
 
 
 class StatusBar(QToolBar, I18nContext):
@@ -15,8 +16,8 @@ class StatusBar(QToolBar, I18nContext):
         self.configurations = ConfigService.load_configs()
         self.setMovable(False)
         self.setFloatable(False)
-
         self.setObjectName("status_bar")
+        self.setFixedHeight(50)
         self.setStyleSheet(
             """
             QToolBar{
@@ -37,8 +38,8 @@ class StatusBar(QToolBar, I18nContext):
         self.db_primary_text = QLabel(text=self.configurations.get("DB_SERVER", "N/A"))
         database_icon = QLabel()
         pixmap = QPixmap(resolve_path("assets/icons/database.svg")).scaled(
-            18,
-            18,
+            20,
+            20,
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
@@ -55,8 +56,8 @@ class StatusBar(QToolBar, I18nContext):
         self.reader_connection_status.setLayout(self.reader_connection_layout)
         self.reader_icon = QLabel()
         pixmap = QPixmap(resolve_path("assets/icons/hard-drive.svg")).scaled(
-            18,
-            18,
+            20,
+            20,
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
@@ -86,6 +87,13 @@ class StatusBar(QToolBar, I18nContext):
 
         self.auto_save_label = QLabel()
         self.auto_save_toggle = QToggle()
+        self.auto_save_toggle.setChecked(
+            ConfigService.get_conf(
+                section=ConfigSection.DATA.value,
+                key="AUTO_SAVE",
+                serializer=lambda value: strtobool(value),
+            )
+        )
         self.auto_save_toggle.checkStateChanged.connect(self.update_auto_save)
         self.auto_save_form_layout.addWidget(self.auto_save_label)
         self.auto_save_form_layout.addWidget(self.auto_save_toggle)
@@ -99,4 +107,4 @@ class StatusBar(QToolBar, I18nContext):
     @pyqtSlot(Qt.CheckState)
     def update_auto_save(self, state: Qt.CheckState):
         is_auto_save: bool = state == Qt.CheckState.Checked
-        ConfigService.set_conf(ConfigSection.DATA.value, "auto_save", is_auto_save)
+        ConfigService.set_conf(ConfigSection.DATA.value, "AUTO_SAVE", is_auto_save)

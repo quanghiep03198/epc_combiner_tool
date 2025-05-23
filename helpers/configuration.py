@@ -38,16 +38,20 @@ class ConfigService:
                 configfile.write("DB_PWD=\n\n")
                 configfile.write("UHF_READER_TCP_IP=\n")
                 configfile.write("UHF_READER_TCP_PORT=\n")
+                configfile.write("UHF_READER_POWER='20'")
 
         return dotenv_values(".env")
 
     @staticmethod
-    def get_env(key: str) -> str:
+    def get_env(
+        key: str,
+        serializer: Callable[[str], Any] | None = None,
+    ) -> str:
         configs = ConfigService.load_configs()
         value = configs.get(key)
-        if value:
-            return value
-        return None
+        if serializer and callable(serializer):
+            return serializer(value)
+        return value
 
     @staticmethod
     def set_env(key: str, value: str):
@@ -62,7 +66,7 @@ class ConfigService:
     ) -> str:
         if __configs__.has_option(section, key):
             value = __configs__.get(section, key, fallback=default)
-            if serializer:
+            if serializer and callable(serializer):
                 return serializer(value)
             return value
 

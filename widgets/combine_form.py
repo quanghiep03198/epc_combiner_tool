@@ -22,7 +22,7 @@ class WorkerSignals(QObject):
     """
 
     fulfill = pyqtSignal(int)
-    error = pyqtSignal(dict)
+    error = pyqtSignal(Exception)
 
 
 class StoreDataWorker(QRunnable):
@@ -34,7 +34,7 @@ class StoreDataWorker(QRunnable):
         self,
         payload: dict,
         on_success: Callable[[int], None],
-        on_error: Callable[[dict], None],
+        on_error: Callable[[Exception], None],
     ):
         super().__init__()
 
@@ -50,8 +50,8 @@ class StoreDataWorker(QRunnable):
             if isinstance(query_result, int):
                 self.signals.fulfill.emit(query_result)
         except Exception as e:
-            error_data: dict = e.args[0]
-            self.signals.error.emit(error_data)
+            logger.error(e.args)
+            self.signals.error.emit(e)
 
 
 class CombineForm(QFrame, I18nContext):
@@ -79,6 +79,7 @@ class CombineForm(QFrame, I18nContext):
         self.combine_form_layout.setContentsMargins(0, 0, 0, 0)
         self.combine_form_layout.setSpacing(4)
         self.combine_form_layout.setObjectName("combine_form_layout")
+
         # Action select
         self.action_select = QComboBox(parent=self)
         self.action_select.setObjectName("actionSelect")
@@ -256,8 +257,8 @@ class CombineForm(QFrame, I18nContext):
         ):
             toast = Toaster(
                 parent=self.root,
-                title=I18nService.t("notifications.over_scan_limit_title"),
-                text=I18nService.t("notifications.over_scan_limit_text"),
+                title=I18nService.t("notification.over_scan_limit_title"),
+                text=I18nService.t("notification.over_scan_limit_text"),
                 preset=ToastPreset.WARNING_DARK,
             )
             toast.show()
@@ -311,25 +312,17 @@ class CombineForm(QFrame, I18nContext):
                 },
             )
 
-    @pyqtSlot(dict)
-    def on_mutate_error(self, error_data):
+    @pyqtSlot(Exception)
+    def on_mutate_error(self, e: Exception):
+        logger.error(e)
         self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
-
-        if (
-            isinstance(error_data, dict)
-            and "message" in error_data
-            and "data" in error_data
-        ):
-            toast = Toaster(
-                parent=self.root,
-                title="notification.combine_epc_failure_title",
-                text=error_data["message"],
-                preset=ToastPreset.ERROR_DARK,
-            )
-            toast.show()
-            __event_emitter__.emit(
-                UserActionEvent.CHECK_COMBINABLE_FAILED.value, error_data["data"]
-            )
+        toast = Toaster(
+            parent=self.root,
+            title="notification.combine_epc_failure_title",
+            preset=ToastPreset.ERROR_DARK,
+            text="",
+        )
+        toast.show()
 
     def check_can_submit(self) -> bool:
         return (

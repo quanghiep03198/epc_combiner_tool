@@ -4,7 +4,7 @@
    border-color: #52525b;
    font-family: "Inter";
    font-weight: Normal;
-   font-size: 14px;
+   font-size: 16px;
    color: #fafafa;
 
 }
@@ -127,13 +127,22 @@ QTableWidget * {
 }
 
 QHeaderView::section {
-   padding: 2px 8px; 
+   padding:4px 8px; 
+   font-weight: 600;
+}
+
+QTableView::section {
+   padding: 4px 8px; 
+   font-weight: 600;
+}
+QTableView::item {
+   padding: 4px 8px; 
    font-weight: 600;
 }
 
 QTableWidget::item {
    border: none;
-   padding: 2px 8px;
+   padding: 8px 16px; /* top/bottom 8px, left/right 16px */
 }
 
 
@@ -316,27 +325,6 @@ QSlider::add-page:horizontal {
    border-radius: 4px;
 }
 
-#scanned_epc_counter, #ng_epc_counter{
-   background: none;
-   font-weight: 600;
-}
-
-#scanned_epc_counter:checked, #ng_epc_counter:checked {
-   background-color: #404040;
-}
-
-#scanned_epc_counter{
-   color: #fafafa
-}
-
-#ng_epc_counter{
-   color: #ef4444; 
-}
-
-#scanned_epc_counter:hover, #ng_epc_counter:hover{
-   background: #404040;
-}
-
 #reader_actions_group {
    background-color: #262626;
    border-radius: 4px;
@@ -377,7 +365,7 @@ QSlider::add-page:horizontal {
    font-family: "Inter";
    font-weight: 600;
    font-style: normal;
-   font-size: 14px;
+   font-size: 16px;
 }
 
 #settings_dialog #fieldset_legend{

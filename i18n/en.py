@@ -27,6 +27,8 @@ en_dictionary: dict = {
         "setting": "Settings",
         "start": "Start",
         "stop": "Stop",
+        "start_reading": "Start reading",
+        "stop_reading": "Stop reading",
     },
     "fields": {
         "cancelled_qty": "Cancelled quantity",
