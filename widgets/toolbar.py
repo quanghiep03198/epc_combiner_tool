@@ -113,8 +113,8 @@ class AppToolBar(QToolBar, I18nContext):
 
         self.user_icon = QLabel()
         pixmap = QPixmap(resolve_path("assets/icons/user.svg")).scaled(
-            16,
-            16,
+            18,
+            18,
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
