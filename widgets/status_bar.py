@@ -62,7 +62,6 @@ class StatusBar(QToolBar, I18nContext):
             Qt.TransformationMode.SmoothTransformation,
         )
         self.reader_icon.setPixmap(pixmap)
-        print(self.configurations.get("UHF_READER_TCP_IP", "N/A"))
         self.reader_connection_text = QLabel(
             text=self.configurations.get("UHF_READER_TCP_IP", "N/A")
         )

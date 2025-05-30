@@ -284,7 +284,6 @@ class AppSettingsDialog(QDialog, I18nContext):
     @pyqtSlot()
     def save_settings(self):
         err_count = 0
-        print(self.__form_state)
         for key, value in self.__form_state.items():
             if value == "":
                 toast = Toaster(

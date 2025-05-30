@@ -173,7 +173,6 @@ class LoginDialog(QDialog, I18nContext):
     def keyPressEvent(self, event):
         # Kiểm tra nếu phím được nhấn là Esc
         if event.key() == Qt.Key.Key_Escape or event.key() == Qt.Key.Key_Enter:
-            print("Esc pressed - Dialog will not close.")
             # Bỏ qua sự kiện để chặn đóng
             event.ignore()
         else:

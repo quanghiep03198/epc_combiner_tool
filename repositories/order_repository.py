@@ -19,7 +19,6 @@ class OrderRepository:
             query.bindValue(":mo_no", params["mo_no"])
             query.exec()
             while query.next():
-                print(query.record())
                 results.append(
                     {
                         "shoestyle_codefactory": query.value("shoestyle_codefactory"),
