@@ -146,7 +146,9 @@ class MainWindow(QMainWindow):
 
     def __translate__(self):
         self.order_detail_title.setText(I18nService.t("labels.order_detail_title"))
-        self.sizing_detail_title.setText(I18nService.t("labels.order_detail_title"))
+        self.sizing_detail_title.setText(
+            I18nService.t("labels.combination_detail_title")
+        )
         self.combine_form_title.setText(I18nService.t("labels.combination_form_title"))
 
     # region Stylesheet setup
