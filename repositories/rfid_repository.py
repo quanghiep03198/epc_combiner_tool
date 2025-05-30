@@ -16,34 +16,34 @@ class RFIDRepository:
             insert_values = ",".join(
                 map(
                     lambda item: f"""(
-                    '{item['EPC_Code']}', 
-                    '{item['mo_no']}',
-                    '{item['mo_noseq']}',
-                    '{item['mat_code']}',
-                    '{item['or_no']}',
-                    '{item['or_custpo']}',
-                    '{item['shoestyle_codefactory']}',
-                    '{item['cust_shoestyle']}',
-                    '{item['size_numcode']}',
-                    '{item['size_code']}',
+                    '{str(item['EPC_Code']).replace("'", "''")}', 
+                    '{str(item['mo_no']).replace("'", "''")}',
+                    '{str(item['mo_noseq']).replace("'", "''")}',
+                    '{str(item['mat_code']).replace("'", "''")}',
+                    '{str(item['or_no']).replace("'", "''")}',
+                    '{str(item['or_custpo']).replace("'", "''")}',
+                    '{str(item['shoestyle_codefactory']).replace("'", "''")}',
+                    '{str(item['cust_shoestyle']).replace("'", "''")}',
+                    '{str(item['size_numcode']).replace("'", "''")}',
+                    '{str(item['size_code']).replace("'", "''")}',
                     {item['size_qty']},
-                    '{item['factory_code_orders']}',
-                    '{item['factory_name_orders']}',
-                    '{item['factory_code_produce']}',
-                    '{item['factory_name_produce']}',
+                    '{str(item['factory_code_orders']).replace("'", "''")}',
+                    '{str(item['factory_name_orders']).replace("'", "''")}',
+                    '{str(item['factory_code_produce']).replace("'", "''")}',
+                    '{str(item['factory_name_produce']).replace("'", "''")}',
                     GETDATE(),
                     {item['ri_cancel']},
-                    '{item['ri_type']}',
-                    '{item['ri_foot']}',
-                    '{item['sole_tag']}',
+                    '{str(item['ri_type']).replace("'", "''")}',
+                    '{str(item['ri_foot']).replace("'", "''")}',
+                    '{str(item['sole_tag']).replace("'", "''")}',
                     {item['sole_tag_rate']},
                     {item['sole_tag_round']},
-                    '{item['user_code_created']}',
-                    '{item['user_name_created']}',
-                    '{item['dept_code']}',
-                    '{item['dept_name']}',
-                    '{item['isactive']}',
-                    '{item['remark']}'
+                    '{str(item['user_code_created']).replace("'", "''")}',
+                    '{str(item['user_name_created']).replace("'", "''")}',
+                    '{str(item['dept_code']).replace("'", "''")}',
+                    '{str(item['dept_name']).replace("'", "''")}',
+                    '{str(item['isactive']).replace("'", "''")}',
+                    '{str(item['remark']).replace("'", "''")}'
                 )""",
                     data,
                 )
@@ -101,7 +101,8 @@ class RFIDRepository:
                         user_name_updated = '{combine_form_context.get("user_name_updated")}'
                     WHERE EPC_Code IN ({epc_params_str})
                         AND ri_cancel = 0
-                        AND isactive = 'Y';   
+                        AND isactive = 'Y'
+                    ;   
 
                     -- Insert new records    
                     INSERT INTO DV_DATA_LAKE.dbo.dv_rfidmatchmst (
@@ -124,7 +125,7 @@ class RFIDRepository:
             return query.numRowsAffected()
         except Exception as e:
             DATA_SOURCE_DL.rollback()
-            logger.error(f"Error: {e}")
+            logger.error(f"Error in RFIDRepository: {e}")
             raise Exception(e)
         finally:
             query.finish()
