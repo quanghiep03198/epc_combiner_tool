@@ -46,7 +46,7 @@ class MainWindow(QMainWindow):
         self.overlay.setGeometry(self.rect())
 
         # Import and setup separated widgets
-        self.container = QWidget(parent=self)
+        self.container = QWidget()
         self.container.setObjectName("container")
 
         # region Menubar
@@ -169,7 +169,7 @@ class MainWindow(QMainWindow):
             resolve_path("assets/fonts/Inter-Regular.ttf")
         )
         if font_id == -1:
-            print("Failed to load font.")
+            logger.error("Failed to load font.")
             sys.exit(1)
 
         font_families = QFontDatabase.applicationFontFamilies(font_id)
@@ -251,6 +251,7 @@ class MainWindow(QMainWindow):
         ):
             self.epc_reader_playground.uhf_reader_instance.callTcpDisconnect
         disconnect_datasources()
+        QPluginLoader.unload()
         # Ensure the application exits completely
         self.__app__.quit()
         os._exit(0)
