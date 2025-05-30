@@ -40,6 +40,7 @@ vi_dictionary: dict = {
         "or_custpo": "Mã đặt đơn",
         "or_no": "Mã đơn hàng",
         "ri_date": "Ngày phối",
+        "ri_type": "Kiểu phối",
         "user_name_created": "Người tạo",
         "shoes_style_code": "Mã hình thể",
         "shoes_style_code_factory": "Hình thể xưởng",

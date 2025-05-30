@@ -42,6 +42,7 @@ en_dictionary: dict = {
         "or_custpo": "Order purchase order",
         "or_no": "Order code",
         "ri_date": "Combination date",
+        "ri_type": "Combination type",
         "user_name_created": "Created by",
         "shoes_style_code": "Shoes style code",
         "shoes_style_code_factory": "Factory style",

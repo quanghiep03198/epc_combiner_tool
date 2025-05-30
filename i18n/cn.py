@@ -42,6 +42,7 @@ cn_dictionary: dict = {
         "or_custpo": "客户订单号",
         "or_no": "订单编号",
         "ri_date": "配对日期",
+        "ri_type": "配对类型",
         "user_name_created": "创建者",
         "shoes_style_code": "型体编号",
         "shoes_style_code_factory": "工厂型体",
