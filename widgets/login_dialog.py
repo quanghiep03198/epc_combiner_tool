@@ -265,8 +265,8 @@ class LoginDialog(QDialog, I18nContext):
         __event_emitter__.emit(UserActionEvent.AUTH_STATE_CHANGE.value, auth_context)
         toast = Toaster(
             parent=self.root,
-            title=None,
-            text=I18nService.t("notification.login_success"),
+            title=I18nService.t("notification.login_success"),
+            text=None,
             preset=ToastPreset.SUCCESS_DARK,
         )
         toast.show()
