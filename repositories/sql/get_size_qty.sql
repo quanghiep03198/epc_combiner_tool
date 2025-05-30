@@ -68,6 +68,7 @@ OUTER APPLY (
         AND size_numcode = b.size_numcode 
         AND sole_tag = 'A' 
         AND isactive = 'Y' 
+        AND ri_type = 'A'
     GROUP BY size_code, size_numcode
 ) c ([combined_qty])
 OUTER APPLY (
