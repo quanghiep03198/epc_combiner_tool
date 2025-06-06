@@ -14,6 +14,7 @@ combine_form_context = {
     "cust_shoestyle": None,
     "size_qty": 0,
     "in_use_qty": 0,
+    "combined_qty": 0,
     "user_code_created": None,
     "user_name_created": None,
     "user_code_updated": None,

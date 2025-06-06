@@ -17,9 +17,7 @@ from i18n import I18nService, I18nContext
 from helpers.resolve_path import resolve_path
 
 
-PAGE_SIZE: int = 50
 SCANNED_EPC_LABEL: str = "Đã Quét"
-NG_EPC_LABEL: str = "NG"
 
 
 class EpcReaderPlayground(QFrame, I18nContext):
@@ -36,7 +34,6 @@ class EpcReaderPlayground(QFrame, I18nContext):
 
     # region Local states
     __max_epc_qty: int = 0
-    __epc_datalist: list[str] = []
     __current_tab_index: int = 1
 
     def __init__(self, parent):
@@ -233,15 +230,22 @@ class EpcReaderPlayground(QFrame, I18nContext):
         self.epc_list_action_group_layout.addWidget(self.reader_actions_group)
         self.epc_list_action_group_layout.addItem(self.spacer)
         self.epc_list_action_group_layout.addWidget(self.scanned_epc_counter)
-
         # endregion
+
         self.epc_reader_layout.addWidget(self.search_box)
         self.epc_reader_layout.addWidget(self.epc_list)
         self.epc_reader_layout.addWidget(self.empty_state)
         self.epc_reader_layout.addWidget(self.delete_button)
         self.epc_reader_layout.addWidget(self.epc_list_action_group)
 
+        # region Event listeners
         __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value)(self.__translate__)
+
+        __event_emitter__.on(UserActionEvent.MO_NO_CHANGE.value)(self.on_mo_no_change)
+
+        __event_emitter__.on(UserActionEvent.SIZE_LIST_CHANGE.value)(
+            self.on_size_list_change
+        )
 
         __event_emitter__.on(UserActionEvent.COMBINE_FORM_STATE_CHANGE.value)(
             self.on_combine_form_state_change
@@ -250,6 +254,7 @@ class EpcReaderPlayground(QFrame, I18nContext):
         __event_emitter__.on(UserActionEvent.COMBINED_EPC_CREATED.value)(
             self.on_combined_epc_created
         )
+        # endregion
 
     def __translate__(self):
         if self.__current_tab_index == 1:
@@ -280,9 +285,42 @@ class EpcReaderPlayground(QFrame, I18nContext):
         else:
             self.toggle_play_button.setToolTip(I18nService.t("actions.start_reading"))
 
+    def on_mo_no_change(self, _):
+        self.__max_epc_qty = 0
+
+    def on_size_list_change(self, data):
+        if (
+            combine_form_context["size_numcode"] == ""
+            or combine_form_context["size_numcode"] is None
+        ):
+            return
+        curr_size_data = next(
+            (
+                item
+                for item in data
+                if item.get("size_numcode") == combine_form_context["size_numcode"]
+            ),
+            0,
+        )
+        if (
+            isinstance(curr_size_data, dict)
+            and combine_form_context["ri_type"] == CombineAction.COMBINE_NEW.value
+        ):
+            self.__max_epc_qty = (
+                curr_size_data["size_qty"] - curr_size_data["combined_qty"]
+            )
+            self.scanned_epc_counter.setText(
+                self.__get_counter_text(
+                    combine_form_context["ri_type"],
+                    self.epc_list.count(),
+                    SCANNED_EPC_LABEL,
+                )
+            )
+
     def on_combined_epc_created(self, _: dict):
         self.epc_list.clear()
         self.handle_reset_scanned_epc()
+        self.__max_epc_qty = 0
         self.scanned_epc_counter.setText(
             self.__get_counter_text(
                 combine_form_context["ri_type"], 0, SCANNED_EPC_LABEL
@@ -291,7 +329,7 @@ class EpcReaderPlayground(QFrame, I18nContext):
 
     def on_combine_form_state_change(self, data):
         # * Only when size is selected, enable the connect button
-        self.__max_epc_qty = data["size_qty"] - data["in_use_qty"]
+        self.__max_epc_qty = data["size_qty"] - data["combined_qty"]
         self.scanned_epc_counter.setText(
             self.__get_counter_text(
                 data["ri_type"], self.epc_list.count(), SCANNED_EPC_LABEL
@@ -392,9 +430,9 @@ class EpcReaderPlayground(QFrame, I18nContext):
             )
             toast.show()
             return
+        QCoreApplication.processEvents()
         try:
             if not checked_state:
-                # QCoreApplication.processEvents()
                 signal = self.__handle_stop_reading()
                 if signal:
                     self.toggle_connect_button.setIcon(self.plug_icon)
@@ -413,8 +451,6 @@ class EpcReaderPlayground(QFrame, I18nContext):
                 if self.uhf_reader_instance.openTcp(
                     (uhf_reader_tcp_ip, int(uhf_reader_port))
                 ):
-                    self.toggle_connect_button.setIcon(self.unplug_icon)
-                    self.toggle_connect_button.setToolTip("Ngắt kết nối máy UHF")
                     dict_power = {
                         "1": reader_power,
                         "2": reader_power,
@@ -423,8 +459,10 @@ class EpcReaderPlayground(QFrame, I18nContext):
                     }
                     msg = MsgBaseSetPower(**dict_power)
                     signal = self.uhf_reader_instance.sendSynMsg(msg, 10)
-                    if signal == 0:
+                    if isinstance(signal, int):
                         logger.info(msg.rtMsg)
+                    self.toggle_connect_button.setIcon(self.unplug_icon)
+                    self.toggle_connect_button.setToolTip("Ngắt kết nối máy UHF")
                     self.toggle_play_button.setEnabled(True)
                     self.uhf_reader_instance.callEpcOver = self.__on_receive_epc_end
                     self.uhf_reader_instance.callEpcInfo = (
@@ -438,6 +476,7 @@ class EpcReaderPlayground(QFrame, I18nContext):
 
     @pyqtSlot(bool)
     def handle_toggle_play(self, checked_state: bool):
+        QCoreApplication.processEvents()
         try:
             if checked_state:
                 self.__handle_start_reading()
@@ -447,15 +486,17 @@ class EpcReaderPlayground(QFrame, I18nContext):
             logger.error(f"Error in handle_toggle_play: {e}")
 
     def __handle_stop_reading(self) -> bool:
-        msg = MsgBaseStop()
-        res = self.uhf_reader_instance.sendSynMsg(msg, 10)
         self.toggle_play_button.setIcon(self.play_icon)
         self.toggle_play_button.setToolTip("Bắt đầu đọc")
-        logger.debug(f"Stop reading signal :>>>> {res}")
-        return isinstance(res, int)
+        msg = MsgBaseStop()
+        res = self.uhf_reader_instance.sendSynMsg(msg, 10)
+        if isinstance(res, int):
+            logger.debug(f"Stop reading signal :>>>> {res}")
 
     def __handle_start_reading(self):
         # * Đọc EPC
+        self.toggle_play_button.setToolTip("Dừng đọc & kiểm tra")
+        self.toggle_play_button.setIcon(self.pause_icon)
         msg = MsgBaseInventoryEpc(
             antennaEnable=EnumG.AntennaNo_1.value,
             inventoryMode=EnumG.AntennaNo_1.value,
@@ -467,9 +508,7 @@ class EpcReaderPlayground(QFrame, I18nContext):
                 inventoryMode=EnumG.AntennaNo_1.value,
             )
         )
-        if res == 0:
-            self.toggle_play_button.setToolTip("Dừng đọc & kiểm tra")
-            self.toggle_play_button.setIcon(self.pause_icon)
+        if isinstance(res, int):
             logger.info(f"Stop reading with :>>> {msg.rtMsg}")
 
     @pyqtSlot()
