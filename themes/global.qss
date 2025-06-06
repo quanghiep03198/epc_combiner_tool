@@ -111,38 +111,43 @@ QComboBox::down-arrow{
 
 QListWidget{
    padding:4px;
-   background-color: #171717
+   background-color: #171717;
+   spacing: 2px;
+}
+
+QListWidget::item{
+   padding:4px;
 }
 
 QTableWidget {
-   border: 1px solid #404040;
    background-color: #171717;
+   border: 1px solid #404040;
    gridline-color: #404040;
    border-radius: 4px;
    padding: 1px;
 }
 
 QTableWidget * {
-   background-color: #171717;
+   background-color: transparent;
+} 
+
+QTableView::section {
+   padding: 0px 8px; 
+   font-weight: 600;
+   background-color: transparent;
 }
 
 QHeaderView::section {
-   padding:0px 8px; 
+   padding: 0px 8px; 
    font-weight: 600;
+   background-color: #171717;
 }
 
-QTableView::section {
-   padding: 4px 8px; 
-   font-weight: 600;
-}
-
-QTableView::item {
-   font-weight: 600;
-}
 
 QTableWidget::item {
    border: none;
-   padding: 8px 16px; /* top/bottom 8px, left/right 16px */
+   padding: 0px 8px; 
+   background-color: #171717;
 }
 
 
