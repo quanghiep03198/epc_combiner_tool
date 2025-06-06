@@ -56,7 +56,7 @@ def write_data(data: dict):
     try:
         is_auto_save_enabled = ConfigService.get_conf(
             section=ConfigSection.DATA.value,
-            key="AUTO_SAVE",
+            key="auto_save",
             serializer=lambda value: strtobool(value),
         )
 
