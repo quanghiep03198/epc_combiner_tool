@@ -118,7 +118,7 @@ class OrderDetailTableWidget(QTableWidget):
 
         if len(data) == 0:
             self.empty_state_label.show()
-
+        self.setRowHeight(row, 36)
         self.resizeColumnsToContents()
 
     def on_mo_noseq_change(self, selected_mo_noseq: str):
