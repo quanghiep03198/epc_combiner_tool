@@ -251,7 +251,6 @@ class MainWindow(QMainWindow):
         ):
             self.epc_reader_playground.uhf_reader_instance.callTcpDisconnect
         disconnect_datasources()
-        QPluginLoader.unload()
         # Ensure the application exits completely
         self.__app__.quit()
         os._exit(0)
