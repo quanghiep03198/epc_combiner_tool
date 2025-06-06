@@ -3,7 +3,7 @@ DECLARE @mo_noseq NVARCHAR(10) = :mo_noseq;
 
 SELECT
     a.size_code,
-    b.size_numcode, 
+    b.size_numcode,
     SUM(CAST(b.size_qty AS INT)) AS size_qty,
     ISNULL(CAST(c.combined_qty AS INT), 0) AS combined_qty,
     ISNULL(CAST(d.in_use_qty AS INT), 0) AS in_use_qty,
@@ -65,9 +65,9 @@ OUTER APPLY (
     FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst
     WHERE mo_no = a1.mo_no
         AND (@mo_noseq IS NULL OR mo_noseq = @mo_noseq)
-        AND size_numcode = b.size_numcode 
-        AND sole_tag = 'A' 
-        AND isactive = 'Y' 
+        AND size_numcode = b.size_numcode
+        AND sole_tag = 'A'
+        AND isactive = 'Y'
         AND ri_type = 'A'
     GROUP BY size_code, size_numcode
 ) c ([combined_qty])
@@ -76,20 +76,20 @@ OUTER APPLY (
     FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst
     WHERE mo_no = a1.mo_no
         AND (@mo_noseq IS NULL OR mo_noseq = @mo_noseq)
-        AND size_numcode = b.size_numcode 
-        AND ri_cancel = 0 
-        AND sole_tag = 'A' 
-        AND isactive = 'Y'  
+        AND size_numcode = b.size_numcode
+        AND ri_cancel = 0
+        AND sole_tag = 'A'
+        AND isactive = 'Y'
     GROUP BY size_code, size_numcode
 ) d ([in_use_qty])
 OUTER APPLY (
     SELECT COUNT(EPC_Code) AS compensated_qty
     FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst
     WHERE mo_no = a1.mo_no
-        AND size_numcode = b.size_numcode 
-        AND ri_type = 'D' 
-        AND sole_tag = 'A' 
-        AND isactive = 'Y' 
+        AND size_numcode = b.size_numcode
+        AND ri_type = 'D'
+        AND sole_tag = 'A'
+        AND isactive = 'Y'
         AND (@mo_noseq IS NULL OR mo_noseq = @mo_noseq)
     GROUP BY size_code, size_numcode
 ) e ([compensated_qty])
@@ -106,4 +106,9 @@ WHERE b.size_qty <> 0
     AND a1.mo_no = @mo_no
 GROUP BY a.size_code, b.size_numcode, c.combined_qty, d.in_use_qty, e.compensated_qty, f.cancelled_qty
 ORDER BY RIGHT('0000' + IIF(CHARINDEX('.', b.size_numcode) > 0, b.size_numcode, b.size_numcode + '.0'), 5) ASC
-OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 4);
+OPTION
+(OPTIMIZE
+FOR
+UNKNOWN,
+MAXDOP
+4);
