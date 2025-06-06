@@ -63,14 +63,6 @@ class SizingDetailTableWidget(QTableWidget, I18nContext):
                 }
             )
         )
-        __event_emitter__.on(UserActionEvent.NG_EPC_MUTATION.value)(
-            lambda _: self.handle_fetch_size_data(
-                {
-                    "mo_no": combine_form_context["mo_no"],
-                    "mo_noseq": combine_form_context["mo_noseq"],
-                }
-            )
-        )
         __event_emitter__.on(UserActionEvent.MO_NOSEQ_CHANGE.value)(
             lambda value: self.handle_fetch_size_data(
                 {
@@ -90,6 +82,9 @@ class SizingDetailTableWidget(QTableWidget, I18nContext):
             I18nService.t("fields.cancelled_qty"),
         ]
         self.setRowCount(len(vertical_header_labels))
+        for row in range(len(vertical_header_labels)):
+            self.setRowHeight(row, 36)
+        self.resizeRowsToContents()
         self.setVerticalHeaderLabels(vertical_header_labels)
 
     def handle_fetch_size_data(self, data: dict):
@@ -98,7 +93,6 @@ class SizingDetailTableWidget(QTableWidget, I18nContext):
             self.loading.show_loading()
             worker = FetchSizeDataWorker(data, self.handle_render_row)
             QThreadPool.globalInstance().start(worker)
-
         except Exception as e:
             logger.error(f"[SizingDetailTableWidget] Error reading SQL file: {e}")
 
@@ -123,7 +117,6 @@ class SizingDetailTableWidget(QTableWidget, I18nContext):
                 col += 1
         except Exception as e:
             logger.error(e)
-
         finally:
             self.loading.close_loading()
 
