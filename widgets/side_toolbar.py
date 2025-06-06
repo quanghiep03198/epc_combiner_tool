@@ -7,6 +7,7 @@ from widgets.settings_dialog import AppSettingsDialog
 from i18n import I18nService, I18nContext, Language, __languages__
 from events import __event_emitter__, UserActionEvent
 from helpers.resolve_path import resolve_path
+from helpers.logger import logger
 
 
 class SideToolbar(QToolBar, I18nContext):
@@ -168,6 +169,6 @@ class SideToolbar(QToolBar, I18nContext):
             I18nService.set_language(lang)
             I18nService.emit()
         except Exception as e:
-            print(e)
+            logger.error(e)
 
         # Add your logic to handle language change here
