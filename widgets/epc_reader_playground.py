@@ -412,6 +412,7 @@ class EpcReaderPlayground(QFrame, I18nContext):
 
     @pyqtSlot(bool)
     def handle_toggle_connect(self, checked_state: bool):
+
         FALLBACK_POWER_VALUE = 20
         uhf_reader_tcp_ip = ConfigService.get_env("UHF_READER_TCP_IP")
         uhf_reader_port = ConfigService.get_env("UHF_READER_TCP_PORT")
@@ -430,27 +431,28 @@ class EpcReaderPlayground(QFrame, I18nContext):
             )
             toast.show()
             return
-        QCoreApplication.processEvents()
         try:
             if not checked_state:
                 signal = self.__handle_stop_reading()
                 if signal:
-                    self.toggle_connect_button.setIcon(self.plug_icon)
-                    self.toggle_play_button.setIcon(self.play_icon)
-                    self.toggle_connect_button.setToolTip("Kết nối máy UHF")
-                    self.reset_btn.setEnabled(True)
-                    self.toggle_play_button.setEnabled(False)
-                    self.uhf_reader_instance.close()
-                    self.uhf_reader_instance.callTcpDisconnect
-                    self.uhf_reader_instance = None
+                    logger.info("Stopped reading successfully.")
+                self.toggle_connect_button.setIcon(self.plug_icon)
+                self.toggle_play_button.setIcon(self.play_icon)
+                self.toggle_connect_button.setToolTip("Kết nối máy UHF")
+                self.reset_btn.setEnabled(True)
+                self.toggle_play_button.setEnabled(False)
+                self.uhf_reader_instance.close()
+                self.uhf_reader_instance.callTcpDisconnect
+                self.uhf_reader_instance = None
 
             else:
                 if self.uhf_reader_instance is None:
                     self.uhf_reader_instance = GClient()
-                # connect_option = {"timeout": 30}
                 if self.uhf_reader_instance.openTcp(
                     (uhf_reader_tcp_ip, int(uhf_reader_port))
                 ):
+                    self.toggle_connect_button.setIcon(self.unplug_icon)
+                    self.toggle_connect_button.setToolTip("Ngắt kết nối máy UHF")
                     dict_power = {
                         "1": reader_power,
                         "2": reader_power,
@@ -461,8 +463,6 @@ class EpcReaderPlayground(QFrame, I18nContext):
                     signal = self.uhf_reader_instance.sendSynMsg(msg, 10)
                     if isinstance(signal, int):
                         logger.info(msg.rtMsg)
-                    self.toggle_connect_button.setIcon(self.unplug_icon)
-                    self.toggle_connect_button.setToolTip("Ngắt kết nối máy UHF")
                     self.toggle_play_button.setEnabled(True)
                     self.uhf_reader_instance.callEpcOver = self.__on_receive_epc_end
                     self.uhf_reader_instance.callEpcInfo = (
@@ -476,7 +476,6 @@ class EpcReaderPlayground(QFrame, I18nContext):
 
     @pyqtSlot(bool)
     def handle_toggle_play(self, checked_state: bool):
-        QCoreApplication.processEvents()
         try:
             if checked_state:
                 self.__handle_start_reading()
