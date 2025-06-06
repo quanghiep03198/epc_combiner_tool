@@ -77,7 +77,7 @@ class CombineForm(QFrame, I18nContext):
         self.setContentsMargins(0, 0, 0, 0)
         self.combine_form_layout = QHBoxLayout(self)
         self.combine_form_layout.setContentsMargins(0, 0, 0, 0)
-        self.combine_form_layout.setSpacing(4)
+        self.combine_form_layout.setSpacing(8)
         self.combine_form_layout.setObjectName("combine_form_layout")
 
         # Action select
@@ -89,6 +89,7 @@ class CombineForm(QFrame, I18nContext):
         self.action_select.addItem(
             CombineAction.COMPENSATE.value, CombineAction.COMPENSATE.value
         )
+
         self.action_select.setCurrentIndex(0)
         self.action_select.currentIndexChanged.connect(
             lambda item: self.on_combine_from_state_change(
@@ -147,11 +148,6 @@ class CombineForm(QFrame, I18nContext):
             self.on_auth_state_change
         )
 
-        # * On selected size change
-        __event_emitter__.on(UserActionEvent.SELECTED_SIZE_CHANGE.value)(
-            self.resume_combination
-        )
-
     def __translate__(self):
         self.action_select.setPlaceholderText(
             I18nService.t("placeholders.combine_action_placeholder")
@@ -163,11 +159,11 @@ class CombineForm(QFrame, I18nContext):
             I18nService.t("placeholders.mo_noseq_placeholder")
         )
         self.mo_noseq_select.setItemText(0, I18nService.t("labels.all"))
-        self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
         self.action_select.setItemText(0, I18nService.t("actions.new_combination"))
         self.action_select.setItemText(
             1, I18nService.t("actions.compensating_combination")
         )
+        self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
 
     def on_size_list_change(self, data):
         self.__size_list = data
@@ -221,7 +217,7 @@ class CombineForm(QFrame, I18nContext):
             self.on_combine_from_state_change("size_numcode", size_item["size_numcode"])
             self.on_combine_from_state_change("size_code", size_item["size_code"])
             self.on_combine_from_state_change("size_qty", size_item["size_qty"])
-            self.on_combine_from_state_change("in_use_qty", size_item["in_use_qty"])
+            self.on_combine_from_state_change("combined_qty", size_item["combined_qty"])
 
     @pyqtSlot(int)
     def handle_mo_noseq_change(self, selected_index: int):
@@ -251,9 +247,16 @@ class CombineForm(QFrame, I18nContext):
 
     @pyqtSlot()
     def on_combine_proceed(self):
+        logger.debug(
+            {
+                "size_qty": combine_form_context["size_qty"],
+                "combined_qty": combine_form_context["combined_qty"],
+            }
+        )
         if (
             combine_form_context["ri_type"] == CombineAction.COMBINE_NEW.value
-            and len(self.__epcs) > combine_form_context["size_qty"]
+            and len(self.__epcs)
+            > combine_form_context["size_qty"] - combine_form_context["combined_qty"]
         ):
             toast = Toaster(
                 parent=self.root,
@@ -296,12 +299,14 @@ class CombineForm(QFrame, I18nContext):
             self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
             write_data(
                 {
+                    "epcs": self.__epcs,
                     "mo_no": combine_form_context["mo_no"],
                     "size_numcode": combine_form_context["size_numcode"],
-                    "epcs": self.__epcs,
+                    "ri_type": combine_form_context["ri_type"],
                     "created_by": auth_context["employee_name"],
                 }
             )
+
             __event_emitter__.emit(
                 UserActionEvent.COMBINED_EPC_CREATED.value,
                 {
@@ -337,10 +342,3 @@ class CombineForm(QFrame, I18nContext):
             and combine_form_context["cust_shoestyle"] is not None
             and combine_form_context["has_epc"]
         )
-
-    def resume_combination(self, ng_epcs: list[str]) -> None:
-        """
-        Resume the combination process when NG EPCs are mutated
-        """
-        is_combinable = self.check_can_submit() and len(ng_epcs) == 0
-        self.combine_proceed_button.setEnabled(is_combinable)

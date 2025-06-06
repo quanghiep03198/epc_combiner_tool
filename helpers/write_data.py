@@ -6,6 +6,7 @@ from helpers.logger import logger
 from PyQt6.QtWidgets import QFileDialog
 from i18n import I18nService
 from helpers.disutils import strtobool
+from constants import CombineAction
 
 
 def __write_file(csv_filepath: str, data: dict):
@@ -17,18 +18,25 @@ def __write_file(csv_filepath: str, data: dict):
             "EPC",
             I18nService.t("fields.mo_no"),
             I18nService.t("fields.size_numcode"),
+            I18nService.t("fields.ri_type"),
             I18nService.t("fields.ri_date"),
             I18nService.t("fields.user_name_created"),
         ]
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         if not file_exists:
             writer.writeheader()
+
         for epc in data["epcs"]:
             writer.writerow(
                 {
                     "EPC": epc,
                     I18nService.t("fields.mo_no"): data["mo_no"],
                     I18nService.t("fields.size_numcode"): data["size_numcode"],
+                    I18nService.t("fields.ri_type"): (
+                        I18nService.t("actions.new_combination")
+                        if data["ri_type"] == CombineAction.COMBINE_NEW.value
+                        else I18nService.t("actions.compensating_combination")
+                    ),
                     I18nService.t("fields.ri_date"): datetime.now().strftime(
                         "%Y-%m-%d %H:%M:%S"
                     ),
@@ -68,7 +76,7 @@ def write_data(data: dict):
                 try:
                     __write_file(csv_filepath, data)
                 except Exception as e:
-                    print(e)
+                    logger.error(e)
         else:
             data_folder = "data"
             mo_no_folder = os.path.join(data_folder, data["mo_no"])
