@@ -91,12 +91,12 @@ class SizingDetailTableWidget(QTableWidget, I18nContext):
         try:
             self.loading = LoadingWidget(self)
             self.loading.show_loading()
-            worker = FetchSizeDataWorker(data, self.handle_render_row)
+            worker = FetchSizeDataWorker(data, self.on_fetch_size_data_success)
             QThreadPool.globalInstance().start(worker)
         except Exception as e:
             logger.error(f"[SizingDetailTableWidget] Error reading SQL file: {e}")
 
-    def handle_render_row(self, result: list[dict]):
+    def on_fetch_size_data_success(self, result: list[dict]):
         try:
             self.setColumnCount(len(result))
             __event_emitter__.emit(UserActionEvent.SIZE_LIST_CHANGE.value, result)
@@ -114,6 +114,14 @@ class SizingDetailTableWidget(QTableWidget, I18nContext):
                 self.handle_highlight_qty(
                     3, col, record["size_qty"], record["in_use_qty"]
                 )
+
+                if (
+                    combine_form_context["size_numcode"] is not None
+                    and record["size_numcode"] == combine_form_context["size_numcode"]
+                ):
+                    combine_form_context.update(combined_qty=record["combined_qty"])
+                    combine_form_context.update(in_use_qty=record["in_use_qty"])
+
                 col += 1
         except Exception as e:
             logger.error(e)

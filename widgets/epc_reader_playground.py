@@ -254,6 +254,10 @@ class EpcReaderPlayground(QFrame, I18nContext):
         __event_emitter__.on(UserActionEvent.COMBINED_EPC_CREATED.value)(
             self.on_combined_epc_created
         )
+
+        __event_emitter__.on(UserActionEvent.INVALID_COMBINATION_FOUND.value)(
+            self.on_invalid_combination_found
+        )
         # endregion
 
     def __translate__(self):
@@ -307,7 +311,7 @@ class EpcReaderPlayground(QFrame, I18nContext):
             and combine_form_context["ri_type"] == CombineAction.COMBINE_NEW.value
         ):
             self.__max_epc_qty = (
-                curr_size_data["size_qty"] - curr_size_data["combined_qty"]
+                curr_size_data["size_qty"] - curr_size_data["in_use_qty"]
             )
             self.scanned_epc_counter.setText(
                 self.__get_counter_text(
@@ -326,6 +330,23 @@ class EpcReaderPlayground(QFrame, I18nContext):
                 combine_form_context["ri_type"], 0, SCANNED_EPC_LABEL
             )
         )
+
+    def on_invalid_combination_found(self, data: list[dict]):
+        for i in range(self.epc_list.count()):
+            item = self.epc_list.item(i)
+            epc_value = item.text()
+            # * Find EPCs having recombinable = False, if found, highlight the item
+            match = next(
+                (
+                    d
+                    for d in data
+                    if d.get("EPC_Code") == epc_value and d.get("recombinable") is False
+                ),
+                None,
+            )
+            if match is not None:
+                print(item)
+                item.setForeground(QColor("#ff4d4f"))  # Highlight background
 
     def on_combine_form_state_change(self, data):
         # * Only when size is selected, enable the connect button
@@ -347,6 +368,14 @@ class EpcReaderPlayground(QFrame, I18nContext):
         selected_items = self.epc_list.selectedItems()
         selected_epcs = [item.text() for item in selected_items]
         self.delete_button.setEnabled(len(selected_epcs) > 0)
+        if len(selected_items) > 0:
+            self.delete_button.setText(
+                f"{I18nService.t("actions.delete")} {I18nService.t(
+                    "labels.selected", plurals={"count": str(len(selected_epcs))}
+                )}"
+            )
+        else:
+            self.delete_button.setText(I18nService.t("actions.delete"))
 
     @pyqtSlot()
     def handle_delete_selected_epcs(self):
@@ -361,6 +390,8 @@ class EpcReaderPlayground(QFrame, I18nContext):
                     SCANNED_EPC_LABEL,
                 )
             )
+        epc_data = [self.epc_list.item(i).text() for i in range(self.epc_list.count())]
+        __event_emitter__.emit(UserActionEvent.EPC_DATA_CHANGE.value, epc_data)
 
     def __on_receive_epc(self, epcInfo: LogBaseEpcInfo):
         try:
@@ -412,7 +443,6 @@ class EpcReaderPlayground(QFrame, I18nContext):
 
     @pyqtSlot(bool)
     def handle_toggle_connect(self, checked_state: bool):
-
         FALLBACK_POWER_VALUE = 20
         uhf_reader_tcp_ip = ConfigService.get_env("UHF_READER_TCP_IP")
         uhf_reader_port = ConfigService.get_env("UHF_READER_TCP_PORT")
@@ -493,7 +523,6 @@ class EpcReaderPlayground(QFrame, I18nContext):
             logger.debug(f"Stop reading signal :>>>> {res}")
 
     def __handle_start_reading(self):
-        # * Đọc EPC
         self.toggle_play_button.setToolTip("Dừng đọc & kiểm tra")
         self.toggle_play_button.setIcon(self.pause_icon)
         msg = MsgBaseInventoryEpc(
@@ -513,22 +542,22 @@ class EpcReaderPlayground(QFrame, I18nContext):
     @pyqtSlot()
     def handle_reset_scanned_epc(self):
         self.epc_list.clear()
-        self.__handle_check_empty()
+
+        # * Update UI on after reset scanned EPCs
+        is_empty = self.epc_list.count() == 0
+        self.empty_state.setVisible(not is_empty)
+        self.epc_list.setVisible(is_empty)
         self.scanned_epc_counter.setText(
             self.__get_counter_text(
                 combine_form_context["ri_type"], 0, SCANNED_EPC_LABEL
             )
         )
-        self.empty_state.setVisible(self.epc_list.count() == 0)
-        self.epc_list.setVisible(self.epc_list.count() > 0)
+
+        __event_emitter__.emit(UserActionEvent.EPC_DATA_CHANGE.value, [])
+
         toast = Toaster(
             parent=self.root,
             title=I18nService.t("notification.reset_epc_success_title"),
             text=I18nService.t("notification.reset_epc_success_text"),
         )
         toast.show()
-
-    def __handle_check_empty(self):
-        is_empty = self.epc_list.count() == 0
-        self.empty_state.setVisible(not is_empty)
-        self.epc_list.setVisible(is_empty)

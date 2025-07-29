@@ -6,6 +6,7 @@ from typing import Callable
 from pyqttoast import ToastPreset
 from events import __event_emitter__, UserActionEvent
 from services.rfid_service import RFIDService
+from repositories.rfid_repository import RFIDRepository
 from i18n import I18nService
 from constants import CombineAction
 from widgets.toaster import Toaster
@@ -172,9 +173,9 @@ class CombineForm(QFrame, I18nContext):
 
     def on_epc_data_change(self, data):
         self.__epcs = data
-        self.on_combine_from_state_change(
-            "has_epc", isinstance(data, list) and len(data) > 0
-        )
+        should_enable_combination = isinstance(data, list) and len(data) > 0
+        self.on_combine_from_state_change("has_epc", should_enable_combination)
+        self.combine_proceed_button.setEnabled(should_enable_combination)
 
     def on_auth_state_change(self, data):
         """
@@ -218,6 +219,7 @@ class CombineForm(QFrame, I18nContext):
             self.on_combine_from_state_change("size_code", size_item["size_code"])
             self.on_combine_from_state_change("size_qty", size_item["size_qty"])
             self.on_combine_from_state_change("combined_qty", size_item["combined_qty"])
+            self.on_combine_from_state_change("in_use_qty", size_item["in_use_qty"])
 
     @pyqtSlot(int)
     def handle_mo_noseq_change(self, selected_index: int):
@@ -241,18 +243,12 @@ class CombineForm(QFrame, I18nContext):
             UserActionEvent.COMBINE_FORM_STATE_CHANGE.value, combine_form_context
         )
 
-        is_combinable = self.check_can_submit()
+        is_combinable = self.validate_submission_criteria()
 
         self.combine_proceed_button.setEnabled(is_combinable)
 
     @pyqtSlot()
     def on_combine_proceed(self):
-        logger.debug(
-            {
-                "size_qty": combine_form_context["size_qty"],
-                "combined_qty": combine_form_context["combined_qty"],
-            }
-        )
         if (
             combine_form_context["ri_type"] == CombineAction.COMBINE_NEW.value
             and len(self.__epcs)
@@ -282,13 +278,28 @@ class CombineForm(QFrame, I18nContext):
                     self.__epcs,
                 )
             )
+            validated_epcs = RFIDRepository.check_reasonable_combination(payload)
+            if any(epc.get("recombinable") == False for epc in validated_epcs):
+                __event_emitter__.emit(
+                    UserActionEvent.INVALID_COMBINATION_FOUND.value, validated_epcs
+                )
+                toast = Toaster(
+                    parent=self.root,
+                    title=I18nService.t(
+                        "notification.recent_combined_epc_exists_title"
+                    ),
+                    text=I18nService.t("notification.recent_combined_epc_exists_text"),
+                    preset=ToastPreset.WARNING_DARK,
+                )
+                toast.show()
+                self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
+                self.combine_proceed_button.setEnabled(True)
+                return
+
             worker = StoreDataWorker(
                 payload, self.on_mutate_success, self.on_mutate_error
             )
             QThreadPool.globalInstance().start(worker)
-
-            # RFIDService.reset_and_add_combinations(payload)
-
         except Exception as e:
             logger.error(e)
 
@@ -297,6 +308,7 @@ class CombineForm(QFrame, I18nContext):
         if isinstance(num_rows_affected, int):
             # Ensure the directory exists
             self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
+
             write_data(
                 {
                     "epcs": self.__epcs,
@@ -329,7 +341,7 @@ class CombineForm(QFrame, I18nContext):
         )
         toast.show()
 
-    def check_can_submit(self) -> bool:
+    def validate_submission_criteria(self) -> bool:
         return (
             combine_form_context["ri_type"] is not None
             and combine_form_context["mo_no"] is not None

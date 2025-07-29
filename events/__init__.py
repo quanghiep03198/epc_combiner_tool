@@ -13,6 +13,7 @@ class UserActionEvent(Enum):
     MO_NOSEQ_CHANGE = "mo_noseq_change"
     SIZE_LIST_CHANGE = "size_list_change"
     EPC_DATA_CHANGE = "epc_data_change"
+    INVALID_COMBINATION_FOUND = "invalid_combination_found"
     COMBINED_EPC_CREATED = "combined_epc_created"
     COMBINE_FORM_STATE_CHANGE = "combine_form_state_change"
     SETTINGS_CHANGE = "settings_change"
