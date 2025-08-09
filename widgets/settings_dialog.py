@@ -5,6 +5,7 @@ from events import __event_emitter__, UserActionEvent
 from widgets.toaster import Toaster
 from pyqttoast import ToastPreset
 from i18n import I18nService, I18nContext
+from uhf.reader import EnumG
 
 
 class AppSettingsDialog(QDialog, I18nContext):
@@ -23,6 +24,7 @@ class AppSettingsDialog(QDialog, I18nContext):
         self.setObjectName("settings_dialog")
         self.setWindowFlags(Qt.WindowType.CoverWindow)
         self.setFixedWidth(500)
+        self.setMinimumHeight(800)
         self.setSizeGripEnabled(False)
         self.setContentsMargins(8, 8, 8, 8)
 
@@ -84,6 +86,36 @@ class AppSettingsDialog(QDialog, I18nContext):
         self.reader_fieldset_layout.addWidget(self.reader_port_field_control)
         # endregion
 
+        # region Reader antenna
+        self.reader_ant_field_control_layout = QVBoxLayout()
+        self.reader_ant_field_control_layout.setContentsMargins(0, 0, 0, 0)
+        self.reader_ant_field_control_layout.setSpacing(4)
+        self.reader_ant_field_control = QWidget(self.reader_fieldset)
+        self.reader_ant_field_control.setLayout(self.reader_ant_field_control_layout)
+        self.reader_ant_label = QLabel("Antenna", self.reader_ant_field_control)
+        self.reader_ant_select = QComboBox(self.reader_ant_field_control)
+        self.reader_ant_select.addItem("Ant 1", EnumG.AntennaNo_1.value)
+        self.reader_ant_select.addItem("Ant 2", EnumG.AntennaNo_2.value)
+        self.reader_ant_select.addItem("Ant 3", EnumG.AntennaNo_3.value)
+        self.reader_ant_select.addItem("Ant 4", EnumG.AntennaNo_4.value)
+        self.reader_ant_select.setPlaceholderText("Ant 1")
+        self.reader_ant_select.setFixedHeight(36)
+        if self.__form_state.get("UHF_READER_ANT"):
+            self.reader_ant_select.setCurrentIndex(
+                self.reader_ant_select.findData(
+                    int(self.__form_state.get("UHF_READER_ANT"))
+                )
+                # int(self.__form_state.get("UHF_READER_ANT"))
+            )
+        self.reader_ant_select.currentIndexChanged.connect(
+            lambda _: self.on_form_state_change(
+                "UHF_READER_ANT", str(self.reader_ant_select.currentData())
+            )
+        )
+        self.reader_ant_field_control_layout.addWidget(self.reader_ant_label)
+        self.reader_ant_field_control_layout.addWidget(self.reader_ant_select)
+        # endregion
+
         # region Reader power
         self.reader_power_field_control_layout = QVBoxLayout()
         self.reader_power_field_control_layout.setContentsMargins(0, 0, 0, 0)
@@ -104,11 +136,12 @@ class AppSettingsDialog(QDialog, I18nContext):
         self.reader_power_field_control_layout.addWidget(self.reader_power_label)
         self.reader_power_field_control_layout.addWidget(self.reader_power_input)
 
+        # endregion
+
         self.reader_fieldset_layout.addWidget(self.reader_ip_field_control)
         self.reader_fieldset_layout.addWidget(self.reader_port_field_control)
         self.reader_fieldset_layout.addWidget(self.reader_power_field_control)
-        # endregion
-
+        self.reader_fieldset_layout.addWidget(self.reader_ant_field_control)
         setting_form_layout.addWidget(self.reader_fieldset)
         # endregion
         # endregion

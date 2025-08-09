@@ -345,7 +345,6 @@ class EpcReaderPlayground(QFrame, I18nContext):
                 None,
             )
             if match is not None:
-                print(item)
                 item.setForeground(QColor("#ff4d4f"))  # Highlight background
 
     def on_combine_form_state_change(self, data):
@@ -443,15 +442,10 @@ class EpcReaderPlayground(QFrame, I18nContext):
 
     @pyqtSlot(bool)
     def handle_toggle_connect(self, checked_state: bool):
-        FALLBACK_POWER_VALUE = 20
+
         uhf_reader_tcp_ip = ConfigService.get_env("UHF_READER_TCP_IP")
         uhf_reader_port = ConfigService.get_env("UHF_READER_TCP_PORT")
-        reader_power = ConfigService.get_env("UHF_READER_POWER")
-        reader_power = (
-            FALLBACK_POWER_VALUE
-            if reader_power == "" or reader_power is None or not reader_power.isdigit()
-            else int(reader_power)
-        )
+
         if not ip_address(uhf_reader_tcp_ip) or not uhf_reader_port.isnumeric():
             toast = Toaster(
                 parent=self.root,
@@ -483,16 +477,7 @@ class EpcReaderPlayground(QFrame, I18nContext):
                 ):
                     self.toggle_connect_button.setIcon(self.unplug_icon)
                     self.toggle_connect_button.setToolTip("Ngắt kết nối máy UHF")
-                    dict_power = {
-                        "1": reader_power,
-                        "2": reader_power,
-                        "3": reader_power,
-                        "4": reader_power,
-                    }
-                    msg = MsgBaseSetPower(**dict_power)
-                    signal = self.uhf_reader_instance.sendSynMsg(msg, 10)
-                    if isinstance(signal, int):
-                        logger.info(msg.rtMsg)
+
                     self.toggle_play_button.setEnabled(True)
                     self.uhf_reader_instance.callEpcOver = self.__on_receive_epc_end
                     self.uhf_reader_instance.callEpcInfo = (
@@ -517,27 +502,48 @@ class EpcReaderPlayground(QFrame, I18nContext):
     def __handle_stop_reading(self) -> bool:
         self.toggle_play_button.setIcon(self.play_icon)
         self.toggle_play_button.setToolTip("Bắt đầu đọc")
-        msg = MsgBaseStop()
-        res = self.uhf_reader_instance.sendSynMsg(msg, 10)
+        res = self.uhf_reader_instance.sendSynMsg(MsgBaseStop())
         if isinstance(res, int):
             logger.debug(f"Stop reading signal :>>>> {res}")
 
     def __handle_start_reading(self):
-        self.toggle_play_button.setToolTip("Dừng đọc & kiểm tra")
+        self.toggle_play_button.setToolTip(I18nService.t("actions.stop_reading"))
         self.toggle_play_button.setIcon(self.pause_icon)
-        msg = MsgBaseInventoryEpc(
-            antennaEnable=EnumG.AntennaNo_1.value,
-            inventoryMode=EnumG.AntennaNo_1.value,
-        )
+
+        # * Set beep sound
         self.uhf_reader_instance.sendSynMsg(MsgAppSetBeep(0, 0))
-        res = self.uhf_reader_instance.sendSynMsg(
+
+        # * Setup reader power
+        FALLBACK_POWER_VALUE: int = 10
+        reader_power = ConfigService.get_env("UHF_READER_POWER")
+        reader_power = (
+            FALLBACK_POWER_VALUE
+            if reader_power == "" or reader_power is None or not reader_power.isdigit()
+            else int(reader_power)
+        )
+        dict_power = {
+            "1": reader_power,
+            "2": reader_power,
+            "3": reader_power,
+            "4": reader_power,
+        }
+
+        # * Setup reader antenna
+        self.uhf_reader_instance.sendSynMsg(MsgBaseSetPower(**dict_power))
+        reader_ant = ConfigService.get_env(
+            "UHF_READER_ANT",
+        )
+        reader_ant = (
+            EnumG.AntennaNo_1.value
+            if reader_ant == "" or reader_ant is None or not reader_ant.isdigit()
+            else int(reader_ant)
+        )
+        self.uhf_reader_instance.sendSynMsg(
             MsgBaseInventoryEpc(
-                antennaEnable=EnumG.AntennaNo_1.value,
-                inventoryMode=EnumG.AntennaNo_1.value,
+                antennaEnable=reader_ant,
+                inventoryMode=EnumG.InventoryMode_Inventory.value,
             )
         )
-        if isinstance(res, int):
-            logger.info(f"Stop reading with :>>> {msg.rtMsg}")
 
     @pyqtSlot()
     def handle_reset_scanned_epc(self):

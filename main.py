@@ -1,6 +1,7 @@
 # Import built-in modules
 import sys
 import os
+import subprocess
 
 # Import PyQt6 modules
 from PyQt6.QtCore import *
@@ -28,9 +29,12 @@ from contexts.auth_context import auth_context
 from i18n import I18nService, Language
 from helpers.resolve_path import resolve_path
 from database import disconnect_datasources
+import random
 
 
 class MainWindow(QMainWindow):
+    singleton: "MainWindow" = None
+
     def __init__(self, app: QApplication):
         super().__init__()
 
@@ -138,7 +142,7 @@ class MainWindow(QMainWindow):
 
         __event_emitter__.on(
             UserActionEvent.SETTINGS_CHANGE.value,
-        )(self.reload)
+        )(self.restart_application)
 
         __event_emitter__.on(UserActionEvent.AUTH_STATE_CHANGE.value)(
             self.on_auth_state_change
@@ -255,30 +259,37 @@ class MainWindow(QMainWindow):
         self.__app__.quit()
         os._exit(0)
 
-    def reload(self):
-        self.close()
-        QMetaObject.invokeMethod(self.__app__, "quit", Qt.QueuedConnection)
-        QProcess.startDetached(sys.executable, sys.argv)
+    # def restart_app(self):
+
+    def restart_application(self):
+        os.execl(sys.executable, sys.executable, *sys.argv)
 
     def bootstrap(self):
         self.on_application_bootstrap()
 
 
+class Program:
+    @staticmethod
+    def main():
+        # app_ref: int =
+        app_ref: int = random.randint(1, 100000)
+        try:
+            app = QApplication(sys.argv)
+
+            # * Setup main window
+            window = MainWindow(app)
+            window.bootstrap()
+
+            # app.aboutToQuit.connect(window.on_application_shutdown)
+            # app..connect(window.on_application_shutdown)
+
+            app_ref = app.exec()
+            sys.exit(app_ref)
+            os._exit(app_ref)
+        except Exception as e:
+            logger.error(f"Error occurred: {e}")
+            input("Press Enter to exit...")
+
+
 if __name__ == "__main__":
-    app_ref: int = 0
-    try:
-        app = QApplication(sys.argv)
-
-        # * Setup main window
-        window = MainWindow(app)
-        window.bootstrap()
-
-        app.aboutToQuit.connect(window.on_application_shutdown)
-        app.lastWindowClosed.connect(window.on_application_shutdown)
-
-        app_ref = app.exec()
-        sys.exit(app_ref)
-        os._exit(app_ref)
-    except Exception as e:
-        logger.error(f"Error occurred: {e}")
-        input("Press Enter to exit...")
+    Program.main()
