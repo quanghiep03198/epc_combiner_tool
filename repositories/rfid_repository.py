@@ -4,6 +4,7 @@ from contexts.combine_form_context import combine_form_context
 from database import DATA_SOURCE_DL
 from contexts.auth_context import auth_context
 from helpers.disutils import strtobool
+import json
 
 
 class RFIDRepository:
@@ -41,42 +42,6 @@ class RFIDRepository:
         try:
             epc_params_str = ",".join([f"'{item['EPC_Code']}'" for item in data])
             fallback_station_no = "%s_%s" % (auth_context.get("factory_code"), "PA103")
-
-            insert_values = ",".join(
-                map(
-                    lambda item: f"""(
-                    '{str(item['EPC_Code']).replace("'", "''")}', 
-                    '{str(item['mo_no']).replace("'", "''")}',
-                    '{str(item['mo_noseq']).replace("'", "''")}',
-                    '{str(item['mat_code']).replace("'", "''")}',
-                    '{str(item['or_no']).replace("'", "''")}',
-                    '{str(item['or_custpo']).replace("'", "''")}',
-                    '{str(item['shoestyle_codefactory']).replace("'", "''")}',
-                    '{str(item['cust_shoestyle']).replace("'", "''")}',
-                    '{str(item['size_numcode']).replace("'", "''")}',
-                    '{str(item['size_code']).replace("'", "''")}',
-                    {item['size_qty']},
-                    '{str(item['factory_code_orders']).replace("'", "''")}',
-                    '{str(item['factory_name_orders']).replace("'", "''")}',
-                    '{str(item['factory_code_produce']).replace("'", "''")}',
-                    '{str(item['factory_name_produce']).replace("'", "''")}',
-                    GETDATE(),
-                    {item['ri_cancel']},
-                    '{str(item['ri_type']).replace("'", "''")}',
-                    '{str(item['ri_foot']).replace("'", "''")}',
-                    '{str(item['sole_tag']).replace("'", "''")}',
-                    {item['sole_tag_rate']},
-                    {item['sole_tag_round']},
-                    '{str(item['user_code_created']).replace("'", "''")}',
-                    '{str(item['user_name_created']).replace("'", "''")}',
-                    '{str(item['dept_code']).replace("'", "''")}',
-                    '{str(item['dept_name']).replace("'", "''")}',
-                    '{str(item['isactive']).replace("'", "''")}',
-                    '{str(item['remark']).replace("'", "''")}'
-                )""",
-                    data,
-                )
-            )
 
             # Force end EPC's lifecycle
             query.prepare(
@@ -142,10 +107,14 @@ class RFIDRepository:
                 raise Exception(query.lastError().text())
 
             # Insert new records
+            # Convert data to JSON format
+            json_data = json.dumps(data, ensure_ascii=False)
+
+            # Use the JSON to perform an insert-select operation
             query.prepare(
                 f"""--sql
                 INSERT INTO DV_DATA_LAKE.dbo.dv_rfidmatchmst (
-                    EPC_Code, mo_no, mo_noseq, mat_code,  or_no, or_custpo, 
+                    EPC_Code, mo_no, mo_noseq, mat_code, or_no, or_custpo, 
                     shoestyle_codefactory, cust_shoestyle, size_numcode, size_code, size_qty,
                     factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, 
                     ri_date, ri_cancel, ri_type, ri_foot, 
@@ -154,9 +123,38 @@ class RFIDRepository:
                     dept_code, dept_name,
                     isactive, remark
                 )
-                VALUES {insert_values}   
-            ;
-            """
+                SELECT 
+                    JSON_VALUE(value, '$.EPC_Code') AS EPC_Code,
+                    JSON_VALUE(value, '$.mo_no') AS mo_no,
+                    JSON_VALUE(value, '$.mo_noseq') AS mo_noseq,
+                    JSON_VALUE(value, '$.mat_code') AS mat_code,
+                    JSON_VALUE(value, '$.or_no') AS or_no,
+                    JSON_VALUE(value, '$.or_custpo') AS or_custpo,
+                    JSON_VALUE(value, '$.shoestyle_codefactory') AS shoestyle_codefactory,
+                    JSON_VALUE(value, '$.cust_shoestyle') AS cust_shoestyle,
+                    JSON_VALUE(value, '$.size_numcode') AS size_numcode,
+                    JSON_VALUE(value, '$.size_code') AS size_code,
+                    CAST(JSON_VALUE(value, '$.size_qty') AS INT) AS size_qty,
+                    JSON_VALUE(value, '$.factory_code_orders') AS factory_code_orders,
+                    JSON_VALUE(value, '$.factory_name_orders') AS factory_name_orders,
+                    JSON_VALUE(value, '$.factory_code_produce') AS factory_code_produce,
+                    JSON_VALUE(value, '$.factory_name_produce') AS factory_name_produce,
+                    GETDATE() AS ri_date,
+                    CAST(JSON_VALUE(value, '$.ri_cancel') AS INT) AS ri_cancel,
+                    JSON_VALUE(value, '$.ri_type') AS ri_type,
+                    JSON_VALUE(value, '$.ri_foot') AS ri_foot,
+                    JSON_VALUE(value, '$.sole_tag') AS sole_tag,
+                    CAST(JSON_VALUE(value, '$.sole_tag_rate') AS FLOAT) AS sole_tag_rate,
+                    CAST(JSON_VALUE(value, '$.sole_tag_round') AS FLOAT) AS sole_tag_round,
+                    JSON_VALUE(value, '$.user_code_created') AS user_code_created,
+                    JSON_VALUE(value, '$.user_name_created') AS user_name_created,
+                    JSON_VALUE(value, '$.dept_code') AS dept_code,
+                    JSON_VALUE(value, '$.dept_name') AS dept_name,
+                    JSON_VALUE(value, '$.isactive') AS isactive,
+                    JSON_VALUE(value, '$.remark') AS remark
+                FROM OPENJSON('{json_data}')
+                ;
+                """
             )
 
             if not query.exec():
