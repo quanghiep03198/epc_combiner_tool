@@ -268,28 +268,21 @@ class MainWindow(QMainWindow):
         self.on_application_bootstrap()
 
 
-class Program:
-    @staticmethod
-    def main():
-        # app_ref: int =
-        app_ref: int = random.randint(1, 100000)
-        try:
-            app = QApplication(sys.argv)
-
-            # * Setup main window
-            window = MainWindow(app)
-            window.bootstrap()
-
-            # app.aboutToQuit.connect(window.on_application_shutdown)
-            # app..connect(window.on_application_shutdown)
-
-            app_ref = app.exec()
-            sys.exit(app_ref)
-            os._exit(app_ref)
-        except Exception as e:
-            logger.error(f"Error occurred: {e}")
-            input("Press Enter to exit...")
-
-
 if __name__ == "__main__":
-    Program.main()
+    app_ref: int = random.randint(1, 100000)
+    try:
+        app = QApplication(sys.argv)
+
+        # * Setup main window
+        window = MainWindow(app)
+        window.bootstrap()
+
+        app.aboutToQuit.connect(window.on_application_shutdown)
+        app.lastWindowClosed.connect(window.on_application_shutdown)
+
+        app_ref = app.exec()
+        sys.exit(app_ref)
+        os._exit(app_ref)
+    except Exception as e:
+        logger.error(f"Error occurred: {e}")
+        input("Press Enter to exit...")
