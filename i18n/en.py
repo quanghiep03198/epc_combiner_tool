@@ -67,7 +67,7 @@ en_dictionary: dict = {
     },
     "notification": {
         "cancelled_epc_success": "{quantity} EPC(s) have been cancelled",
-        "combine_epc_failure_title": "Combine EPC failure",
+        "combine_epc_failure_title": "Failed to combine EPC",
         "compensated_epc_success": "{quantity} EPC(s) have been compensated",
         "failure_connection_uhf_text": "Please check UHF machine configuration",
         "failure_connection_uhf_title": "Connection failed",
