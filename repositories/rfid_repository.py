@@ -108,7 +108,7 @@ class RFIDRepository:
 
             # Insert new records
             # Convert data to JSON format
-            json_data = json.dumps(data, ensure_ascii=False)
+            json_data = json.dumps(data, ensure_ascii=False).replace("'", "''")
 
             # Use the JSON to perform an insert-select operation
             query.prepare(
