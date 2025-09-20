@@ -335,7 +335,7 @@ class CombineForm(QFrame, I18nContext):
         self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
         toast = Toaster(
             parent=self.root,
-            title="notification.combine_epc_failure_title",
+            title=I18nService.t("notification.combine_epc_failure_title"),
             preset=ToastPreset.ERROR_DARK,
             text="",
         )
