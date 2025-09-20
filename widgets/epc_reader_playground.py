@@ -527,9 +527,9 @@ class EpcReaderPlayground(QFrame, I18nContext):
             "3": reader_power,
             "4": reader_power,
         }
+        self.uhf_reader_instance.sendSynMsg(MsgBaseSetPower(**dict_power))
 
         # * Setup reader antenna
-        self.uhf_reader_instance.sendSynMsg(MsgBaseSetPower(**dict_power))
         reader_ant = ConfigService.get_env(
             "UHF_READER_ANT",
         )
