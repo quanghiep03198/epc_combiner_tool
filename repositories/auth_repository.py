@@ -1,65 +1,42 @@
 from PyQt6.QtSql import QSqlQuery
-from database import DATA_SOURCE_SYSCLOUD
+from database import db_service, DatabaseConnection
 from helpers.logger import logger
 
 from constants import FactoryNames, StatusCode
 
 
 class AuthRepository:
-    @staticmethod
-    def __init__(self, db):
-        self.db = db
 
     @staticmethod
     def find_user(username: str):
-        query = QSqlQuery(DATA_SOURCE_SYSCLOUD)
-        try:
-            user: dict[str, str | None] = {
+        result = db_service.execute_query(
+            connection_type=DatabaseConnection.SYSCLOUD,
+            sql_query="""--sql
+                SELECT u.keyid AS id, u.user_code, u.user_password AS password, e.employee_code, e.employee_name
+                FROM syscloud_vn.dbo.ts_user u
+                INNER JOIN syscloud_vn.dbo.ts_employee e ON u.employee_code = e.employee_code
+                WHERE u.user_code = :username
+            """,
+            bind_values={"username": username},
+        )
+
+        logger.debug(f"User query result for username '{username}': {result}")
+
+        if result is None or len(result) == 0:
+            return {
                 "id": None,
                 "employee_code": None,
                 "employee_name": None,
                 "user_code": None,
                 "password": None,
             }
-
-            query.prepare(
-                f"""--sql
-                SELECT u.keyid, u.user_code, u.user_password, e.employee_code, e.employee_name
-                FROM syscloud_vn.dbo.ts_user u
-                INNER JOIN syscloud_vn.dbo.ts_employee e ON u.employee_code = e.employee_code
-                WHERE u.user_code = :username
-                """
-            )
-
-            query.bindValue(":username", username)
-
-            if not query.exec():
-                raise Exception(
-                    {
-                        "message": query.lastError().text(),
-                        "status": StatusCode.INTERNAL_SERVER_ERROR.value,
-                    }
-                )
-
-            if query.next():
-                user.update(id=query.value("keyid"))
-                user.update(user_code=query.value("user_code"))
-                user.update(employee_code=query.value("employee_code"))
-                user.update(employee_name=query.value("employee_name"))
-                user.update(password=query.value("user_password"))
-
-            return user
-        finally:
-            query.finish()
+        return result[0]
 
     @staticmethod
     def get_factories(user_id: int | str):
-        result = []
-        query = QSqlQuery(DATA_SOURCE_SYSCLOUD)
-        try:
-
-            query.prepare(
-                f"""--sql
+        result = db_service.execute_query(
+            connection_type=DatabaseConnection.SYSCLOUD,
+            sql_query="""--sql
                 SELECT DISTINCT f.factory_code, f.factory_extcode
                 FROM syscloud_vn.dbo.ts_user u
                 INNER JOIN syscloud_vn.dbo.ts_employee e ON e.employee_code = u.employee_code
@@ -68,30 +45,20 @@ class AuthRepository:
                 INNER JOIN syscloud_vn.dbo.ts_factory f ON f.factory_code = d.company_code
                 WHERE u.keyid = :id AND f.factory_code IN ('VA1','VB1','VB2','CA1')
                 ORDER BY f.factory_extcode ASC
-            """
+            """,
+            bind_values={"id": user_id},
+        )
+
+        if result is None or not isinstance(result, list):
+            return []
+
+        # Map result to desired format
+        return list(
+            map(
+                lambda row: {
+                    "factory_code": row["factory_code"],
+                    "factory_name": FactoryNames[row["factory_code"]].value,
+                },
+                result,
             )
-
-            query.bindValue(":id", user_id)
-            if not query.exec():
-                logger.error(
-                    {
-                        "message": query.lastError().text(),
-                        "status": StatusCode.INTERNAL_SERVER_ERROR.value,
-                    }
-                )
-
-            while query.next():
-                factory_code = query.value("factory_code")
-                result.append(
-                    {
-                        "factory_code": factory_code,
-                        "factory_name": FactoryNames[factory_code].value,
-                    }
-                )
-
-        except Exception as e:
-            logger.error(f"Error: {e}")
-            raise Exception(e)
-        finally:
-            query.finish()
-            return result
+        )

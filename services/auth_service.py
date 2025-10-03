@@ -23,7 +23,6 @@ class AuthService:
                         "status": StatusCode.UNAUTHORIZED.value,
                     }
                 )
-
             factories = AuthRepository.get_factories(user["id"])
             return {"user": user, "factories": factories}
         except Exception as e:
