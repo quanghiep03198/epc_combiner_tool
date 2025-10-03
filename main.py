@@ -28,7 +28,7 @@ from events import __event_emitter__, UserActionEvent
 from contexts.auth_context import auth_context
 from i18n import I18nService, Language
 from helpers.resolve_path import resolve_path
-from database import disconnect_datasources
+from database import db_service
 import random
 
 
@@ -254,7 +254,7 @@ class MainWindow(QMainWindow):
             self.epc_reader_playground.uhf_reader_instance, GClient
         ):
             self.epc_reader_playground.uhf_reader_instance.callTcpDisconnect
-        disconnect_datasources()
+        db_service.close_all_connections()
         # Ensure the application exits completely
         self.__app__.quit()
         os._exit(0)
