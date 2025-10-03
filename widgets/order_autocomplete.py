@@ -1,14 +1,12 @@
-from helpers.logger import logger
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import *
 from PyQt6.QtGui import *
-from PyQt6.QtSql import QSqlQuery
 from contexts.combine_form_context import combine_form_context
-from contexts.auth_context import auth_context
-from database import DATA_SOURCE_ERP
 from events import __event_emitter__, UserActionEvent
 from i18n import I18nService
 from helpers.resolve_path import resolve_path
+from decorators.debounce import pyqtDebounce
+from services.order_service import OrderService
 
 
 class OrderAutoCompleteWidget(QPushButton):
@@ -62,7 +60,7 @@ class OrderAutoCompleteWidget(QPushButton):
             "border: 0px; border-bottom: 1px solid #404040; border-radius: 0px; height: 32px; padding: 2px 8px; background-color: #171717"
         )
         self.popover_input.setPlaceholderText("Search...")
-        self.popover_input.textChanged.connect(self.on_input)
+        self.popover_input.textChanged.connect(self.handle_find_mo_no)
 
         self.popover_content.layout().addWidget(self.popover_input)
         self.popover_menu_list = QListWidget(self.popover_content)
@@ -181,30 +179,10 @@ class OrderAutoCompleteWidget(QPushButton):
 
     # * Handle find manufacturing order from database
 
+    @pyqtDebounce(wait=200, immediate=True)  # 200ms debounce time
     @pyqtSlot(str)
-    def handle_find_mo_no(self, q: str) -> None:
-        query = QSqlQuery(DATA_SOURCE_ERP)
-        try:
-            query.prepare(
-                f"""--sql
-                    SELECT TOP 5 mo_no
-                    FROM (
-                        SELECT DISTINCT mo_no, created
-                        FROM wuerp_vnrd.dbo.ta_manufacturmst
-                        WHERE mo_no LIKE :search
-                        AND cofactory_code = :factory_code
-                    ) AS subquery
-                    ORDER BY created DESC
-                """,
-            )
-            query.bindValue(":search", f"%{q}%")
-            query.bindValue(":factory_code", auth_context.get("factory_code"))
-            query.exec()
-
-            self.popover_menu_list.clear()
-            while query.next():
-                self.popover_menu_list.addItem(QListWidgetItem(query.value("mo_no")))
-        except Exception as e:
-            logger.error(e)
-        finally:
-            query.finish()
+    def handle_find_mo_no(self, search: str) -> None:
+        data = OrderService.search_order(search)
+        self.popover_menu_list.clear()
+        for item in data:
+            self.popover_menu_list.addItem(QListWidgetItem(item["mo_no"]))
