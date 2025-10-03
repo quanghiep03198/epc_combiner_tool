@@ -1,7 +1,7 @@
 from PyQt6.QtSql import *
 from helpers.logger import logger
 from contexts.combine_form_context import combine_form_context
-from database import DATA_SOURCE_DL
+from database import db_service, DatabaseConnection
 from contexts.auth_context import auth_context
 from helpers.disutils import strtobool
 import json
@@ -12,7 +12,8 @@ class RFIDRepository:
     def check_reasonable_combination(data: dict) -> list[dict]:
         result: list[dict] = []
         try:
-            query = QSqlQuery(DATA_SOURCE_DL)
+            connection = db_service.get_connection(DatabaseConnection.DATA_LAKE)
+            query = QSqlQuery(connection)
             epc_list = ",".join([f"'{item['EPC_Code']}'" for item in data])
             query.prepare(
                 f"""--sql
@@ -38,8 +39,10 @@ class RFIDRepository:
 
     @staticmethod
     def reset_and_add_combinations(data: dict):
-        query = QSqlQuery(DATA_SOURCE_DL)
         try:
+
+            connection = db_service.get_connection(DatabaseConnection.DATA_LAKE)
+            query = QSqlQuery(connection)
             epc_params_str = ",".join([f"'{item['EPC_Code']}'" for item in data])
             fallback_station_no = "%s_%s" % (auth_context.get("factory_code"), "PA103")
 
@@ -160,10 +163,10 @@ class RFIDRepository:
             if not query.exec():
                 raise Exception(query.lastError().text())
 
-            DATA_SOURCE_DL.commit()
+            connection.commit()
             return query.numRowsAffected()
         except Exception as e:
-            DATA_SOURCE_DL.rollback()
+            connection.rollback()
             logger.error(f"Error in RFIDRepository: {e}")
             raise Exception(e)
         finally:

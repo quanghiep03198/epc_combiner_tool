@@ -1,10 +1,6 @@
 from repositories.rfid_repository import RFIDRepository
-from helpers.logger import logger
 from PyQt6.QtSql import *
-import numpy
-from database import DATA_SOURCE_DL
-from contexts.auth_context import auth_context
-from events import __event_emitter__, UserActionEvent
+from events import __event_emitter__
 
 
 class RFIDService:
