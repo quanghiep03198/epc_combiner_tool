@@ -15,6 +15,7 @@ from helpers.logger import logger
 from helpers.write_data import write_data
 from contexts.auth_context import auth_context
 from i18n import I18nContext
+from decorators.debounce import pyqtDebounce
 
 
 class WorkerSignals(QObject):
@@ -121,8 +122,8 @@ class CombineForm(QFrame, I18nContext):
         self.combine_proceed_button.clicked.connect(self.on_combine_proceed)
 
         self.combine_form_layout.addWidget(self.action_select)
-        self.combine_form_layout.addWidget(self.size_select)
         self.combine_form_layout.addWidget(self.mo_noseq_select)
+        self.combine_form_layout.addWidget(self.size_select)
         self.combine_form_layout.addWidget(self.combine_proceed_button)
 
         # region Event listeners
@@ -167,15 +168,16 @@ class CombineForm(QFrame, I18nContext):
         self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
 
     def on_size_list_change(self, data):
+        self.combine_proceed_button.setEnabled(False)
         self.__size_list = data
         self.size_select.clear()
         self.size_select.addItems(map(lambda item: item["size_numcode"], data))
+        self.size_select.setCurrentText(combine_form_context.get("size_numcode"))
 
     def on_epc_data_change(self, data):
         self.__epcs = data
         should_enable_combination = isinstance(data, list) and len(data) > 0
         self.on_combine_from_state_change("has_epc", should_enable_combination)
-        self.combine_proceed_button.setEnabled(should_enable_combination)
 
     def on_auth_state_change(self, data):
         """
@@ -194,6 +196,7 @@ class CombineForm(QFrame, I18nContext):
 
     def handle_get_mo_noseq(self, data: list[str]):
         try:
+            self.combine_proceed_button.setEnabled(False)
             self.mo_noseq_select.clear()
             self.mo_noseq_select.addItem(I18nService.t("labels.all"), "all")
             for mo_noseq in data:
@@ -201,6 +204,7 @@ class CombineForm(QFrame, I18nContext):
         except Exception as e:
             logger.error(e)
 
+    @pyqtSlot(str)
     def handle_selected_size_change(self, value: str):
         """
         When user select a size, update the selected size in the form and set maxiumn EPC quantity that user need to scan
@@ -225,6 +229,8 @@ class CombineForm(QFrame, I18nContext):
     def handle_mo_noseq_change(self, selected_index: int):
         value = self.mo_noseq_select.itemData(selected_index)
         self.on_combine_from_state_change("mo_noseq", value)
+        self.on_combine_from_state_change("size_numcode", None)
+        self.size_select.clear()
         __event_emitter__.emit(UserActionEvent.MO_NOSEQ_CHANGE.value, value)
         if value == "all":
             self.combine_proceed_button.setEnabled(False)
@@ -243,12 +249,25 @@ class CombineForm(QFrame, I18nContext):
             UserActionEvent.COMBINE_FORM_STATE_CHANGE.value, combine_form_context
         )
 
-        is_combinable = self.validate_submission_criteria()
+        is_combinable = self.__validate_submission_criteria()
 
         self.combine_proceed_button.setEnabled(is_combinable)
 
+    @pyqtDebounce(wait=500, immediate=True)
     @pyqtSlot()
     def on_combine_proceed(self):
+        # Check if all values in data are not None or empty string or "all"
+        is_valid = self.__validate_submission_criteria()
+
+        if is_valid is False:
+            Toaster(
+                parent=self.root,
+                title=I18nService.t("notification.combine_epc_failure_title"),
+                text=I18nService.t("notification.combine_epc_validation_failure_text"),
+                preset=ToastPreset.WARNING_DARK,
+            ).show()
+            return
+
         if (
             combine_form_context["ri_type"] == CombineAction.COMBINE_NEW.value
             and len(self.__epcs)
@@ -293,7 +312,6 @@ class CombineForm(QFrame, I18nContext):
                 )
                 toast.show()
                 self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
-                self.combine_proceed_button.setEnabled(True)
                 return
 
             worker = StoreDataWorker(
@@ -307,6 +325,7 @@ class CombineForm(QFrame, I18nContext):
     def on_mutate_success(self, num_rows_affected: int | None):
         if isinstance(num_rows_affected, int):
             # Ensure the directory exists
+            self.__epcs.clear()
             self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
 
             write_data(
@@ -341,11 +360,12 @@ class CombineForm(QFrame, I18nContext):
         )
         toast.show()
 
-    def validate_submission_criteria(self) -> bool:
+    def __validate_submission_criteria(self) -> bool:
         return (
             combine_form_context["ri_type"] is not None
             and combine_form_context["mo_no"] is not None
             and combine_form_context["mo_noseq"] is not None
+            and combine_form_context["mo_noseq"] != "all"
             and combine_form_context["size_numcode"] is not None
             and combine_form_context["size_code"] is not None
             and combine_form_context["mat_code"] is not None

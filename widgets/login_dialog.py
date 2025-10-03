@@ -9,6 +9,7 @@ from constants import StatusCode
 from helpers.resolve_path import resolve_path
 from events import __event_emitter__, UserActionEvent
 from i18n import I18nService, I18nContext
+from decorators.debounce import pyqtDebounce
 
 
 class LoginDialog(QDialog, I18nContext):
@@ -56,9 +57,7 @@ class LoginDialog(QDialog, I18nContext):
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("username")
         self.username_input.setProperty("valid", False)
-        self.username_input.textChanged.connect(
-            lambda value: self.on_auth_field_change("username", value)
-        )
+        self.username_input.textChanged.connect(self.on_username_change)
 
         password_label_layout = QHBoxLayout()
         password_label_layout.setSpacing(6)
@@ -88,9 +87,7 @@ class LoginDialog(QDialog, I18nContext):
             }
             """
         )
-        self.password_input.textChanged.connect(
-            lambda value: self.on_auth_field_change("password", value)
-        )
+        self.password_input.textChanged.connect(self.on_password_change)
 
         factory_label_layout = QHBoxLayout()
         factory_label_layout.setSpacing(6)
@@ -130,7 +127,6 @@ class LoginDialog(QDialog, I18nContext):
             QIcon.Mode.Normal,
             QIcon.State.Off,
         )
-        # self.exit_button.setIcon(self.exit_icon)
         self.exit_button.setStyleSheet(
             """
              QPushButton{
@@ -179,16 +175,17 @@ class LoginDialog(QDialog, I18nContext):
             # Xử lý các phím khác bình thường
             super().keyPressEvent(event)
 
-    @pyqtSlot()
-    def on_auth_field_change(self, key: str, value: str):
-        if hasattr(self, "debounce_timer") and self.debounce_timer.isActive():
-            self.debounce_timer.stop()
-        self.debounce_timer = QTimer()
-        self.debounce_timer.setSingleShot(True)
-        self.debounce_timer.timeout.connect(
-            lambda: self.handle_debounce_change(key, value)
-        )
-        self.debounce_timer.start(300)  # 300ms debounce time
+    @pyqtDebounce(wait=200, immediate=False)
+    @pyqtSlot(str)
+    def on_username_change(self, value: str):
+        self.__form_values.update(username=value)
+        self.handle_authenticate()
+
+    @pyqtDebounce(wait=200, immediate=False)
+    @pyqtSlot(str)
+    def on_password_change(self, value: str):
+        self.__form_values.update(password=value)
+        self.handle_authenticate()
 
     def on_factory_code_change(self, index):
         auth_context.update(factory_code=self.factory_code_select.itemData(index))
@@ -203,10 +200,6 @@ class LoginDialog(QDialog, I18nContext):
 
     def handle_form_values_change(self, key: str, value: str) -> None:
         self.__form_values[key] = value
-
-    def handle_debounce_change(self, key: str, value: str) -> None:
-        self.handle_form_values_change(key, value)
-        self.handle_authenticate()
 
     def handle_authenticate(self):
         try:
