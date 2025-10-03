@@ -23,30 +23,41 @@ class AppSettingsDialog(QDialog, I18nContext):
         self.setWindowTitle("Settings")
         self.setObjectName("settings_dialog")
         self.setWindowFlags(Qt.WindowType.CoverWindow)
-        self.setFixedWidth(500)
-        self.setMinimumHeight(800)
+        self.setFixedWidth(750)
+        self.setMinimumHeight(500)
         self.setSizeGripEnabled(False)
         self.setContentsMargins(8, 8, 8, 8)
 
-        setting_form_layout = QVBoxLayout()
-        setting_form_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        setting_form_layout.setSpacing(24)
-        # region UHF Reader settings
+        self.setting_form_container_layout = QVBoxLayout()
+        self.setting_form_container_layout.setContentsMargins(0, 0, 0, 0)
+        self.setting_form_container_layout.setSpacing(12)
+        self.setting_form_container = QFrame()
+        self.setting_form_container.setLayout(self.setting_form_container_layout)
+
+        self.setting_form_layout = QHBoxLayout()
+        self.setting_form_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.setting_form_layout.setSpacing(24)
+        self.setting_form_fieldsets = QWidget()
+        self.setting_form_fieldsets.setLayout(self.setting_form_layout)
 
         # region Reader TCP/IP
         self.reader_fieldset_layout = QVBoxLayout()
         self.reader_fieldset_layout.setContentsMargins(0, 0, 0, 0)
-        self.reader_fieldset_layout.setSpacing(12)
+        self.reader_fieldset_layout.setSpacing(16)
+        self.reader_fieldset_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.reader_fieldset = QFrame()
         self.reader_fieldset.setLayout(self.reader_fieldset_layout)
-        self.db_fieldset_legend = QLabel("UHF Reader", self.reader_fieldset)
-        self.db_fieldset_legend.setObjectName("fieldset_legend")
-        self.reader_fieldset_layout.addWidget(self.db_fieldset_legend)
+        self.reader_fieldset_legend = QLabel("UHF Reader", self.reader_fieldset)
+        self.reader_fieldset_legend.setFixedHeight(32)
+        self.reader_fieldset_legend.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.reader_fieldset_legend.setObjectName("fieldset_legend")
+        self.reader_fieldset_layout.addWidget(self.reader_fieldset_legend)
 
         self.reader_ip_field_control_layout = QVBoxLayout(self.reader_fieldset)
         self.reader_ip_field_control_layout.setContentsMargins(0, 0, 0, 0)
         self.reader_ip_field_control_layout.setSpacing(4)
         self.reader_ip_field_control = QWidget(self.reader_fieldset)
+        self.reader_ip_field_control.setFixedHeight(64)
         self.reader_ip_field_control.setLayout(self.reader_ip_field_control_layout)
 
         self.reader_ip_label = QLabel("TCP/IP", self.reader_ip_field_control)
@@ -70,6 +81,7 @@ class AppSettingsDialog(QDialog, I18nContext):
         self.reader_port_field_control_layout.setSpacing(4)
         self.reader_port_field_control = QWidget(self.reader_fieldset)
         self.reader_port_field_control.setLayout(self.reader_port_field_control_layout)
+        self.reader_port_field_control.setFixedHeight(64)
         self.reader_port_label = QLabel("Port", self.reader_port_field_control)
         self.reader_port_input = QLineEdit(self.reader_port_field_control)
         self.reader_port_input.setPlaceholderText("8160")
@@ -92,6 +104,7 @@ class AppSettingsDialog(QDialog, I18nContext):
         self.reader_ant_field_control_layout.setSpacing(4)
         self.reader_ant_field_control = QWidget(self.reader_fieldset)
         self.reader_ant_field_control.setLayout(self.reader_ant_field_control_layout)
+        self.reader_ant_field_control.setFixedHeight(64)
         self.reader_ant_label = QLabel("Antenna", self.reader_ant_field_control)
         self.reader_ant_select = QComboBox(self.reader_ant_field_control)
         self.reader_ant_select.addItem("Ant 1", EnumG.AntennaNo_1.value)
@@ -124,6 +137,7 @@ class AppSettingsDialog(QDialog, I18nContext):
         self.reader_power_field_control.setLayout(
             self.reader_power_field_control_layout
         )
+        self.reader_power_field_control.setFixedHeight(64)
         self.reader_power_label = QLabel("Power", self.reader_power_field_control)
         self.reader_power_input = QLineEdit(self.reader_power_field_control)
         self.reader_power_input.setPlaceholderText("20")
@@ -142,44 +156,46 @@ class AppSettingsDialog(QDialog, I18nContext):
         self.reader_fieldset_layout.addWidget(self.reader_port_field_control)
         self.reader_fieldset_layout.addWidget(self.reader_power_field_control)
         self.reader_fieldset_layout.addWidget(self.reader_ant_field_control)
-        setting_form_layout.addWidget(self.reader_fieldset)
-        # endregion
+        self.setting_form_layout.addWidget(self.reader_fieldset)
         # endregion
 
-        # region Database settings
-
-        # Database driver settings
+        # region Database fieldset layout
         self.db_fieldset_layout = QVBoxLayout()
         self.db_fieldset_layout.setContentsMargins(0, 0, 0, 0)
-        self.db_fieldset_layout.setSpacing(12)
+        self.db_fieldset_layout.setSpacing(16)
+        self.db_fieldset_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.db_fieldset = QFrame()
         self.db_fieldset.setLayout(self.db_fieldset_layout)
         self.db_fieldset_legend = QLabel("Database", self.db_fieldset)
+        self.db_fieldset_legend.setFixedHeight(32)
+        self.db_fieldset_legend.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.db_fieldset_legend.setObjectName("fieldset_legend")
         self.db_fieldset_layout.addWidget(self.db_fieldset_legend)
+        # endregion
 
+        # region Database driver
         self.db_driver_field_control_layout = QVBoxLayout()
         self.db_driver_field_control_layout.setContentsMargins(0, 0, 0, 0)
         self.db_driver_field_control_layout.setSpacing(4)
         self.db_driver_field_control = QWidget(self.db_fieldset)
         self.db_driver_field_control.setLayout(self.db_driver_field_control_layout)
-
-        # Datbase host setting field control
+        self.db_driver_field_control.setFixedHeight(64)
         self.db_driver_label = QLabel("Database driver", self.db_driver_field_control)
         self.db_driver_input = QLineEdit(self.db_driver_field_control)
         self.db_driver_input.setPlaceholderText("SQL Server")
         self.db_driver_input.setFixedHeight(36)
         self.db_driver_input.setText("SQL Server")
-
         self.db_driver_field_control_layout.addWidget(self.db_driver_label)
         self.db_driver_field_control_layout.addWidget(self.db_driver_input)
+        # endregion
 
-        # Datbase host setting field control
+        # region Database host
         self.db_server_field_control_layout = QVBoxLayout()
         self.db_server_field_control_layout.setContentsMargins(0, 0, 0, 0)
         self.db_server_field_control_layout.setSpacing(4)
         self.db_server_field_control = QWidget(self.db_fieldset)
         self.db_server_field_control.setLayout(self.db_server_field_control_layout)
+        self.db_server_field_control.setFixedHeight(64)
 
         self.db_server_label = QLabel("Database server", self.db_server_field_control)
         self.db_server_input = QLineEdit(self.db_server_field_control)
@@ -192,13 +208,15 @@ class AppSettingsDialog(QDialog, I18nContext):
         )
         self.db_server_field_control_layout.addWidget(self.db_server_label)
         self.db_server_field_control_layout.addWidget(self.db_server_input)
+        # endregion
 
-        # Database port setting field control
+        # region Database port
         self.db_port_field_control_layout = QVBoxLayout()
         self.db_port_field_control_layout.setContentsMargins(0, 0, 0, 0)
         self.db_port_field_control_layout.setSpacing(4)
         self.db_port_field_control = QWidget(self.db_fieldset)
         self.db_port_field_control.setLayout(self.db_port_field_control_layout)
+        self.db_port_field_control.setFixedHeight(64)
         self.db_port_label = QLabel("Port", self.db_port_field_control)
         self.db_port_input = QLineEdit(self.db_port_field_control)
         self.db_port_input.setPlaceholderText("1433")
@@ -212,12 +230,13 @@ class AppSettingsDialog(QDialog, I18nContext):
         self.db_port_field_control_layout.addWidget(self.db_port_label)
         self.db_port_field_control_layout.addWidget(self.db_port_input)
 
-        # Database user
+        # region Database user
         self.db_uid_field_control_layout = QVBoxLayout()
         self.db_uid_field_control_layout.setContentsMargins(0, 0, 0, 0)
         self.db_uid_field_control_layout.setSpacing(4)
         self.db_uid_field_control = QWidget(self.db_fieldset)
         self.db_uid_field_control.setLayout(self.db_uid_field_control_layout)
+        self.db_uid_field_control.setFixedHeight(64)
         self.db_uid_label = QLabel("User", self.db_uid_field_control)
         self.db_uid_input = QLineEdit(self.db_uid_field_control)
         self.db_uid_input.setPlaceholderText("user")
@@ -230,13 +249,15 @@ class AppSettingsDialog(QDialog, I18nContext):
 
         self.db_uid_field_control_layout.addWidget(self.db_uid_label)
         self.db_uid_field_control_layout.addWidget(self.db_uid_input)
+        # endregion
 
-        # Database password
+        # region Database password
         self.db_pwd_field_control_layout = QVBoxLayout()
         self.db_pwd_field_control_layout.setContentsMargins(0, 0, 0, 0)
         self.db_pwd_field_control_layout.setSpacing(4)
         self.db_pwd_field_control = QWidget(self.db_fieldset)
         self.db_pwd_field_control.setLayout(self.db_pwd_field_control_layout)
+        self.db_pwd_field_control.setFixedHeight(64)
         self.db_pwd_label = QLabel("Password", self.db_pwd_field_control)
         self.db_pwd_input = QLineEdit(self.db_pwd_field_control)
         self.db_pwd_input.setEchoMode(QLineEdit.EchoMode.Password)
@@ -262,8 +283,6 @@ class AppSettingsDialog(QDialog, I18nContext):
         self.db_fieldset_layout.addWidget(self.db_port_field_control)
         self.db_fieldset_layout.addWidget(self.db_uid_field_control)
         self.db_fieldset_layout.addWidget(self.db_pwd_field_control)
-
-        setting_form_layout.addWidget(self.db_fieldset)
         # endregion
 
         # region Form dialog actions buttons
@@ -292,16 +311,25 @@ class AppSettingsDialog(QDialog, I18nContext):
 
         self.button_group = QWidget(self)
         self.button_group_layout = QHBoxLayout()
-        self.button_group_layout.setContentsMargins(0, 0, 0, 0)
-        self.button_group_layout.setSpacing(4)
+        self.button_group_layout.setContentsMargins(0, 8, 0, 8)
+        self.button_group_layout.setSpacing(8)
         self.button_group_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
 
         self.button_group_layout.addWidget(self.save_button)
         self.button_group_layout.addWidget(self.close_button)
         self.button_group.setLayout(self.button_group_layout)
 
-        setting_form_layout.addWidget(self.button_group)
-        self.setLayout(setting_form_layout)
+        self.setting_form_layout.addWidget(self.db_fieldset)
+        self.setting_form_layout.addWidget(self.reader_fieldset)
+        self.setting_form_container_layout.addWidget(self.setting_form_fieldsets)
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setFrameShadow(QFrame.Shadow.Sunken)
+        separator.setFixedHeight(1)
+        self.setting_form_container_layout.addWidget(separator)
+        # self.setting_form_container_layout.addWidget(QLine(), 1, 0, 1, 2)
+        self.setting_form_container_layout.addWidget(self.button_group)
+        self.setLayout(self.setting_form_container_layout)
 
         __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value, self.__translate__)
         # endregion
