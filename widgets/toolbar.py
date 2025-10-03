@@ -39,16 +39,16 @@ class AppToolBar(QToolBar, I18nContext):
         )
 
         self.user_locale_layout = QHBoxLayout()
-        self.user_locale_layout.setContentsMargins(6, 0, 0, 0)
-        self.user_locale_layout.setSpacing(6)
+        self.user_locale_layout.setContentsMargins(4, 0, 0, 0)
+        self.user_locale_layout.setSpacing(8)
         self.user_locale = QWidget()
         self.user_locale.setLayout(self.user_locale_layout)
 
         self.globe_icon = QLabel()
 
         pixmap = QPixmap(resolve_path("assets/icons/globe.svg")).scaled(
-            20,
-            20,
+            24,
+            24,
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
@@ -57,16 +57,6 @@ class AppToolBar(QToolBar, I18nContext):
         self.user_locale_text = QLabel()
         self.user_locale_layout.addWidget(self.globe_icon)
         self.user_locale_layout.addWidget(self.user_locale_text)
-
-        # self.slider = QSlider(Qt.Orientation.Horizontal)
-        # self.slider.setMinimum(0)
-        # self.slider.setMaximum(100)
-        # self.slider.setValue(50)
-        # self.slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        # self.slider.setTickInterval(10)
-        # self.addWidget(self.slider)
-
-        # self.addWidget(self.version)
         self.addWidget(self.user_locale)
 
         self.spacer = QWidget()
@@ -79,8 +69,8 @@ class AppToolBar(QToolBar, I18nContext):
         self.factory_icon = QLabel()
 
         pixmap = QPixmap(resolve_path("assets/icons/factory.svg")).scaled(
-            16,
-            16,
+            22,
+            22,
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
