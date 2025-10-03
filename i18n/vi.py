@@ -65,6 +65,7 @@ vi_dictionary: dict = {
     "notification": {
         "cancelled_epc_success": "{quantity} tem đã được hủy thành công.",
         "combine_epc_failure_title": "Phối EPC thất bại",
+        "combine_epc_validation_failure_text": "Vui lòng kiểm tra lại và điền đầy đủ thông tin phối đôi.",
         "compensated_epc_success": "{quantity} tem đã được bù thành công.",
         "failure_connection_uhf_text": "Vui lòng kiểm tra cấu hình máy UHF",
         "failure_connection_uhf_title": "Kết nối thất bại",
