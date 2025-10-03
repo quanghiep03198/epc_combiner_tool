@@ -291,6 +291,7 @@ class EpcReaderPlayground(QFrame, I18nContext):
 
     def on_mo_no_change(self, _):
         self.__max_epc_qty = 0
+        self.handle_reset_scanned_epc(toastify=False)
 
     def on_size_list_change(self, data):
         if (
@@ -546,13 +547,11 @@ class EpcReaderPlayground(QFrame, I18nContext):
         )
 
     @pyqtSlot()
-    def handle_reset_scanned_epc(self):
+    def handle_reset_scanned_epc(self, toastify: bool = True):
         self.epc_list.clear()
-
         # * Update UI on after reset scanned EPCs
-        is_empty = self.epc_list.count() == 0
-        self.empty_state.setVisible(not is_empty)
-        self.epc_list.setVisible(is_empty)
+        self.empty_state.setVisible(True)
+        self.epc_list.setVisible(False)
         self.scanned_epc_counter.setText(
             self.__get_counter_text(
                 combine_form_context["ri_type"], 0, SCANNED_EPC_LABEL
@@ -560,10 +559,10 @@ class EpcReaderPlayground(QFrame, I18nContext):
         )
 
         __event_emitter__.emit(UserActionEvent.EPC_DATA_CHANGE.value, [])
-
-        toast = Toaster(
-            parent=self.root,
-            title=I18nService.t("notification.reset_epc_success_title"),
-            text=I18nService.t("notification.reset_epc_success_text"),
-        )
-        toast.show()
+        if toastify:
+            toast = Toaster(
+                parent=self.root,
+                title=I18nService.t("notification.reset_epc_success_title"),
+                text=I18nService.t("notification.reset_epc_success_text"),
+            )
+            toast.show()
