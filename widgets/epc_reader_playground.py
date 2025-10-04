@@ -324,7 +324,7 @@ class EpcReaderPlayground(QFrame, I18nContext):
 
     def on_combined_epc_created(self, _: dict):
         self.epc_list.clear()
-        self.handle_reset_scanned_epc()
+        self.handle_reset_scanned_epc(toastify=False)
         self.__max_epc_qty = 0
         self.scanned_epc_counter.setText(
             self.__get_counter_text(

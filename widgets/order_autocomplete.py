@@ -27,6 +27,7 @@ class OrderAutoCompleteWidget(QPushButton):
         self.setStyleSheet(
             "height: 36px; background-color: #171717; border: 1px solid #404040; color: #fafafa; text-align: left; padding: 2px 8px; font-weight: 400;"
         )
+        self.setFixedHeight(40)
 
         chevron_icon = QIcon()
         chevron_icon.addPixmap(

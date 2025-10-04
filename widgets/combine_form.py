@@ -338,6 +338,16 @@ class CombineForm(QFrame, I18nContext):
                 }
             )
 
+            toast = Toaster(
+                parent=self.root,
+                title=I18nService.t("notification.combine_epc_success").format(
+                    quantity=num_rows_affected
+                ),
+                text=None,
+                preset=ToastPreset.SUCCESS_DARK,
+            )
+            toast.show()
+
             __event_emitter__.emit(
                 UserActionEvent.COMBINED_EPC_CREATED.value,
                 {

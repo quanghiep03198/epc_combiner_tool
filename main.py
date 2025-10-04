@@ -9,6 +9,7 @@ from PyQt6.QtSql import *
 from PyQt6.QtGui import *
 from PyQt6.QtWidgets import *
 from uhf.reader import GClient
+import random
 
 # Import widgets
 from widgets.toolbar import AppToolBar
@@ -29,7 +30,7 @@ from contexts.auth_context import auth_context
 from i18n import I18nService, Language
 from helpers.resolve_path import resolve_path
 from database import db_service
-import random
+from contexts.combine_form_context import combine_form_context
 
 
 class MainWindow(QMainWindow):
@@ -78,8 +79,22 @@ class MainWindow(QMainWindow):
         self.playground.setObjectName("playground")
 
         # region Order autocomplete select
+        self.top_layout = QHBoxLayout()
+        self.top_layout.setObjectName("top_layout")
+        self.top_layout.setContentsMargins(0, 0, 0, 0)
+        self.top_layout.setSpacing(8)
+        self.top_layout_widget = QWidget(self.container)
+        self.top_layout_widget.setLayout(self.top_layout)
+        self.refetch_button = QPushButton(self.top_layout_widget)
+        self.refetch_button.setObjectName("refetch_button")
+        self.refetch_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.refetch_button.setFixedWidth(120)
+        self.refetch_button.setText("Refetch")
+        self.refetch_button.clicked.connect(self.__refetch)
         self.mo_no_autocomplete = OrderAutoCompleteWidget(self)
-        self.playground.addWidget(self.mo_no_autocomplete)
+        self.top_layout.addWidget(self.mo_no_autocomplete)
+        self.top_layout.addWidget(self.refetch_button)
+        self.playground.addWidget(self.top_layout_widget)
         # self.mo_no_autocomplete.handle_find_mo_no("")
         # endregion
 
@@ -150,10 +165,18 @@ class MainWindow(QMainWindow):
 
     def __translate__(self):
         self.order_detail_title.setText(I18nService.t("labels.order_detail_title"))
+        self.refetch_button.setText(I18nService.t("actions.refetch"))
         self.sizing_detail_title.setText(
             I18nService.t("labels.combination_detail_title")
         )
         self.combine_form_title.setText(I18nService.t("labels.combination_form_title"))
+
+    def __refetch(self):
+        if combine_form_context.get("mo_no") is not None:
+            __event_emitter__.emit(
+                UserActionEvent.MO_NO_CHANGE.value,
+                {"mo_no": combine_form_context.get("mo_no")},
+            )
 
     # region Stylesheet setup
     def __set_stylesheet(self) -> None:

@@ -23,7 +23,6 @@ class SideToolbar(QToolBar, I18nContext):
         self.setStyleSheet(
             """
             QToolBar{
-                padding-top: 8px;
                 padding-left: 4px;
                 padding-right: 4px;
                 spacing: 18px;
