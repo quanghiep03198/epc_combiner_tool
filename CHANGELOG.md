@@ -20,15 +20,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Translate combine EPC failure message
 - Escape single quotes in JSON data for database insertion
 
-## [1.1.1] - 2025-10-03
+## [1.1.1] - 2025-10-04
 
 ### Added 
+- Refetch command number information
 - Continuos Integration: Windows installation downloader
 
 ### Changed
 - Apply debounce decorator
-- Update settings form layout
-- Refactor 
+- Update settings form layout 
 
 ### Fixed 
 - Parallel SQL executions
