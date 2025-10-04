@@ -17,9 +17,6 @@ from i18n import I18nService, I18nContext
 from helpers.resolve_path import resolve_path
 
 
-SCANNED_EPC_LABEL: str = "Đã Quét"
-
-
 class EpcReaderPlayground(QFrame, I18nContext):
     """
     EPC reader widget for scanning EPC from UHF reader
@@ -316,9 +313,7 @@ class EpcReaderPlayground(QFrame, I18nContext):
             )
             self.scanned_epc_counter.setText(
                 self.__get_counter_text(
-                    combine_form_context["ri_type"],
-                    self.epc_list.count(),
-                    SCANNED_EPC_LABEL,
+                    combine_form_context["ri_type"], self.epc_list.count()
                 )
             )
 
@@ -327,9 +322,7 @@ class EpcReaderPlayground(QFrame, I18nContext):
         self.handle_reset_scanned_epc(toastify=False)
         self.__max_epc_qty = 0
         self.scanned_epc_counter.setText(
-            self.__get_counter_text(
-                combine_form_context["ri_type"], 0, SCANNED_EPC_LABEL
-            )
+            self.__get_counter_text(combine_form_context["ri_type"], 0)
         )
 
     def on_invalid_combination_found(self, data: list[dict]):
@@ -352,16 +345,20 @@ class EpcReaderPlayground(QFrame, I18nContext):
         # * Only when size is selected, enable the connect button
         self.__max_epc_qty = data["size_qty"] - data["combined_qty"]
         self.scanned_epc_counter.setText(
-            self.__get_counter_text(
-                data["ri_type"], self.epc_list.count(), SCANNED_EPC_LABEL
-            )
+            self.__get_counter_text(data["ri_type"], self.epc_list.count())
         )
 
-    def __get_counter_text(self, type: str, acc_qty: int, sub_text: str) -> str:
+    def __get_counter_text(self, type: str, acc_qty: int) -> str:
         if type == CombineAction.COMBINE_NEW.value:
-            return f"{acc_qty}/{self.__max_epc_qty} {sub_text}"
+            return I18nService.t(
+                "labels.scanned",
+                plurals={"count": f"{acc_qty}/{self.__max_epc_qty}"},
+            )
         else:
-            return f"{acc_qty} {sub_text}"
+            return I18nService.t(
+                "labels.scanned",
+                plurals={"count": acc_qty},
+            )
 
     @pyqtSlot()
     def handle_epc_selection_changed(self):
@@ -387,7 +384,6 @@ class EpcReaderPlayground(QFrame, I18nContext):
                 self.__get_counter_text(
                     combine_form_context["ri_type"],
                     self.epc_list.count(),
-                    SCANNED_EPC_LABEL,
                 )
             )
         epc_data = [self.epc_list.item(i).text() for i in range(self.epc_list.count())]
@@ -414,7 +410,6 @@ class EpcReaderPlayground(QFrame, I18nContext):
                         self.__get_counter_text(
                             combine_form_context.get("ri_type"),
                             self.epc_list.count(),
-                            SCANNED_EPC_LABEL,
                         )
                     )
                     epc_data = [
@@ -553,9 +548,7 @@ class EpcReaderPlayground(QFrame, I18nContext):
         self.empty_state.setVisible(True)
         self.epc_list.setVisible(False)
         self.scanned_epc_counter.setText(
-            self.__get_counter_text(
-                combine_form_context["ri_type"], 0, SCANNED_EPC_LABEL
-            )
+            self.__get_counter_text(combine_form_context["ri_type"], 0)
         )
 
         __event_emitter__.emit(UserActionEvent.EPC_DATA_CHANGE.value, [])
