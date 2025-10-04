@@ -110,5 +110,8 @@ ORDER BY RIGHT('0000' + IIF(CHARINDEX('.', b.size_numcode) > 0, b.size_numcode, 
 OPTION
 (
     OPTIMIZE FOR UNKNOWN,
-    MAXDOP 4
+    USE HINT(
+        'FORCE_LEGACY_CARDINALITY_ESTIMATION', 
+        'ENABLE_PARALLEL_PLAN_PREFERENCE'
+    )
 );
