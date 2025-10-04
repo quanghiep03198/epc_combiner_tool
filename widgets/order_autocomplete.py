@@ -111,7 +111,7 @@ class OrderAutoCompleteWidget(QPushButton):
             animation.setStartValue(
                 QRect(
                     global_position.x() - button_geometry.x(),
-                    global_position.y() - 24,
+                    global_position.y() - 4,
                     button_geometry.width(),
                     0,
                 )
@@ -119,7 +119,7 @@ class OrderAutoCompleteWidget(QPushButton):
             animation.setEndValue(
                 QRect(
                     global_position.x() - button_geometry.x(),
-                    global_position.y() - 12,
+                    global_position.y() + 4,
                     button_geometry.width(),
                     250,
                 )
