@@ -60,7 +60,7 @@ vi_dictionary: dict = {
         "password": "Mật khẩu",
         "per_page": "Hàng",
         "selected": "{count} EPC đã chọn",
-        "scanned": "{count} đã quét",
+        "scanned": "{count} Đã quét",
         "username": "Tên đăng nhập",
     },
     "notification": {
