@@ -52,6 +52,18 @@ jobs:
         run: |
           scripts\build.bat
 
+      - name: Verify build output
+        run: |
+          echo "=== Build verification ==="
+          echo "Contents of dist directory:"
+          dir dist\ /s
+          echo ""
+          echo "Looking for EPC Information Combiner executable:"
+          dir "dist\EPC Information Combiner\" 2>nul || echo "EPC Information Combiner directory not found in dist"
+          echo ""
+          echo "All .exe files in dist:"
+          dir dist\*.exe /s 2>nul || echo "No .exe files found in dist"
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -125,22 +137,82 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
 
+      - name: Debug artifacts structure
+        run: |
+          echo "🔍 === Debugging artifact structure ==="
+          echo "📁 Executable-windows directory structure:"
+          ls -la executable-windows/ || echo "❌ executable-windows directory not found"
+          echo -e "\n📂 Looking for dist folder:"
+          ls -la executable-windows/dist/ 2>/dev/null || echo "❌ dist folder not found"
+          echo -e "\n🎯 Looking for EPC Information Combiner:"
+          ls -la "executable-windows/dist/EPC Information Combiner/" 2>/dev/null || echo "❌ EPC Information Combiner folder not found"
+          echo -e "\n🔎 Searching for .exe files:"
+          find executable-windows/ -name "*.exe" 2>/dev/null | head -3 || echo "❌ No .exe files found"
+
       - name: Archive EPC Information Combiner folder
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          # Check if the EPC Information Combiner folder exists in the downloaded artifacts
-          if [ -d "executable-windows/EPC Information Combiner" ]; then
-            echo "Found EPC Information Combiner folder, creating ZIP archive..."
-            cd "executable-windows"
-            # Create ZIP archive for Windows compatibility
-            zip -r "../epc-ic-v${VERSION}-portable.zip" "EPC Information Combiner"
-            cd ..
-            echo "Archive created: epc-ic-v${VERSION}-portable.zip"
-            ls -la *.zip
+          
+          # The expected path should be: executable-windows/dist/EPC Information Combiner/
+          EXPECTED_PATH="executable-windows/dist/EPC Information Combiner"
+          
+          if [ -d "$EXPECTED_PATH" ]; then
+            echo "✅ Found EPC Information Combiner folder at expected location: $EXPECTED_PATH"
+            
+            # Verify the executable exists
+            if [ -f "$EXPECTED_PATH/EPC Information Combiner.exe" ]; then
+              echo "✅ EPC Information Combiner.exe confirmed"
+              
+              # Create ZIP archive
+              cd "executable-windows/dist"
+              echo "Creating ZIP archive from 'EPC Information Combiner' folder..."
+              zip -r "../../epc-ic-v${VERSION}-portable.zip" "EPC Information Combiner"
+              cd ../..
+              
+              echo "✅ Archive created: epc-ic-v${VERSION}-portable.zip"
+              ls -la epc-ic-v${VERSION}-portable.zip
+              
+              # Verify zip contents (show first 10 files)
+              echo -e "\n📦 ZIP file contents (first 10 files):"
+              unzip -l "epc-ic-v${VERSION}-portable.zip" | head -15
+              
+            else
+              echo "❌ EPC Information Combiner.exe not found in $EXPECTED_PATH"
+              exit 1
+            fi
+            
           else
-            echo "EPC Information Combiner folder not found in artifacts"
-            echo "Available files in executable-windows:"
-            ls -la executable-windows/ || echo "executable-windows directory not found"
+            echo "❌ Expected folder not found: $EXPECTED_PATH"
+            echo "🔍 Let's search for the executable..."
+            
+            # Search for the exe file anywhere
+            EXE_PATH=$(find executable-windows/ -name "EPC Information Combiner.exe" 2>/dev/null | head -1)
+            
+            if [ -n "$EXE_PATH" ]; then
+              echo "✅ Found EPC Information Combiner.exe at: $EXE_PATH"
+              
+              # Get the directory containing the exe
+              EXE_DIR=$(dirname "$EXE_PATH")
+              echo "📁 Executable directory: $EXE_DIR"
+              
+              # Navigate to parent of EXE_DIR and create zip
+              cd "$(dirname "$EXE_DIR")"
+              FOLDER_NAME=$(basename "$EXE_DIR")
+              echo "📦 Creating ZIP from folder: $FOLDER_NAME"
+              zip -r "../epc-ic-v${VERSION}-portable.zip" "$FOLDER_NAME"
+              cd ..
+              
+              echo "✅ Archive created: epc-ic-v${VERSION}-portable.zip"
+              ls -la epc-ic-v${VERSION}-portable.zip
+              
+            else
+              echo "❌ EPC Information Combiner.exe not found anywhere in artifacts!"
+              echo "🔍 Available files:"
+              find executable-windows/ -name "*.exe" 2>/dev/null | head -5 || echo "No .exe files found"
+              echo -e "\n📁 Directory structure:"
+              find executable-windows/ -type d | head -10 || echo "No directories found"
+              exit 1
+            fi
           fi
 
       - name: Prepare installation assets
@@ -221,11 +293,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.version.outputs.tag_name }}
-          name: Release v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
           body_path: changelog.md
           draft: false
           prerelease: ${{ inputs.prerelease }}
           files: |
+            epc-ic-v${{ steps.version.outputs.version }}-portable.zip
             executable-windows/*
             release-assets/*
             installation/*
