@@ -65,8 +65,9 @@ class OrderAutoCompleteWidget(QPushButton):
 
         self.popover_content.layout().addWidget(self.popover_input)
         self.popover_menu_list = QListWidget(self.popover_content)
+        self.popover_menu_list.setSpacing(1)
         self.popover_menu_list.setStyleSheet(
-            "border: 0px; padding: 4px; background-color: #171717"
+            "border: 0px; padding: 4px; background-color: #171717;"
         )
 
         self.popover_menu_list.clear()
@@ -104,7 +105,7 @@ class OrderAutoCompleteWidget(QPushButton):
         button_geometry = self.geometry()
         global_position = self.mapToGlobal(button_geometry.bottomLeft())
         animation = QPropertyAnimation(self.popover_content, b"geometry")
-        animation.setDuration(150)
+        animation.setDuration(200)
 
         if checked_state:
             self.popover_input.setFocus()
@@ -121,7 +122,7 @@ class OrderAutoCompleteWidget(QPushButton):
                     global_position.x() - button_geometry.x(),
                     global_position.y() + 4,
                     button_geometry.width(),
-                    250,
+                    220,
                 )
             )
             animation.setEasingCurve(QEasingCurve.Type.OutQuad)
@@ -136,7 +137,7 @@ class OrderAutoCompleteWidget(QPushButton):
                     global_position.x() - button_geometry.x(),
                     global_position.y(),
                     button_geometry.width(),
-                    250,
+                    220,
                 )
             )
             animation.setEndValue(
@@ -156,16 +157,6 @@ class OrderAutoCompleteWidget(QPushButton):
         self.__is_closing = True
         self.setChecked(False)
 
-    @pyqtSlot(str)
-    def on_input(self, q: str) -> None:
-        if hasattr(self, "debounce_timer") and self.debounce_timer.isActive():
-            self.debounce_timer.stop()
-
-        self.debounce_timer = QTimer()
-        self.debounce_timer.setSingleShot(True)
-        self.debounce_timer.timeout.connect(lambda: self.handle_find_mo_no(q))
-        self.debounce_timer.start(200)  # 200ms debounce time
-
     # * Handle select manufacturing order
     @pyqtSlot(QListWidgetItem)
     def on_value_change(self, item: QListWidgetItem) -> None:
@@ -180,7 +171,7 @@ class OrderAutoCompleteWidget(QPushButton):
 
     # * Handle find manufacturing order from database
 
-    @pyqtDebounce(wait=200, immediate=True)  # 200ms debounce time
+    @pyqtDebounce(wait=200, immediate=False)  # 200ms debounce time
     @pyqtSlot(str)
     def handle_find_mo_no(self, search: str) -> None:
         data = OrderService.search_order(search)
