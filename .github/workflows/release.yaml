@@ -56,13 +56,17 @@ jobs:
         run: |
           echo "=== Build verification ==="
           echo "Contents of dist directory:"
-          dir dist\ /s
+          Get-ChildItem -Path "dist" -Recurse | Format-Table Name, Length, LastWriteTime
           echo ""
           echo "Looking for EPC Information Combiner executable:"
-          dir "dist\EPC Information Combiner\" 2>nul || echo "EPC Information Combiner directory not found in dist"
+          if (Test-Path "dist\EPC Information Combiner") {
+            Get-ChildItem -Path "dist\EPC Information Combiner" | Format-Table Name, Length
+          } else {
+            echo "EPC Information Combiner directory not found in dist"
+          }
           echo ""
           echo "All .exe files in dist:"
-          dir dist\*.exe /s 2>nul || echo "No .exe files found in dist"
+          Get-ChildItem -Path "dist" -Recurse -Filter "*.exe" | Format-Table Name, Directory, Length
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
