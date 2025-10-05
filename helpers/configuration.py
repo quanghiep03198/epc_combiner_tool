@@ -6,13 +6,22 @@ from helpers.logger import logger
 from enum import Enum
 from typing import Any, Callable
 
-# from pathlib import Path
-
-
-# __dirname = Path(__file__).parent.resolve()
 __cfg_file__ = path.abspath(
     path.join(path.dirname(path.abspath(__file__)), "../app.cfg")
 )
+"""
+Create default app.cfg file if it doesn't exist
+"""
+if not path.exists(__cfg_file__):
+    config = ConfigParser()
+    config.add_section("LOCALE")
+    config.set("LOCALE", "language", "en")
+    config.add_section("DATA")
+    config.set("DATA", "auto_save", "True")
+
+    with open(__cfg_file__, "w", encoding="utf-8") as file:
+        config.write(file)
+
 __configs__ = ConfigParser()
 __configs__.read(filenames=__cfg_file__)
 
