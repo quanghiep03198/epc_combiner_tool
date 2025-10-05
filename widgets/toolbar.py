@@ -7,8 +7,6 @@ from helpers.resolve_path import resolve_path
 from contexts.auth_context import auth_context
 from events import __event_emitter__, UserActionEvent
 from i18n import __languages__, I18nService, I18nContext
-from helpers.configuration import ConfigService
-
 
 # from qtwidgets import AnimatedToggle
 
