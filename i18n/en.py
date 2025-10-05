@@ -25,7 +25,7 @@ en_dictionary: dict = {
         "reset": "Reset",
         "save": "Save",
         "search": "Search",
-        "setting": "Settings",
+        "settings": "Settings",
         "start": "Start",
         "stop": "Stop",
         "start_reading": "Start reading",

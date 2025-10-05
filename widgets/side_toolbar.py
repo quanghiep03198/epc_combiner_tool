@@ -135,9 +135,7 @@ class SideToolbar(QToolBar, I18nContext):
         self.language_setting_action.setToolTip(
             I18nService.t("actions.change_languague") + " (Ctrl+L)"
         )
-        self.setting_action.setToolTip(
-            I18nService.t("actions.change_languague") + " (Ctrl+S)"
-        )
+        self.setting_action.setToolTip(I18nService.t("actions.settings") + " (Ctrl+S)")
         self.help_action.setToolTip(I18nService.t("actions.help") + " (Ctrl+H)")
 
     def open_setting_dialog(self):

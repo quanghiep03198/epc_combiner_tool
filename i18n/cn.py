@@ -25,7 +25,7 @@ cn_dictionary: dict = {
         "reset": "重置",
         "save": "保存",
         "search": "搜索",
-        "setting": "设置",
+        "settings": "设置",
         "start": "开始",
         "stop": "停止",
         "start_reading": "开始读取",

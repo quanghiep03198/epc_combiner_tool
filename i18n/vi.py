@@ -25,7 +25,7 @@ vi_dictionary: dict = {
         "reset": "Đặt lại",
         "save": "Lưu",
         "search": "Tìm kiếm",
-        "setting": "Cài đặt",
+        "settings": "Cài đặt",
         "start_reading": "Bắt đầu đọc",
         "stop_reading": "Dừng đọc",
     },
