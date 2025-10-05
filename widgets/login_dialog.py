@@ -24,6 +24,7 @@ class LoginDialog(QDialog, I18nContext):
         super().__init__(parent)
 
         self.root = parent
+        self.error_toast: Toaster | None = None
 
         # Create form layout
         layout = QFormLayout()
@@ -175,13 +176,13 @@ class LoginDialog(QDialog, I18nContext):
             # Xử lý các phím khác bình thường
             super().keyPressEvent(event)
 
-    @pyqtDebounce(wait=200, immediate=False)
+    @pyqtDebounce(wait=300, immediate=False)
     @pyqtSlot(str)
     def on_username_change(self, value: str):
         self.__form_values.update(username=value)
         self.handle_authenticate()
 
-    @pyqtDebounce(wait=200, immediate=False)
+    @pyqtDebounce(wait=300, immediate=False)
     @pyqtSlot(str)
     def on_password_change(self, value: str):
         self.__form_values.update(password=value)
@@ -214,7 +215,12 @@ class LoginDialog(QDialog, I18nContext):
                     auth_context.update(employee_name=user.get("employee_name"))
                     self.username_input.setStyleSheet("border: 1px solid #22c55e")
                     self.password_input.setStyleSheet("border: 1px solid #22c55e")
-
+                    if (
+                        isinstance(self.error_toast, Toaster)
+                        and self.error_toast.isVisible()
+                    ):
+                        self.error_toast.reset()
+                        self.error_toast = None
                     factories: list[dict[str, str]] = result.get("factories")
                     self.factory_code_select.clear()
                     for factory in factories:
@@ -244,13 +250,21 @@ class LoginDialog(QDialog, I18nContext):
                         }
                         """
                     )
-                    toast = Toaster(
+                    if (
+                        isinstance(self.error_toast, Toaster)
+                        and self.error_toast.isVisible()
+                    ):
+                        self.error_toast.reset()
+                        self.error_toast = None
+                    self.error_toast = Toaster(
                         parent=self.root,
                         title=I18nService.t("notification.login_failed"),
                         text=e.message,
                         preset=ToastPreset.ERROR_DARK,
+                        duration=2000,
                     )
-                    toast.show()
+                    self.error_toast.__always_on_main_screen = True
+                    self.error_toast.show()
 
     def handle_submit_login(self):
         self.close()
