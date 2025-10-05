@@ -45,8 +45,8 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
-          pip uninstall typing
           pip install pyinstaller
+          pip uninstall typing -y
 
       - name: Build executable using build script
         run: |
