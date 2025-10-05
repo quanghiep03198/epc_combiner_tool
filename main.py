@@ -1,7 +1,6 @@
 # Import built-in modules
 import sys
 import os
-import subprocess
 
 # Import PyQt6 modules
 from PyQt6.QtCore import *
@@ -21,6 +20,7 @@ from widgets.combine_form import CombineForm
 from widgets.epc_reader_playground import EpcReaderPlayground
 from widgets.login_dialog import LoginDialog
 from widgets.side_toolbar import SideToolbar
+from widgets.refresh_button import RefreshButton
 
 # Import services
 from helpers.configuration import ConfigService, ConfigSection
@@ -30,7 +30,6 @@ from contexts.auth_context import auth_context
 from i18n import I18nService, Language
 from helpers.resolve_path import resolve_path
 from database import db_service
-from contexts.combine_form_context import combine_form_context
 
 
 class MainWindow(QMainWindow):
@@ -85,12 +84,7 @@ class MainWindow(QMainWindow):
         self.top_layout.setSpacing(8)
         self.top_layout_widget = QWidget(self.container)
         self.top_layout_widget.setLayout(self.top_layout)
-        self.refetch_button = QPushButton(self.top_layout_widget)
-        self.refetch_button.setObjectName("refetch_button")
-        self.refetch_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.refetch_button.setFixedWidth(120)
-        self.refetch_button.setText("Refetch")
-        self.refetch_button.clicked.connect(self.__refetch)
+        self.refetch_button = RefreshButton(self.top_layout_widget)
         self.mo_no_autocomplete = OrderAutoCompleteWidget(self)
         self.top_layout.addWidget(self.mo_no_autocomplete)
         self.top_layout.addWidget(self.refetch_button)
@@ -165,18 +159,10 @@ class MainWindow(QMainWindow):
 
     def __translate__(self):
         self.order_detail_title.setText(I18nService.t("labels.order_detail_title"))
-        self.refetch_button.setText(I18nService.t("actions.refetch"))
         self.sizing_detail_title.setText(
             I18nService.t("labels.combination_detail_title")
         )
         self.combine_form_title.setText(I18nService.t("labels.combination_form_title"))
-
-    def __refetch(self):
-        if combine_form_context.get("mo_no") is not None:
-            __event_emitter__.emit(
-                UserActionEvent.MO_NO_CHANGE.value,
-                {"mo_no": combine_form_context.get("mo_no")},
-            )
 
     # region Stylesheet setup
     def __set_stylesheet(self) -> None:
