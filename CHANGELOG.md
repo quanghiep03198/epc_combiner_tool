@@ -29,12 +29,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Apply debounce decorator
 - Update settings form layout 
+- Refactor data service layer with new database service
 
 ### Fixed 
 - Parallel SQL executions
 - Debouncing combination submission
 - EPC Combination form validation
-- Refactor data service layer with new database service
+- Multi-language display
 
 [1.1]: https://github.com/quanghiep03198/epc_combiner_tool/releases/tag/v1.1
 [1.1.1]: https://github.com/username/epc-combiner-tool/releases/tag/v1.1.1
