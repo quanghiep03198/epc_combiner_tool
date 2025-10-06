@@ -183,3 +183,7 @@ data/
 
 # VS Code settings
 .vscode/
+
+# Backup folders
+backup*/
+build*/
