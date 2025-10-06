@@ -2,6 +2,7 @@ vi_dictionary: dict = {
     "actions": {
         "cancel": "Hủy",
         "change_languague": "Thay đổi ngôn ngữ",
+        "check_for_update": "Kiểm tra phiên bản cập nhật",
         "close": "Đóng",
         "compensate": "Bù",
         "compensating_combination": "Phối bù",

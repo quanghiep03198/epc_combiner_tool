@@ -31,6 +31,9 @@ from i18n import I18nService, Language
 from helpers.resolve_path import resolve_path
 from database import db_service
 
+# from version import get_latest_release_version
+from helpers.version import version_info, get_display_version
+
 
 class MainWindow(QMainWindow):
     singleton: "MainWindow" = None
@@ -98,7 +101,7 @@ class MainWindow(QMainWindow):
         order_table_layout.setSpacing(10)
         self.order_detail_title = QLabel()
         self.order_detail_title.setObjectName("playground_section_title")
-        order_table_widget = QWidget(self.container)
+        order_table_widget = QWidget()
         order_table_widget.setLayout(order_table_layout)
         self.order_detail_table = OrderDetailTableWidget(self)
         order_table_layout.addWidget(self.order_detail_title)
@@ -112,7 +115,7 @@ class MainWindow(QMainWindow):
         sizing_table_layout.setSpacing(10)
         self.sizing_detail_title = QLabel()
         self.sizing_detail_title.setObjectName("playground_section_title")
-        sizing_table_widget = QWidget(self.container)
+        sizing_table_widget = QWidget()
         sizing_table_widget.setLayout(sizing_table_layout)
         self.sizing_detail_table = SizingDetailTableWidget(self)
         sizing_table_layout.addWidget(self.sizing_detail_title)
@@ -124,7 +127,7 @@ class MainWindow(QMainWindow):
         self.combine_form_layout = QVBoxLayout()
         self.combine_form_layout.setSpacing(10)
         self.combine_form_layout.setContentsMargins(0, 0, 0, 0)
-        self.combine_form_widget = QWidget(self.container)
+        self.combine_form_widget = QWidget()
         self.combine_form_widget.setLayout(self.combine_form_layout)
         self.combine_form_title = QLabel()
         self.combine_form_title.setObjectName("playground_section_title")
@@ -142,7 +145,14 @@ class MainWindow(QMainWindow):
         self.app_layout.setStretch(1, 3)
 
         self.setCentralWidget(self.container)
-        self.setWindowTitle("EPC IC - v1.1")
+        # Set window title with version
+        self.setWindowTitle(f"EPC Information Combiner {version_info}")
+
+        # Log version info
+        logger.info(f"Starting EPC Information Combiner {version_info}")
+        logger.info(
+            f"Build: {version_info.build_type} | Commit: {version_info.commit_hash}"
+        )
         self.addToolBar(self.toolbar)
 
         QMetaObject.connectSlotsByName(self)
@@ -250,6 +260,8 @@ class MainWindow(QMainWindow):
 
         self.show()
         self.on_auth_state_change(auth_context)
+        # version = get_latest_release_version("quanghiep03198", "epc_combiner_tool")
+        # print(f"Phiên bản mới nhất: {version}")
 
     def disconnect_reader(reader_name):
         pass

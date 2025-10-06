@@ -1,5 +1,7 @@
 import os
+import sys
 import subprocess
+import requests
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
@@ -8,6 +10,9 @@ from i18n import I18nService, I18nContext, Language, __languages__
 from events import __event_emitter__, UserActionEvent
 from helpers.resolve_path import resolve_path
 from helpers.logger import logger
+from widgets.toaster import Toaster
+from pyqttoast import ToastPreset
+from helpers.version import fetch_latest_version, load_version_info
 
 
 class SideToolbar(QToolBar, I18nContext):
@@ -91,6 +96,24 @@ class SideToolbar(QToolBar, I18nContext):
         self.setting_action.triggered.connect(self.open_setting_dialog)
         self.addAction(self.setting_action)
 
+        # region Check for update actions
+        # self.setting_window = AppSettingsDialog(self.root)
+        check_for_update_icon = QIcon()
+        pixmap = QPixmap(resolve_path("assets/icons/history.svg"))
+        check_for_update_icon.addPixmap(
+            pixmap.scaled(
+                24,
+                24,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            ),
+            QIcon.Mode.Normal,
+            QIcon.State.Off,
+        )
+        self.check_update_action = QAction(icon=check_for_update_icon, parent=self)
+        self.check_update_action.triggered.connect(self.check_update_latest_version)
+        self.addAction(self.check_update_action)
+
         # region Help actions
         help_icon = QIcon()
         pixmap = QPixmap(resolve_path("assets/icons/circle-help.svg"))
@@ -137,6 +160,7 @@ class SideToolbar(QToolBar, I18nContext):
         )
         self.setting_action.setToolTip(I18nService.t("actions.settings") + " (Ctrl+S)")
         self.help_action.setToolTip(I18nService.t("actions.help") + " (Ctrl+H)")
+        self.check_update_action.setToolTip(I18nService.t("actions.check_for_update"))
 
     def open_setting_dialog(self):
         self.setting_window.exec()
@@ -169,3 +193,147 @@ class SideToolbar(QToolBar, I18nContext):
             logger.error(e)
 
         # Add your logic to handle language change here
+
+    def check_update_latest_version(self):
+        try:
+            latest_version = fetch_latest_version()
+            current_version = load_version_info().version
+
+            # Clean version strings for comparison
+            clean_current = current_version.lstrip("v")
+            clean_latest = latest_version.lstrip("v")
+
+            # Use packaging library for proper version comparison
+            try:
+                from packaging import version
+
+                current_ver = version.parse(clean_current)
+                latest_ver = version.parse(clean_latest)
+                has_update = latest_ver > current_ver
+            except ImportError:
+                # Fallback comparison
+                has_update = clean_current != clean_latest
+
+            if has_update:
+                # Show update available dialog
+                reply = QMessageBox.question(
+                    self.root,
+                    "Update Available",
+                    f"A new version is available!\n\n"
+                    f"Current version: v{current_version}\n"
+                    f"Latest version: v{latest_version}\n\n"
+                    f"Do you want to download and install the update now?\n"
+                    f"The application will restart automatically after the update.",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.Yes,
+                )
+
+                if reply == QMessageBox.StandardButton.Yes:
+                    self.start_update_process()
+            else:
+                # No update available
+                QMessageBox.information(
+                    self.root,
+                    "No Updates",
+                    f"You are already running the latest version (v{current_version}).",
+                    QMessageBox.StandardButton.Ok,
+                )
+
+        except Exception as e:
+            logger.error(f"Failed to check for updates: {e}")
+            QMessageBox.warning(
+                self.root,
+                "Update Check Failed",
+                f"Failed to check for updates:\n{str(e)}\n\n"
+                f"Please check your internet connection and try again.",
+                QMessageBox.StandardButton.Ok,
+            )
+
+    def start_update_process(self):
+        """Start the update process"""
+        try:
+            # Check for update script first
+            update_script = resolve_path("update.py")
+            update_batch = resolve_path("update.bat")
+
+            if not os.path.exists(update_script):
+                QMessageBox.critical(
+                    self.root,
+                    "Update Error",
+                    f"Update script not found: {update_script}\n\n"
+                    f"Please download the latest version manually from GitHub.",
+                    QMessageBox.StandardButton.Ok,
+                )
+                return
+
+            # Show final confirmation without blocking
+            final_reply = QMessageBox.question(
+                self.root,
+                "Confirm Update",
+                "The update process will now start.\n\n"
+                "The application will close and restart automatically.\n"
+                "Make sure to save any unsaved work.\n\n"
+                "Continue with the update?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.Yes,
+            )
+
+            if final_reply == QMessageBox.StandardButton.Yes:
+                # Store update script paths for delayed execution
+                self.update_script_path = update_script
+                self.update_batch_path = (
+                    update_batch if os.path.exists(update_batch) else None
+                )
+
+                # Show a quick status message
+                self.root.statusBar().showMessage("Starting update process...", 2000)
+
+                # Use QTimer to delay the update process
+                # This allows the dialog to close properly before exit
+                QTimer.singleShot(500, self._execute_update_and_exit)
+
+        except Exception as e:
+            logger.error(f"Failed to start update process: {e}")
+            QMessageBox.critical(
+                self.root,
+                "Update Error",
+                f"Failed to start update process:\n{str(e)}\n\n"
+                f"Please try updating manually.",
+                QMessageBox.StandardButton.Ok,
+            )
+
+    def _execute_update_and_exit(self):
+        """Execute the update process and exit application"""
+        try:
+            # Start update script
+            if os.name == "nt" and self.update_batch_path:  # Windows with batch file
+                subprocess.Popen(
+                    [self.update_batch_path],
+                    creationflags=subprocess.CREATE_NEW_CONSOLE,
+                    cwd=os.path.dirname(self.update_batch_path),
+                )
+            elif os.name == "nt":  # Windows without batch file
+                subprocess.Popen(
+                    [sys.executable, self.update_script_path],
+                    creationflags=subprocess.CREATE_NEW_CONSOLE,
+                )
+            else:  # Unix-like
+                subprocess.Popen([sys.executable, self.update_script_path])
+
+            # Close all message boxes and dialogs
+            for widget in QApplication.allWidgets():
+                if isinstance(widget, QMessageBox) and widget.isVisible():
+                    widget.close()
+
+            # Close main window
+            if self.root:
+                self.root.close()
+
+            # Force application exit
+            QApplication.processEvents()  # Process any remaining events
+            QApplication.quit()
+
+        except Exception as e:
+            logger.error(f"Failed to execute update: {e}")
+            # Don't show another dialog here as it might cause the same issue
+            print(f"Update execution failed: {e}")

@@ -28,6 +28,8 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
     strategy:
       matrix:
         python-version: ["3.12"]
@@ -48,9 +50,25 @@ jobs:
           pip install pyinstaller
           pip uninstall typing -y
 
+      - name: Get version from tag
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref_type }}" = "tag" ]; then
+            # Automatic trigger from tag push
+            VERSION="${{ github.ref_name }}"
+            echo "Using tag version: $VERSION"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+          else
+            # For manual triggers, use latest tag or default
+            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
+            echo "Using latest tag: $LATEST_TAG"
+            echo "version=$LATEST_TAG" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+
       - name: Build executable using build script
         run: |
-          scripts\build.bat
+          python scripts\build.py --version ${{ steps.get_version.outputs.version }} --type release
 
       - name: Verify build output
         run: |
@@ -77,7 +95,7 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build]
 
     steps:
       - name: Checkout repository
@@ -85,45 +103,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Determine release version
+      - name: Set release version
         id: version
         run: |
-          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref_type }}" = "tag" ]; then
-            # Automatic trigger from tag push
-            TAG_NAME="${{ github.ref_name }}"
-            VERSION=${TAG_NAME#v}
-            echo "Automatic trigger from tag push: $TAG_NAME"
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-          elif [ "${{ inputs.use_latest_tag }}" = "true" ] || [ -z "${{ inputs.version }}" ]; then
-            # Use latest tag
-            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-            if [ -z "$LATEST_TAG" ]; then
-              echo "❌ No tags found in repository!"
-              exit 1
-            fi
-            # Remove 'v' prefix if present
-            VERSION=${LATEST_TAG#v}
-            echo "Using latest tag: $LATEST_TAG"
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "tag_name=$LATEST_TAG" >> $GITHUB_OUTPUT
-          else
-            # Use manual input
-            if [ -z "${{ inputs.version }}" ]; then
-              echo "❌ Version input is required when use_latest_tag is false"
-              exit 1
-            fi
-            # Validate version format
-            if ! echo "${{ inputs.version }}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$'; then
-              echo "❌ Invalid version format. Please use semantic versioning (e.g., 1.2.3 or 1.2.3-beta)"
-              exit 1
-            fi
-            VERSION="${{ inputs.version }}"
-            TAG_NAME="v$VERSION"
-            echo "Using manual version: $VERSION"
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-          fi
+          # Use version from build job
+          VERSION="${{ needs.build.outputs.version }}"
+          echo "Using version from build: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Check if release already exists
         run: |
@@ -152,10 +139,14 @@ jobs:
           ls -la "executable-windows/dist/EPC Information Combiner/" 2>/dev/null || echo "❌ EPC Information Combiner folder not found"
           echo -e "\n🔎 Searching for .exe files:"
           find executable-windows/ -name "*.exe" 2>/dev/null | head -3 || echo "❌ No .exe files found"
+          echo -e "\n📦 Installer artifacts:"
+          ls -la installer-windows/ || echo "❌ installer-windows directory not found"
 
       - name: Archive EPC Information Combiner folder
         run: |
           VERSION="${{ steps.version.outputs.version }}"
+          # Remove 'v' prefix for file naming if present
+          VERSION_NUMBER=${VERSION#v}
           
           # The expected path should be: executable-windows/dist/EPC Information Combiner/
           EXPECTED_PATH="executable-windows/dist/EPC Information Combiner"
@@ -170,15 +161,15 @@ jobs:
               # Create ZIP archive
               cd "executable-windows/dist"
               echo "Creating ZIP archive from 'EPC Information Combiner' folder..."
-              zip -r "../../epc-ic-v${VERSION}-portable.zip" "EPC Information Combiner"
+              zip -r "../../epc-ic-v${VERSION_NUMBER}-windows-x64.zip" "EPC Information Combiner"
               cd ../..
               
-              echo "✅ Archive created: epc-ic-v${VERSION}-portable.zip"
-              ls -la epc-ic-v${VERSION}-portable.zip
+              echo "✅ Archive created: epc-ic-v${VERSION_NUMBER}-windows-x64.zip"
+              ls -la epc-ic-v${VERSION_NUMBER}-windows-x64.zip
               
               # Verify zip contents (show first 10 files)
               echo -e "\n📦 ZIP file contents (first 10 files):"
-              unzip -l "epc-ic-v${VERSION}-portable.zip" | head -15
+              unzip -l "epc-ic-v${VERSION_NUMBER}-windows-x64.zip" | head -15
               
             else
               echo "❌ EPC Information Combiner.exe not found in $EXPECTED_PATH"
@@ -203,11 +194,11 @@ jobs:
               cd "$(dirname "$EXE_DIR")"
               FOLDER_NAME=$(basename "$EXE_DIR")
               echo "📦 Creating ZIP from folder: $FOLDER_NAME"
-              zip -r "../epc-ic-v${VERSION}-portable.zip" "$FOLDER_NAME"
+              zip -r "../epc-ic-v${VERSION}-windows-x64.zip" "$FOLDER_NAME"
               cd ..
               
-              echo "✅ Archive created: epc-ic-v${VERSION}-portable.zip"
-              ls -la epc-ic-v${VERSION}-portable.zip
+              echo "✅ Archive created: epc-ic-v${VERSION}-windows-x64.zip"
+              ls -la epc-ic-v${VERSION}-windows-x64.zip
               
             else
               echo "❌ EPC Information Combiner.exe not found anywhere in artifacts!"
@@ -221,6 +212,9 @@ jobs:
 
       - name: Prepare installation assets
         run: |
+          VERSION_NUMBER="${{ steps.version.outputs.version }}"
+          VERSION_NUMBER=${VERSION_NUMBER#v}  # Remove 'v' prefix for file naming
+          
           # Create a directory for release assets
           mkdir -p release-assets
 
@@ -266,25 +260,31 @@ jobs:
             fi
           fi
 
-          # Save changelog to file
+          # Save changelog to file  
+          VERSION_TAG="${{ steps.version.outputs.version }}"
+          VERSION_NUMBER=${VERSION_TAG#v}  # Remove 'v' prefix for file naming
+          
           cat > changelog.md << EOF
-          ## Changes in v${VERSION}
+          ## Changes in ${VERSION_TAG}
 
           ${COMMITS}
 
           ## Downloads
-          - **Windows Portable**: epc-ic-v${VERSION}-portable.zip (Complete application folder)
-          - **Windows Installer**: Available in installation assets (if included)
+          - **Windows Portable**: epc-ic-v${VERSION_NUMBER}-windows-x64.zip (Complete application folder)
+          - **Windows Installer**: epc-ic-${VERSION_NUMBER}-windows-installer-x64.exe (Recommended for most users)
 
           ## Installation
 
           ### Option 1: Portable Version (Recommended)
-          1. Download \`epc-ic-v${VERSION}-portable.zip\`
+          1. Download \`epc-ic-v${VERSION_NUMBER}-windows-x64.zip\`
           2. Extract the ZIP file to your desired location
           3. Run \`EPC Information Combiner.exe\` from the extracted folder
 
-          ### Option 2: Use Installer (if available)
-          Download and run the installer from the release assets.
+          ### Option 2: Windows Installer (Recommended)
+          1. Download \`epc-ic-${VERSION_NUMBER}-windows-installer-x64.exe\`
+          2. Run the installer as administrator
+          3. Follow the installation wizard
+          4. Launch from Start Menu or Desktop shortcut
 
           ## System Requirements
           - Windows 10, 11 or later
@@ -297,12 +297,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.version.outputs.tag_name }}
-          name: v${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
           body_path: changelog.md
           draft: false
           prerelease: ${{ inputs.prerelease }}
           files: |
-            epc-ic-v${{ steps.version.outputs.version }}-portable.zip
+            epc-ic-v*-windows-x64.zip
+            installer-windows/*.exe
             executable-windows/*
             release-assets/*
             installation/*
