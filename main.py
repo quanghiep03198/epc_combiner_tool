@@ -32,7 +32,7 @@ from helpers.resolve_path import resolve_path
 from database import db_service
 
 # from version import get_latest_release_version
-from helpers.version import version_info, get_display_version
+from helpers.version import version_info
 
 
 class MainWindow(QMainWindow):
