@@ -1,7 +1,6 @@
 import os
 import sys
 import subprocess
-import requests
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
@@ -10,9 +9,13 @@ from i18n import I18nService, I18nContext, Language, __languages__
 from events import __event_emitter__, UserActionEvent
 from helpers.resolve_path import resolve_path
 from helpers.logger import logger
-from widgets.toaster import Toaster
-from pyqttoast import ToastPreset
-from helpers.version import fetch_latest_version, load_version_info
+from helpers.configuration import ConfigService
+from helpers.version import (
+    fetch_latest_version,
+    load_version_info,
+    is_development_environment,
+    get_update_directory,
+)
 
 
 class SideToolbar(QToolBar, I18nContext):
@@ -215,15 +218,30 @@ class SideToolbar(QToolBar, I18nContext):
                 has_update = clean_current != clean_latest
 
             if has_update:
+                # Prepare update message based on environment
+                if is_development_environment():
+                    update_msg = (
+                        f"A new version is available!\n\n"
+                        f"Current version: {current_version}\n"
+                        f"Latest version: {latest_version}\n\n"
+                        f"[Development Mode]\n"
+                        f"The update will be downloaded to '{get_update_directory()}' folder.\n"
+                        f"Do you want to download the update now?"
+                    )
+                else:
+                    update_msg = (
+                        f"A new version is available!\n\n"
+                        f"Current version: {current_version}\n"
+                        f"Latest version: {latest_version}\n\n"
+                        f"Do you want to download and install the update now?\n"
+                        f"The application will restart automatically after the update."
+                    )
+
                 # Show update available dialog
                 reply = QMessageBox.question(
                     self.root,
                     "Update Available",
-                    f"A new version is available!\n\n"
-                    f"Current version: v{current_version}\n"
-                    f"Latest version: v{latest_version}\n\n"
-                    f"Do you want to download and install the update now?\n"
-                    f"The application will restart automatically after the update.",
+                    update_msg,
                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                     QMessageBox.StandardButton.Yes,
                 )
@@ -235,7 +253,7 @@ class SideToolbar(QToolBar, I18nContext):
                 QMessageBox.information(
                     self.root,
                     "No Updates",
-                    f"You are already running the latest version (v{current_version}).",
+                    f"You are already running the latest version ({current_version}).",
                     QMessageBox.StandardButton.Ok,
                 )
 
@@ -266,14 +284,28 @@ class SideToolbar(QToolBar, I18nContext):
                 )
                 return
 
+            # Prepare confirmation message based on environment
+            if is_development_environment():
+                confirm_msg = (
+                    "The update process will now start.\n\n"
+                    f"[Development Mode]\n"
+                    f"Update will be downloaded to '{get_update_directory()}' folder.\n"
+                    f"You can manually install it later.\n\n"
+                    f"Continue with the download?"
+                )
+            else:
+                confirm_msg = (
+                    "The update process will now start.\n\n"
+                    "The application will close and restart automatically.\n"
+                    "Make sure to save any unsaved work.\n\n"
+                    "Continue with the update?"
+                )
+
             # Show final confirmation without blocking
             final_reply = QMessageBox.question(
                 self.root,
                 "Confirm Update",
-                "The update process will now start.\n\n"
-                "The application will close and restart automatically.\n"
-                "Make sure to save any unsaved work.\n\n"
-                "Continue with the update?",
+                confirm_msg,
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.Yes,
             )
@@ -332,6 +364,10 @@ class SideToolbar(QToolBar, I18nContext):
             # Force application exit
             QApplication.processEvents()  # Process any remaining events
             QApplication.quit()
+            
+            # Ensure complete exit in production mode
+            if ConfigService.get_env("ENV") != "development":
+                sys.exit(0)
 
         except Exception as e:
             logger.error(f"Failed to execute update: {e}")
