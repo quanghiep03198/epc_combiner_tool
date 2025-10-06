@@ -1,9 +1,9 @@
 import os
-import requests
 import json
-from typing import Dict, Optional
+from typing import Dict
 from helpers.resolve_path import resolve_path
 from helpers.logger import logger
+import requests
 
 
 class VersionInfo:
@@ -69,6 +69,31 @@ def get_current_version() -> str:
 def get_display_version() -> str:
     """Get display version string"""
     return load_version_info().display_version
+
+
+def is_development_environment() -> bool:
+    """Check if running in development environment based on .env file"""
+    try:
+        from helpers.configuration import ConfigService
+
+        env_value = ConfigService.get_env("ENV")
+        return env_value == "development"
+    except Exception as e:
+        logger.warning(f"Failed to check environment: {e}")
+        # Fallback: check if main.py exists (source code)
+        try:
+            main_py = resolve_path("main.py")
+            return os.path.exists(main_py)
+        except:
+            return False
+
+
+def get_update_directory() -> str:
+    """Get appropriate update directory based on environment"""
+    if is_development_environment():
+        return "dev-update"  # For development - git ignored folder
+    else:
+        return "."  # For production builds
 
 
 def fetch_latest_version():
