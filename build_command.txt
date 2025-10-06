@@ -1,1 +1,0 @@
-pyinstaller main.py --windowed --noconsole --onedir --contents-directory . --name=EPC Information Combiner --add-data=icon.ico;. --add-data=assets;assets --add-data=themes;themes --add-data=repositories/sql;repositories/sql --add-data=update.py;. --add-data=update.bat;. --add-data=install_update.py;. --icon=icon.ico --add-data=version.json;. --version-file=version_info.txt
