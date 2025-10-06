@@ -86,7 +86,7 @@ en_dictionary: dict = {
         "processing": "Processing ...",
         "recent_combined_epc_exists_title": "There are EPCs that have just been combined, cannot be combined again.",
         "recent_combined_epc_exists_text": "Please check the EPCs marked in red, delete them then take other EPCs to ensure the correct quantity.",
-        "reset_epc_success_text": "Thực hiện quét lại để tiếp tục phối đôi.",
+        "reset_epc_success_text": "Perform rescan to continue combining.",
         "reset_epc_success_title": "Reset data successful",
         "settings_not_established_title": "Connection settings not established",
         "settings_not_established_text": "Please fill in the setting information for Database and UHF Reader connections",
