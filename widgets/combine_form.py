@@ -325,7 +325,6 @@ class CombineForm(QFrame, I18nContext):
     def on_mutate_success(self, num_rows_affected: int | None):
         if isinstance(num_rows_affected, int):
             # Ensure the directory exists
-            self.__epcs.clear()
             self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
 
             write_data(
@@ -337,6 +336,8 @@ class CombineForm(QFrame, I18nContext):
                     "created_by": auth_context["employee_name"],
                 }
             )
+
+            self.__epcs.clear()
 
             toast = Toaster(
                 parent=self.root,
