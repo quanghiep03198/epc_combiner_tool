@@ -117,11 +117,11 @@ jobs:
           TAG_NAME="${{ steps.version.outputs.tag_name }}"
           # Check if release already exists
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
-            echo "❌ Release $TAG_NAME already exists!"
-            echo "🔗 View existing release: ${{ github.server_url }}/${{ github.repository }}/releases/tag/$TAG_NAME"
+            echo "Release $TAG_NAME already exists!"
+            echo "View existing release: ${{ github.server_url }}/${{ github.repository }}/releases/tag/$TAG_NAME"
             exit 1
           fi
-          echo "✅ Release $TAG_NAME does not exist, proceeding..."
+          echo "Release $TAG_NAME does not exist, proceeding..."
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -130,17 +130,17 @@ jobs:
 
       - name: Debug artifacts structure
         run: |
-          echo "🔍 === Debugging artifact structure ==="
-          echo "📁 Executable-windows directory structure:"
-          ls -la executable-windows/ || echo "❌ executable-windows directory not found"
-          echo -e "\n📂 Looking for dist folder:"
-          ls -la executable-windows/dist/ 2>/dev/null || echo "❌ dist folder not found"
-          echo -e "\n🎯 Looking for EPC Information Combiner:"
-          ls -la "executable-windows/dist/EPC Information Combiner/" 2>/dev/null || echo "❌ EPC Information Combiner folder not found"
-          echo -e "\n🔎 Searching for .exe files:"
-          find executable-windows/ -name "*.exe" 2>/dev/null | head -3 || echo "❌ No .exe files found"
-          echo -e "\n📦 Installer artifacts:"
-          ls -la installer-windows/ || echo "❌ installer-windows directory not found"
+          echo "=== Debugging artifact structure ==="
+          echo "Executable-windows directory structure:"
+          ls -la executable-windows/ || echo "executable-windows directory not found"
+          echo -e "\n Looking for dist folder:"
+          ls -la executable-windows/dist/ 2>/dev/null || echo "dist folder not found"
+          echo -e "\n Looking for EPC Information Combiner:"
+          ls -la "executable-windows/dist/EPC Information Combiner/" 2>/dev/null || echo "EPC Information Combiner folder not found"
+          echo -e "\n Searching for .exe files:"
+          find executable-windows/ -name "*.exe" 2>/dev/null | head -3 || echo "No .exe files found"
+          echo -e "\n Installer artifacts:"
+          ls -la installer-windows/ || echo "installer-windows directory not found"
 
       - name: Archive EPC Information Combiner folder
         run: |
@@ -152,11 +152,11 @@ jobs:
           EXPECTED_PATH="executable-windows/dist/EPC Information Combiner"
           
           if [ -d "$EXPECTED_PATH" ]; then
-            echo "✅ Found EPC Information Combiner folder at expected location: $EXPECTED_PATH"
+            echo "Found EPC Information Combiner folder at expected location: $EXPECTED_PATH"
             
             # Verify the executable exists
             if [ -f "$EXPECTED_PATH/EPC Information Combiner.exe" ]; then
-              echo "✅ EPC Information Combiner.exe confirmed"
+              echo "EPC Information Combiner.exe confirmed"
               
               # Create ZIP archive
               cd "executable-windows/dist"
@@ -164,47 +164,47 @@ jobs:
               zip -r "../../epc-ic-v${VERSION_NUMBER}-windows-x64.zip" "EPC Information Combiner"
               cd ../..
               
-              echo "✅ Archive created: epc-ic-v${VERSION_NUMBER}-windows-x64.zip"
+              echo "Archive created: epc-ic-v${VERSION_NUMBER}-windows-x64.zip"
               ls -la epc-ic-v${VERSION_NUMBER}-windows-x64.zip
               
               # Verify zip contents (show first 10 files)
-              echo -e "\n📦 ZIP file contents (first 10 files):"
+              echo -e "\n ZIP file contents (first 10 files):"
               unzip -l "epc-ic-v${VERSION_NUMBER}-windows-x64.zip" | head -15
               
             else
-              echo "❌ EPC Information Combiner.exe not found in $EXPECTED_PATH"
+              echo "EPC Information Combiner.exe not found in $EXPECTED_PATH"
               exit 1
             fi
             
           else
-            echo "❌ Expected folder not found: $EXPECTED_PATH"
-            echo "🔍 Let's search for the executable..."
+            echo "Expected folder not found: $EXPECTED_PATH"
+            echo "Let's search for the executable..."
             
             # Search for the exe file anywhere
             EXE_PATH=$(find executable-windows/ -name "EPC Information Combiner.exe" 2>/dev/null | head -1)
             
             if [ -n "$EXE_PATH" ]; then
-              echo "✅ Found EPC Information Combiner.exe at: $EXE_PATH"
+              echo "Found EPC Information Combiner.exe at: $EXE_PATH"
               
               # Get the directory containing the exe
               EXE_DIR=$(dirname "$EXE_PATH")
-              echo "📁 Executable directory: $EXE_DIR"
+              echo "Executable directory: $EXE_DIR"
               
               # Navigate to parent of EXE_DIR and create zip
               cd "$(dirname "$EXE_DIR")"
               FOLDER_NAME=$(basename "$EXE_DIR")
-              echo "📦 Creating ZIP from folder: $FOLDER_NAME"
+              echo "Creating ZIP from folder: $FOLDER_NAME"
               zip -r "../epc-ic-v${VERSION}-windows-x64.zip" "$FOLDER_NAME"
               cd ..
               
-              echo "✅ Archive created: epc-ic-v${VERSION}-windows-x64.zip"
+              echo "Archive created: epc-ic-v${VERSION}-windows-x64.zip"
               ls -la epc-ic-v${VERSION}-windows-x64.zip
               
             else
-              echo "❌ EPC Information Combiner.exe not found anywhere in artifacts!"
-              echo "🔍 Available files:"
+              echo "EPC Information Combiner.exe not found anywhere in artifacts!"
+              echo "Available files:"
               find executable-windows/ -name "*.exe" 2>/dev/null | head -5 || echo "No .exe files found"
-              echo -e "\n📁 Directory structure:"
+              echo -e "\n Directory structure:"
               find executable-windows/ -type d | head -10 || echo "No directories found"
               exit 1
             fi
@@ -313,5 +313,5 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           TAG_NAME="${{ steps.version.outputs.tag_name }}"
-          echo "✅ Release v${VERSION} created successfully!"
-          echo "🔗 Check it out at: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${TAG_NAME}"
+          echo "Release v${VERSION} created successfully!"
+          echo "Check it out at: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${TAG_NAME}"
