@@ -10,12 +10,12 @@ if exist "updater.exe" (
 )
 
 REM If standalone updater failed or doesn't exist, try Python
-if exist "update.py" (
+if exist "update\update_manager.py" (
     echo Method 2: Running Python update script...
-    python update.py
+    python update\update_manager.py
     if %errorlevel% neq 0 (
         echo Trying with py command...
-        py update.py
+        py update\update_manager.py
     )
     goto :check_result
 )

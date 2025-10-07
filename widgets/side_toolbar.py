@@ -270,15 +270,26 @@ class SideToolbar(QToolBar, I18nContext):
     def start_update_process(self):
         """Start the update process"""
         try:
-            # Check for update script first
-            update_script = resolve_path("update.py")
+            # Check for update script/executable first
+            # In production, we use updater.exe; in development, update_manager.py
+            update_executable = None
             update_batch = resolve_path("update.bat")
 
-            if not os.path.exists(update_script):
+            # Priority order: updater.exe > update_manager.py
+            updater_exe = resolve_path("updater.exe")
+            update_py = resolve_path("update/update_manager.py")
+
+            if os.path.exists(updater_exe):
+                update_executable = updater_exe
+            elif os.path.exists(update_py):
+                update_executable = update_py
+
+            if not update_executable:
                 QMessageBox.critical(
                     self.root,
                     "Update Error",
-                    f"Update script not found: {update_script}\n\n"
+                    f"Update executable not found.\n\n"
+                    f"Looking for: updater.exe or update/update_manager.py\n"
                     f"Please download the latest version manually from GitHub.",
                     QMessageBox.StandardButton.Ok,
                 )
@@ -312,7 +323,7 @@ class SideToolbar(QToolBar, I18nContext):
 
             if final_reply == QMessageBox.StandardButton.Yes:
                 # Store update script paths for delayed execution
-                self.update_script_path = update_script
+                self.update_executable_path = update_executable
                 self.update_batch_path = (
                     update_batch if os.path.exists(update_batch) else None
                 )
@@ -337,39 +348,89 @@ class SideToolbar(QToolBar, I18nContext):
     def _execute_update_and_exit(self):
         """Execute the update process and exit application"""
         try:
-            # Start update script
+            # Start update process
             if os.name == "nt" and self.update_batch_path:  # Windows with batch file
                 subprocess.Popen(
                     [self.update_batch_path],
                     creationflags=subprocess.CREATE_NEW_CONSOLE,
                     cwd=os.path.dirname(self.update_batch_path),
                 )
-            elif os.name == "nt":  # Windows without batch file
-                subprocess.Popen(
-                    [sys.executable, self.update_script_path],
-                    creationflags=subprocess.CREATE_NEW_CONSOLE,
-                )
+            elif os.name == "nt":  # Windows
+                # Check if it's an .exe file or .py file
+                if self.update_executable_path.endswith(".exe"):
+                    # Run executable directly
+                    subprocess.Popen(
+                        [self.update_executable_path],
+                        creationflags=subprocess.CREATE_NEW_CONSOLE,
+                    )
+                else:
+                    # Run Python script
+                    subprocess.Popen(
+                        [sys.executable, self.update_executable_path],
+                        creationflags=subprocess.CREATE_NEW_CONSOLE,
+                    )
             else:  # Unix-like
-                subprocess.Popen([sys.executable, self.update_script_path])
+                if self.update_executable_path.endswith(".exe"):
+                    subprocess.Popen([self.update_executable_path])
+                else:
+                    subprocess.Popen([sys.executable, self.update_executable_path])
 
-            # Close all message boxes and dialogs
+            # Close all message boxes and dialogs first
+            print("🔄 Closing all dialogs and widgets...")
             for widget in QApplication.allWidgets():
                 if isinstance(widget, QMessageBox) and widget.isVisible():
                     widget.close()
+                    widget.deleteLater()
 
-            # Close main window
+            # Process events to ensure dialogs are closed
+            QApplication.processEvents()
+
+            # Force close main window with proper cleanup
             if self.root:
+                print("🔄 Closing main window...")
+                self.root.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
                 self.root.close()
+                self.root.deleteLater()
 
-            # Force application exit
-            QApplication.processEvents()  # Process any remaining events
+            # Multiple attempts at clean exit
+            print("🔄 Initiating application shutdown...")
+
+            # Process any remaining events
+            QApplication.processEvents()
+
+            # Quit the application
+            QApplication.closeAllWindows()
             QApplication.quit()
-            
-            # Ensure complete exit in production mode
-            if ConfigService.get_env("ENV") != "development":
-                sys.exit(0)
+
+            # Force exit after a brief delay to ensure cleanup
+            QTimer.singleShot(1000, self._force_exit)
 
         except Exception as e:
             logger.error(f"Failed to execute update: {e}")
-            # Don't show another dialog here as it might cause the same issue
             print(f"Update execution failed: {e}")
+            # Force exit even if cleanup fails
+            self._force_exit()
+
+    def _force_exit(self):
+        """Force application exit with extreme measures"""
+        try:
+            print("🔄 Force exiting application...")
+
+            # Final cleanup
+            QApplication.processEvents()
+            QApplication.quit()
+
+            # Nuclear option - force process termination
+            if ConfigService.get_env("ENV") != "development":
+                import os
+
+                print("💀 Force terminating process...")
+                os._exit(0)  # Nuclear exit - bypasses cleanup
+            else:
+                sys.exit(0)
+
+        except:
+            # Last resort
+            import os
+
+            os._exit(0)

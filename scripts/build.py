@@ -201,11 +201,11 @@ def build_update_scripts():
             return False
 
         # Check if source files exist
-        if not Path("update.py").exists():
-            print("update.py not found")
+        if not Path("update/update_manager.py").exists():
+            print("update/update_manager.py not found")
             return False
-        if not Path("install_update.py").exists():
-            print("install_update.py not found")
+        if not Path("update/update_installer.py").exists():
+            print("update/update_installer.py not found")
             return False
 
         print("Building update scripts...")
@@ -213,9 +213,9 @@ def build_update_scripts():
         # Use the same output directory as main app
         output_dir = Path("dist") / "EPC Information Combiner"
 
-        # Build update.py - put directly in main app directory
+        # Build update_manager.py - put directly in main app directory
         update_cmd = pyinstaller_cmd + [
-            str(Path("update.py").absolute()),
+            str(Path("update/update_manager.py").absolute()),
             "--onefile",
             "--console",
             "--name=updater",
@@ -230,16 +230,14 @@ def build_update_scripts():
             result = subprocess.run(
                 update_cmd, check=True, capture_output=True, text=True, cwd=Path.cwd()
             )
-            print(
-                f"Output: {result.stdout[-100:] if result.stdout else 'No output'}"
-            )
+            print(f"Output: {result.stdout[-100:] if result.stdout else 'No output'}")
         except subprocess.CalledProcessError as e:
             print(f"Error: {e.stderr}")
             raise
 
-        # Build install_update.py - put directly in main app directory
+        # Build update_installer.py - put directly in main app directory
         install_cmd = pyinstaller_cmd + [
-            str(Path("install_update.py").absolute()),
+            str(Path("update/update_installer.py").absolute()),
             "--onefile",
             "--console",
             "--name=installer",
@@ -254,9 +252,7 @@ def build_update_scripts():
             result = subprocess.run(
                 install_cmd, check=True, capture_output=True, text=True, cwd=Path.cwd()
             )
-            print(
-                f"Output: {result.stdout[-100:] if result.stdout else 'No output'}"
-            )
+            print(f"Output: {result.stdout[-100:] if result.stdout else 'No output'}")
         except subprocess.CalledProcessError as e:
             print(f"Error: {e.stderr}")
             raise
@@ -505,7 +501,7 @@ def main():
             print("Update scripts built into app directory")
 
     if success:
-        print(f"\n Build completed successfully!")
+        print(f"\nBuild completed successfully!")
         print(f"Output directory: {os.path.abspath('dist')}")
 
         # Show build artifacts

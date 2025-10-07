@@ -42,12 +42,100 @@ class UpdateManager:
 
         # Detect environment and set appropriate directories
         self.is_dev_env = is_development_environment()
-        if self.is_dev_env:
-            self.backup_dir = self.app_dir / "dev-update"
-            print("Development environment detected - using dev-update folder")
-        else:
-            self.backup_dir = self.app_dir / "backup_update"
-            print("Production environment detected - using backup_update folder")
+        self.backup_dir = self.app_dir / "backup_update"
+
+    def ensure_app_closed(self, max_wait=30):
+        """Ensure the main application is completely closed before updating"""
+        print("Checking if application is still running...")
+
+        process_names = [
+            "EPC Information Combiner.exe",
+            "main.exe",
+            "python.exe",
+            "pythonw.exe",
+        ]
+
+        killed_processes = []
+
+        # First pass: graceful wait
+        for i in range(max_wait):
+            running_processes = []
+
+            try:
+                for process_name in process_names:
+                    result = subprocess.run(
+                        ["tasklist", "/FI", f"IMAGENAME eq {process_name}"],
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
+                    )
+                    if process_name in result.stdout:
+                        running_processes.append(process_name)
+
+                if not running_processes:
+                    print("No application processes found")
+                    return True
+
+                if i == 0:
+                    print(f"Found running processes: {running_processes}")
+                    print("Waiting for graceful shutdown...")
+                else:
+                    print(f"\rStill waiting... ({i}/{max_wait}s)", end="", flush=True)
+
+                time.sleep(1)
+
+            except Exception as e:
+                print(f"Error checking processes: {e}")
+                break
+
+        # Second pass: force kill if still running
+        if running_processes:
+            print("Application did not close gracefully, force killing...")
+
+            for process_name in running_processes:
+                try:
+                    print(f"Force killing all {process_name} processes...")
+                    result = subprocess.run(
+                        ["taskkill", "/F", "/IM", process_name, "/T"],
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
+                    )
+                    if result.returncode == 0:
+                        killed_processes.append(process_name)
+                        print(f"Successfully killed {process_name}")
+                    else:
+                        print(f"Could not kill {process_name}: {result.stderr}")
+
+                except Exception as e:
+                    print(f"Error killing {process_name}: {e}")
+
+            # Wait for processes to be fully terminated
+            time.sleep(5)
+
+        # Final verification
+        try:
+            final_running = []
+            for process_name in process_names:
+                result = subprocess.run(
+                    ["tasklist", "/FI", f"IMAGENAME eq {process_name}"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                if process_name in result.stdout:
+                    final_running.append(process_name)
+
+            if final_running:
+                print(f"Warning: Some processes may still be running: {final_running}")
+                return False
+            else:
+                print("All application processes have been terminated")
+                return True
+
+        except Exception as e:
+            print(f"Error in final verification: {e}")
+            return True  # Assume success if we can't verify
 
     def get_latest_release(self) -> Optional[Dict[Any, Any]]:
         """Get latest release information from GitHub API"""
@@ -72,7 +160,7 @@ class UpdateManager:
             print(f"Current version: {self.current_version}")
             print(f"Latest version: {latest_version}")
 
-            if self._is_newer_version(latest_version):
+            if self.__is_newer_version(latest_version):
                 return release_data
             else:
                 print("You already have the latest version!")
@@ -85,7 +173,7 @@ class UpdateManager:
             print(f"Unexpected error: {e}")
             return None
 
-    def _is_newer_version(self, remote_version: str) -> bool:
+    def __is_newer_version(self, remote_version: str) -> bool:
         """Compare versions (handle pre-release versions properly)"""
         try:
             from packaging import version
@@ -112,7 +200,11 @@ class UpdateManager:
 
         for asset in assets:
             name = asset.get("name", "").lower()
-            if "windows-x64.zip" in name or ("zip" in name and "epc-ic" in name):
+            if (
+                "portable.zip" in name
+                or "windows-x64.zip" in name
+                or ("zip" in name and "epc-ic" in name)
+            ):
                 download_url = asset.get("browser_download_url")
                 size_mb = asset.get("size", 0) / (1024 * 1024)
                 print(f"Found windows-x64 asset: {asset.get('name')}")
@@ -226,9 +318,7 @@ class UpdateManager:
                         )
                         print(f"Backed up {optional_item}")
                     except Exception as e:
-                        print(
-                            f"Could not backup {optional_item} (may be in use): {e}"
-                        )
+                        print(f"Could not backup {optional_item} (may be in use): {e}")
                         # Create empty directory as placeholder
                         (self.backup_dir / optional_item).mkdir(exist_ok=True)
 
@@ -236,9 +326,6 @@ class UpdateManager:
             config_files = [
                 "app.cfg",
                 ".env",
-                ".env.local",
-                "config.ini",
-                "user_settings.json",
             ]
             for config_file in config_files:
                 src_path = self.app_dir / config_file
@@ -285,7 +372,7 @@ class UpdateManager:
             # In development environment, just copy to dev-update folder
             if self.is_dev_env:
                 print("Development mode: Copying to dev-update folder...")
-                return self._dev_extract(app_folder, temp_extract_dir)
+                return self.__dev_extract(app_folder, temp_extract_dir)
 
             # Use separate installer to avoid file access issues
             print("Starting installation process...")
@@ -294,7 +381,7 @@ class UpdateManager:
             installer_exe = (
                 self.app_dir / "installer.exe"
             )  # In same directory as main app
-            installer_script = self.app_dir / "install_update.py"
+            installer_script = self.app_dir / "update_installer.py"
 
             if installer_exe.exists():
                 print("Using standalone installer...")
@@ -308,7 +395,7 @@ class UpdateManager:
             elif installer_script.exists():
                 print("Using Python installer script...")
                 # Copy installer to temp directory to avoid conflicts
-                temp_installer = Path(temp_extract_dir) / "install_update.py"
+                temp_installer = Path(temp_extract_dir) / "update_installer.py"
                 shutil.copy2(installer_script, temp_installer)
 
                 installer_cmd = [
@@ -320,7 +407,9 @@ class UpdateManager:
                 ]
             else:
                 print("No installer found, using direct method...")
-                return self._direct_install(app_folder, zip_file_path, temp_extract_dir)
+                return self.__direct_install(
+                    app_folder, zip_file_path, temp_extract_dir
+                )
 
             print("Starting separate installation process...")
             print("This process will exit to allow file replacement.")
@@ -345,7 +434,7 @@ class UpdateManager:
             print(f"Installation failed: {e}")
             return False
 
-    def _direct_install(
+    def __direct_install(
         self, app_folder: str, zip_file_path: str, temp_extract_dir: str
     ) -> bool:
         """Fallback direct installation method"""
@@ -397,7 +486,7 @@ class UpdateManager:
             print(f"Installation failed: {e}")
             return False
 
-    def _dev_extract(self, app_folder: str, temp_extract_dir: str) -> bool:
+    def __dev_extract(self, app_folder: str, temp_extract_dir: str) -> bool:
         """Extract update to dev-update folder for development environment"""
         try:
             # Create dev-update folder if it doesn't exist
@@ -416,9 +505,7 @@ class UpdateManager:
             shutil.copytree(app_folder, dest_folder)
 
             print(f"Update extracted to: {dest_folder}")
-            print(
-                "You can now manually replace the current version with this update."
-            )
+            print("You can now manually replace the current version with this update.")
 
             # Cleanup temp files
             shutil.rmtree(temp_extract_dir)
@@ -477,6 +564,41 @@ class UpdateManager:
 
         except Exception as e:
             print(f"Backup restoration failed: {e}")
+            return False
+
+    def cleanup_after_success(self) -> bool:
+        """Clean up backup directory and temporary files after successful update"""
+        try:
+            print("Cleaning up after successful update...")
+
+            # Remove backup directory
+            if self.backup_dir.exists():
+                shutil.rmtree(self.backup_dir)
+                print("Backup directory cleaned up")
+
+            # Clean up any remaining temp files
+            temp_dirs = []
+            temp_dir = Path(tempfile.gettempdir())
+
+            # Find our temp directories
+            for item in temp_dir.glob("epc_*"):
+                if item.is_dir():
+                    temp_dirs.append(item)
+
+            if temp_dirs:
+                print(f"Cleaning up {len(temp_dirs)} temporary directories...")
+                for temp_dir_path in temp_dirs:
+                    try:
+                        shutil.rmtree(temp_dir_path)
+                    except Exception as e:
+                        print(f"Could not remove {temp_dir_path}: {e}")
+
+                print("Temporary files cleaned up")
+
+            return True
+
+        except Exception as e:
+            print(f"Failed to clean up: {e}")
             return False
 
     def restart_application(self):
@@ -557,6 +679,7 @@ class UpdateManager:
             print("You can now manually install the update from this folder.")
         else:
             print("Update completed successfully!")
+            # Note: Cleanup will be handled by update_installer.py
         return True
 
 
@@ -584,6 +707,7 @@ def main():
     """Main entry point"""
     try:
         print("Starting EPC Information Combiner Update Process...")
+        print("=" * 60)
 
         # Try to close any remaining file handles
         close_file_handles()
@@ -615,19 +739,26 @@ def main():
         print(f"Current version: {current_version}")
         print("")
 
+        # Ensure application is completely closed before updating
+        if not updater.ensure_app_closed():
+            print("Warning: Could not fully close application")
+            print("Update will proceed but may encounter file conflicts")
+
+        print("")
+
         # Perform update
         success = updater.perform_update()
 
         if success:
             if updater.is_dev_env:
                 print(
-                    "\n Update downloaded! Please manually install from dev-update folder."
+                    "\nUpdate downloaded! Please manually install from dev-update folder."
                 )
                 print(
-                    " The application will not restart automatically in development mode."
+                    "The application will not restart automatically in development mode."
                 )
             else:
-                print("\n Update completed! Restarting application...")
+                print("\nUpdate completed! Restarting application...")
                 time.sleep(2)
                 updater.restart_application()
         else:
@@ -636,10 +767,10 @@ def main():
             sys.exit(1)
 
     except KeyboardInterrupt:
-        print("\n Update cancelled by user")
+        print("\nUpdate cancelled by user")
         sys.exit(1)
     except Exception as e:
-        print(f"\n Unexpected error: {e}")
+        print(f"\nUnexpected error: {e}")
         input("Press Enter to exit...")
         sys.exit(1)
 

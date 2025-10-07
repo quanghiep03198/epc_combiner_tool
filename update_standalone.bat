@@ -14,11 +14,11 @@ REM Check for Python first, then use embedded solution
 python --version >nul 2>&1
 if %errorlevel% equ 0 (
     echo Found Python, using Python updater...
-    if exist "update.py" (
-        python "update.py"
+    if exist "update\update_manager.py" (
+        python "update\update_manager.py"
         exit /b %errorlevel%
     ) else (
-        echo update.py not found!
+        echo update\update_manager.py not found!
         goto :use_embedded
     )
 ) else (

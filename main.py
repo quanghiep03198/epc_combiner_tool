@@ -1,6 +1,8 @@
 # Import built-in modules
 import sys
 import os
+import signal
+import atexit
 
 # Import PyQt6 modules
 from PyQt6.QtCore import *
@@ -167,6 +169,9 @@ class MainWindow(QMainWindow):
             self.on_auth_state_change
         )
 
+        # Setup signal handlers for graceful shutdown
+        self.setup_signal_handlers()
+
     def __translate__(self):
         self.order_detail_title.setText(I18nService.t("labels.order_detail_title"))
         self.sizing_detail_title.setText(
@@ -245,6 +250,9 @@ class MainWindow(QMainWindow):
         Bootstrap the application with the necessary configurations and settings.
         """
 
+        # Setup signal handlers for graceful shutdown
+        self.setup_signal_handlers()
+
         self.__set_font()
         self.__set_stylesheet()
 
@@ -265,6 +273,81 @@ class MainWindow(QMainWindow):
 
     def disconnect_reader(reader_name):
         pass
+
+    def setup_signal_handlers(self):
+        """Setup signal handlers for graceful shutdown"""
+
+        def signal_handler(signum, frame):
+            print(f"🔔 Received signal {signum}, initiating graceful shutdown...")
+            self.graceful_shutdown()
+
+        # Register signal handlers (Windows)
+        if hasattr(signal, "SIGTERM"):
+            signal.signal(signal.SIGTERM, signal_handler)
+        if hasattr(signal, "SIGINT"):
+            signal.signal(signal.SIGINT, signal_handler)
+
+        # Register exit handler
+        atexit.register(self.cleanup_on_exit)
+
+    def graceful_shutdown(self):
+        """Perform graceful shutdown operations"""
+        try:
+            print("🔄 Starting graceful shutdown...")
+
+            # Close any open dialogs
+            for widget in QApplication.allWidgets():
+                if isinstance(widget, QDialog) and widget.isVisible():
+                    widget.close()
+
+            # Disconnect from database
+            try:
+                db_service.close_connection()
+                print("✅ Database connection closed")
+            except:
+                pass
+
+            # Close main window
+            self.close()
+
+            # Quit application
+            QApplication.quit()
+
+        except Exception as e:
+            print(f"Error during graceful shutdown: {e}")
+        finally:
+            # Force exit if needed
+            sys.exit(0)
+
+    def cleanup_on_exit(self):
+        """Cleanup function called on exit"""
+        try:
+            print("🧹 Performing exit cleanup...")
+            # Any additional cleanup code here
+        except:
+            pass
+
+    def closeEvent(self, event):
+        """Override close event for proper cleanup"""
+        try:
+            print("🔄 Main window closing...")
+
+            # Save any pending data
+            # Close database connections
+            try:
+                db_service.close_connection()
+            except:
+                pass
+
+            # Accept the close event
+            event.accept()
+
+            # Ensure application quits
+            QApplication.quit()
+
+        except Exception as e:
+            print(f"Error during close event: {e}")
+            event.accept()  # Accept anyway
 
     # region Application shutdown
     def on_application_shutdown(self):
