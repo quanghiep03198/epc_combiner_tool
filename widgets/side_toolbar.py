@@ -333,7 +333,7 @@ class SideToolbar(QToolBar, I18nContext):
 
                 # Use QTimer to delay the update process
                 # This allows the dialog to close properly before exit
-                QTimer.singleShot(500, self._execute_update_and_exit)
+                QTimer.singleShot(500, self.__execute_update_and_exit)
 
         except Exception as e:
             logger.error(f"Failed to start update process: {e}")
@@ -345,7 +345,7 @@ class SideToolbar(QToolBar, I18nContext):
                 QMessageBox.StandardButton.Ok,
             )
 
-    def _execute_update_and_exit(self):
+    def __execute_update_and_exit(self):
         """Execute the update process and exit application"""
         try:
             # Start update process
