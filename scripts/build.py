@@ -204,9 +204,6 @@ def build_update_scripts():
         if not Path("update/update_manager.py").exists():
             print("update/update_manager.py not found")
             return False
-        if not Path("update/update_installer.py").exists():
-            print("update/update_installer.py not found")
-            return False
 
         print("Building update scripts...")
 
@@ -235,30 +232,8 @@ def build_update_scripts():
             print(f"Error: {e.stderr}")
             raise
 
-        # Build update_installer.py - put directly in main app directory
-        install_cmd = pyinstaller_cmd + [
-            str(Path("update/update_installer.py").absolute()),
-            "--onefile",
-            "--console",
-            "--name=installer",
-            f"--distpath={output_dir}",
-            "--workpath=build_update",
-            "--specpath=build_update",
-            "--noconfirm",
-        ]
-
-        print("Building installer.exe...")
-        try:
-            result = subprocess.run(
-                install_cmd, check=True, capture_output=True, text=True, cwd=Path.cwd()
-            )
-            print(f"Output: {result.stdout[-100:] if result.stdout else 'No output'}")
-        except subprocess.CalledProcessError as e:
-            print(f"Error: {e.stderr}")
-            raise
-
         # Copy additional files to the output directory
-        additional_files = ["update.bat", "update_standalone.bat", "data_preserve.txt"]
+        additional_files = ["update.bat", "data_preserve.txt"]
 
         for file_name in additional_files:
             if Path(file_name).exists():
@@ -383,7 +358,6 @@ def run_pyinstaller(version, include_version_file=True):
     # Add optional data files if they exist
     optional_data_files = [
         ("update.bat", "."),
-        ("update_standalone.bat", "."),
         ("data_preserve.txt", "."),
         # ("six_moves_patch.py", "."),
     ]

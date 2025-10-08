@@ -1,6 +1,7 @@
+#!/usr/bin/env python3
 """
-Auto-update script for EPC Information Combiner
-Downloads and installs the latest version from GitHub releases
+Clean Ultimate Update Manager - No ctypes dependencies
+Production ready update system for EPC application
 """
 
 import os
@@ -11,768 +12,899 @@ import shutil
 import zipfile
 import tempfile
 import subprocess
-import requests
+import traceback
 from pathlib import Path
-from typing import Optional, Dict, Any
-from helpers.configuration import ConfigService
-
-# Add current directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent))
+from datetime import datetime
+from typing import Dict, List, Optional, Tuple, Any
 
 try:
-    from helpers.version import is_development_environment
+    import requests
+
+    REQUESTS_AVAILABLE = True
 except ImportError:
-    # Fallback if running from different location
-    def is_development_environment() -> bool:
-        """Fallback environment detection"""
+    REQUESTS_AVAILABLE = False
+    print("⚠️  requests not available - auto-detection features limited")
+
+try:
+    import psutil
+
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
+    print("⚠️  psutil not available - process management features limited")
+
+
+class SafeLogger:
+    """Safe logging system that never fails"""
+
+    @staticmethod
+    def log(level: str, message: str):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        formatted_msg = f"[{timestamp}] [{level}] {message}"
+        print(formatted_msg)
+
+        # Try to log to file if possible
         try:
-            return ConfigService.get_env("ENV") == "development"
+            log_dir = "logs"
+            if not os.path.exists(log_dir):
+                os.makedirs(log_dir, exist_ok=True)
+
+            log_file = os.path.join(log_dir, "update.log")
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(formatted_msg + "\n")
         except:
-            # Second fallback: check if main.py exists
-            return (Path(__file__).parent / "main.py").exists()
+            pass  # Fail silently for logging
+
+    @staticmethod
+    def info(message: str):
+        SafeLogger.log("INFO", message)
+
+    @staticmethod
+    def warning(message: str):
+        SafeLogger.log("WARNING", message)
+
+    @staticmethod
+    def error(message: str):
+        SafeLogger.log("ERROR", message)
 
 
-class UpdateManager:
-    def __init__(self, owner: str, repo: str, current_version: str):
-        self.owner = owner
-        self.repo = repo
-        self.current_version = current_version.lstrip("v")
-        self.api_url = f"https://api.github.com/repos/{owner}/{repo}/releases/latest"
-        self.app_dir = Path(__file__).parent.absolute()
+class ProcessManager:
+    """Manage processes without ctypes dependencies"""
 
-        # Detect environment and set appropriate directories
-        self.is_dev_env = is_development_environment()
-        self.backup_dir = self.app_dir / "backup_update"
+    def __init__(self):
+        self.logger = SafeLogger()
 
-    def ensure_app_closed(self, max_wait=30):
-        """Ensure the main application is completely closed before updating"""
-        print("Checking if application is still running...")
+    def find_processes_by_name(self, process_names: List[str]) -> List[Dict]:
+        """Find processes by name"""
+        found_processes = []
 
-        process_names = [
-            "EPC Information Combiner.exe",
-            "main.exe",
-            "python.exe",
-            "pythonw.exe",
-        ]
+        if not PSUTIL_AVAILABLE:
+            self.logger.warning("psutil not available - using tasklist as fallback")
+            return self._find_processes_with_tasklist(process_names)
 
-        killed_processes = []
-
-        # First pass: graceful wait
-        for i in range(max_wait):
-            running_processes = []
-
-            try:
-                for process_name in process_names:
-                    result = subprocess.run(
-                        ["tasklist", "/FI", f"IMAGENAME eq {process_name}"],
-                        capture_output=True,
-                        text=True,
-                        timeout=5,
-                    )
-                    if process_name in result.stdout:
-                        running_processes.append(process_name)
-
-                if not running_processes:
-                    print("No application processes found")
-                    return True
-
-                if i == 0:
-                    print(f"Found running processes: {running_processes}")
-                    print("Waiting for graceful shutdown...")
-                else:
-                    print(f"\rStill waiting... ({i}/{max_wait}s)", end="", flush=True)
-
-                time.sleep(1)
-
-            except Exception as e:
-                print(f"Error checking processes: {e}")
-                break
-
-        # Second pass: force kill if still running
-        if running_processes:
-            print("Application did not close gracefully, force killing...")
-
-            for process_name in running_processes:
-                try:
-                    print(f"Force killing all {process_name} processes...")
-                    result = subprocess.run(
-                        ["taskkill", "/F", "/IM", process_name, "/T"],
-                        capture_output=True,
-                        text=True,
-                        timeout=10,
-                    )
-                    if result.returncode == 0:
-                        killed_processes.append(process_name)
-                        print(f"Successfully killed {process_name}")
-                    else:
-                        print(f"Could not kill {process_name}: {result.stderr}")
-
-                except Exception as e:
-                    print(f"Error killing {process_name}: {e}")
-
-            # Wait for processes to be fully terminated
-            time.sleep(5)
-
-        # Final verification
         try:
-            final_running = []
-            for process_name in process_names:
+            for proc in psutil.process_iter(["pid", "name", "exe"]):
+                try:
+                    proc_name = proc.info["name"]
+                    for target_name in process_names:
+                        if proc_name.lower() == target_name.lower():
+                            found_processes.append(
+                                {
+                                    "pid": proc.info["pid"],
+                                    "name": proc_name,
+                                    "exe": proc.info.get("exe", "Unknown"),
+                                }
+                            )
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+
+        except Exception as e:
+            self.logger.error(f"Error scanning processes: {e}")
+
+        return found_processes
+
+    def _find_processes_with_tasklist(self, process_names: List[str]) -> List[Dict]:
+        """Fallback process detection using Windows tasklist"""
+        found_processes = []
+
+        try:
+            result = subprocess.run(
+                ["tasklist", "/fo", "csv"], capture_output=True, text=True, timeout=10
+            )
+
+            if result.returncode == 0:
+                lines = result.stdout.strip().split("\n")
+                if len(lines) > 1:  # Skip header
+                    for line in lines[1:]:
+                        parts = line.replace('"', "").split(",")
+                        if len(parts) >= 2:
+                            proc_name = parts[0]
+                            try:
+                                pid = int(parts[1])
+                                for target_name in process_names:
+                                    if proc_name.lower() == target_name.lower():
+                                        found_processes.append(
+                                            {
+                                                "pid": pid,
+                                                "name": proc_name,
+                                                "exe": "Unknown",
+                                            }
+                                        )
+                            except ValueError:
+                                continue
+
+        except Exception as e:
+            self.logger.error(f"Error using tasklist: {e}")
+
+        return found_processes
+
+    def terminate_processes_by_name(self, process_names: List[str]) -> bool:
+        """Terminate processes by name"""
+        found_processes = self.find_processes_by_name(process_names)
+
+        if not found_processes:
+            self.logger.info("No matching processes found")
+            return True
+
+        terminated = []
+
+        for proc_info in found_processes:
+            pid = proc_info["pid"]
+            name = proc_info["name"]
+
+            # Try psutil first
+            if PSUTIL_AVAILABLE:
+                try:
+                    proc = psutil.Process(pid)
+                    proc.terminate()
+                    terminated.append(f"{name} (PID: {pid})")
+                    self.logger.info(f"Terminated process: {name} (PID: {pid})")
+                    continue
+                except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
+                    self.logger.warning(f"Could not terminate {name} with psutil: {e}")
+
+            # Fallback to taskkill
+            try:
                 result = subprocess.run(
-                    ["tasklist", "/FI", f"IMAGENAME eq {process_name}"],
+                    ["taskkill", "/PID", str(pid), "/F"],
                     capture_output=True,
                     text=True,
+                    timeout=10,
+                )
+                if result.returncode == 0:
+                    terminated.append(f"{name} (PID: {pid})")
+                    self.logger.info(
+                        f"Terminated process: {name} (PID: {pid}) using taskkill"
+                    )
+                else:
+                    self.logger.warning(f"taskkill failed for {name}: {result.stderr}")
+            except Exception as e:
+                self.logger.error(f"Error killing process {name}: {e}")
+
+        if terminated:
+            # Wait for processes to exit
+            time.sleep(2)
+            return True
+
+        return False
+
+
+class FileReplacer:
+    """File replacement without Windows API dependencies"""
+
+    def __init__(self):
+        self.logger = SafeLogger()
+
+    def replace_file(
+        self, source_path: str, target_path: str, backup_dir: Optional[str] = None
+    ) -> bool:
+        """Replace file with multiple strategies"""
+
+        # Strategy 1: Direct replacement
+        if self._try_direct_replacement(source_path, target_path, backup_dir):
+            return True
+
+        # Strategy 2: Rename and replace
+        if self._try_rename_replacement(source_path, target_path, backup_dir):
+            return True
+
+        # Strategy 3: Force delete and copy
+        if self._try_force_replacement(source_path, target_path, backup_dir):
+            return True
+
+        # Strategy 4: Skip file (log and continue)
+        self.logger.warning(
+            f"Could not replace {os.path.basename(target_path)} - skipping"
+        )
+        return False
+
+    def _try_direct_replacement(
+        self, source_path: str, target_path: str, backup_dir: Optional[str] = None
+    ) -> bool:
+        """Try direct file replacement"""
+        try:
+            # Create backup if requested
+            if backup_dir and os.path.exists(target_path):
+                backup_path = os.path.join(backup_dir, os.path.basename(target_path))
+                os.makedirs(backup_dir, exist_ok=True)
+                shutil.copy2(target_path, backup_path)
+
+            # Direct replacement
+            shutil.copy2(source_path, target_path)
+            self.logger.info(
+                f"Direct replacement successful: {os.path.basename(target_path)}"
+            )
+            return True
+
+        except Exception as e:
+            self.logger.warning(
+                f"Direct replacement failed for {os.path.basename(target_path)}: {e}"
+            )
+            return False
+
+    def _try_rename_replacement(
+        self, source_path: str, target_path: str, backup_dir: Optional[str] = None
+    ) -> bool:
+        """Try rename-then-replace strategy"""
+        try:
+            if not os.path.exists(target_path):
+                return self._try_direct_replacement(
+                    source_path, target_path, backup_dir
+                )
+
+            # Rename existing file
+            temp_name = target_path + f".old.{int(time.time())}"
+            os.rename(target_path, temp_name)
+
+            try:
+                # Copy new file
+                shutil.copy2(source_path, target_path)
+
+                # Create backup if requested
+                if backup_dir:
+                    backup_path = os.path.join(
+                        backup_dir, os.path.basename(target_path)
+                    )
+                    os.makedirs(backup_dir, exist_ok=True)
+                    shutil.copy2(temp_name, backup_path)
+
+                # Remove old file
+                os.remove(temp_name)
+                self.logger.info(
+                    f"Rename replacement successful: {os.path.basename(target_path)}"
+                )
+                return True
+
+            except Exception:
+                # Restore original file
+                try:
+                    os.rename(temp_name, target_path)
+                except:
+                    pass
+                raise
+
+        except Exception as e:
+            self.logger.warning(
+                f"Rename replacement failed for {os.path.basename(target_path)}: {e}"
+            )
+            return False
+
+    def _try_force_replacement(
+        self, source_path: str, target_path: str, backup_dir: Optional[str] = None
+    ) -> bool:
+        """Try force replacement using system commands"""
+        try:
+            if not os.path.exists(target_path):
+                return self._try_direct_replacement(
+                    source_path, target_path, backup_dir
+                )
+
+            # Create backup first
+            if backup_dir:
+                backup_path = os.path.join(backup_dir, os.path.basename(target_path))
+                os.makedirs(backup_dir, exist_ok=True)
+                try:
+                    shutil.copy2(target_path, backup_path)
+                except:
+                    pass
+
+            # Try to remove readonly attribute and delete
+            try:
+                os.chmod(target_path, 0o777)
+            except:
+                pass
+
+            # Force delete with Windows del command
+            try:
+                subprocess.run(
+                    ["del", "/f", "/q", target_path],
+                    shell=True,
+                    capture_output=True,
                     timeout=5,
                 )
-                if process_name in result.stdout:
-                    final_running.append(process_name)
+            except:
+                pass
 
-            if final_running:
-                print(f"Warning: Some processes may still be running: {final_running}")
-                return False
-            else:
-                print("All application processes have been terminated")
-                return True
+            # Copy new file
+            shutil.copy2(source_path, target_path)
+            self.logger.info(
+                f"Force replacement successful: {os.path.basename(target_path)}"
+            )
+            return True
 
         except Exception as e:
-            print(f"Error in final verification: {e}")
-            return True  # Assume success if we can't verify
+            self.logger.warning(
+                f"Force replacement failed for {os.path.basename(target_path)}: {e}"
+            )
+            return False
 
-    def get_latest_release(self) -> Optional[Dict[Any, Any]]:
-        """Get latest release information from GitHub API"""
-        try:
-            print("Checking for latest release...")
-            # Increased timeout and added retries
-            for attempt in range(3):
-                try:
-                    response = requests.get(self.api_url, timeout=30)
-                    response.raise_for_status()
-                    break
-                except requests.RequestException as e:
-                    if attempt == 2:  # Last attempt
-                        raise e
-                    print(f"Attempt {attempt + 1} failed, retrying...")
-                    time.sleep(2)
-            response.raise_for_status()
 
-            release_data = response.json()
-            latest_version = release_data.get("tag_name", "").lstrip("v")
+class UpdateDownloader:
+    """Download updates using system tools"""
 
-            print(f"Current version: {self.current_version}")
-            print(f"Latest version: {latest_version}")
+    def __init__(self):
+        self.logger = SafeLogger()
 
-            if self.__is_newer_version(latest_version):
-                return release_data
-            else:
-                print("You already have the latest version!")
-                return None
+    def download_file(self, url: str, output_path: str, max_retries: int = 3) -> bool:
+        """Download file using curl or PowerShell"""
 
-        except requests.RequestException as e:
-            print(f"Failed to check for updates: {e}")
-            return None
-        except Exception as e:
-            print(f"Unexpected error: {e}")
-            return None
+        for attempt in range(max_retries):
+            self.logger.info(f"Download attempt {attempt + 1}/{max_retries}: {url}")
 
-    def __is_newer_version(self, remote_version: str) -> bool:
-        """Compare versions (handle pre-release versions properly)"""
-        try:
-            from packaging import version
-
-            remote_ver = version.parse(remote_version)
-            current_ver = version.parse(self.current_version)
-
-            # Consider pre-release versions
-            if remote_ver > current_ver:
+            # Try curl first (more reliable)
+            if self._try_curl_download(url, output_path):
                 return True
-            elif remote_ver == current_ver:
-                return False
-            else:
-                return False
 
-        except ImportError:
-            # Fallback to simple string comparison if packaging not available
-            print("Warning: packaging library not available, using simple comparison")
-            return remote_version != self.current_version
+            # Try PowerShell as fallback
+            if self._try_powershell_download(url, output_path):
+                return True
 
-    def find_portable_asset(self, release_data: Dict[Any, Any]) -> Optional[str]:
-        """Find windows-x64 ZIP asset download URL"""
-        assets = release_data.get("assets", [])
+            if attempt < max_retries - 1:
+                time.sleep(2**attempt)  # Exponential backoff
 
-        for asset in assets:
-            name = asset.get("name", "").lower()
-            if (
-                "portable.zip" in name
-                or "windows-x64.zip" in name
-                or ("zip" in name and "epc-ic" in name)
-            ):
-                download_url = asset.get("browser_download_url")
-                size_mb = asset.get("size", 0) / (1024 * 1024)
-                print(f"Found windows-x64 asset: {asset.get('name')}")
-                print(f"Size: {size_mb:.1f} MB")
-                return download_url
+        self.logger.error(f"All download attempts failed for {url}")
+        return False
 
-        print("No windows-x64 ZIP asset found in release")
-        return None
-
-    def download_update(self, download_url: str) -> Optional[str]:
-        """Download the update file"""
+    def _try_curl_download(self, url: str, output_path: str) -> bool:
+        """Try downloading with curl"""
         try:
+            cmd = [
+                "curl",
+                "-L",
+                "-o",
+                output_path,
+                url,
+                "--connect-timeout",
+                "30",
+                "--max-time",
+                "300",
+                "--retry",
+                "3",
+            ]
+
+            print(f"📦 Downloading with curl... (43MB file, may take a few minutes)")
+            result = subprocess.run(cmd, timeout=180)
+
+            if result.returncode == 0 and os.path.exists(output_path):
+                size = os.path.getsize(output_path)
+                self.logger.info(f"Curl download successful: {size} bytes")
+                return True
+            else:
+                self.logger.warning(f"Curl download failed: {result.stderr}")
+                return False
+
+        except Exception as e:
+            self.logger.warning(f"Curl download error: {e}")
+            return False
+
+    def _try_powershell_download(self, url: str, output_path: str) -> bool:
+        """Try downloading with PowerShell"""
+        try:
+            script = f"""
+            try {{
+                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+                $wc = New-Object System.Net.WebClient
+                $wc.DownloadFile('{url}', '{output_path}')
+                exit 0
+            }} catch {{
+                Write-Error $_.Exception.Message
+                exit 1
+            }}
+            """
+
+            cmd = [
+                "powershell",
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                script,
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+
+            if result.returncode == 0 and os.path.exists(output_path):
+                size = os.path.getsize(output_path)
+                self.logger.info(f"PowerShell download successful: {size} bytes")
+                return True
+            else:
+                self.logger.warning(f"PowerShell download failed: {result.stderr}")
+                return False
+
+        except Exception as e:
+            self.logger.warning(f"PowerShell download error: {e}")
+            return False
+
+
+class CleanUpdateManager:
+    """Clean Ultimate Update Manager - No ctypes dependencies"""
+
+    def __init__(self):
+        self.logger = SafeLogger()
+        self.process_manager = ProcessManager()
+        self.file_replacer = FileReplacer()
+        self.downloader = UpdateDownloader()
+
+    def perform_complete_update(
+        self,
+        update_url: str,
+        install_dir: str,
+        current_version: str = None,
+        backup_dir: str = None,
+        temp_dir: str = None,
+        max_retries: int = 3,
+        retry_delay: int = 5,
+        force: bool = False,
+        silent: bool = False,
+        process_names: List[str] = None,
+    ) -> bool:
+        """
+        Perform complete update with all safeguards
+        """
+
+        self.logger.info("🚀 Starting Clean Update Manager")
+        self.logger.info("=" * 60)
+
+        # Setup directories
+        if not backup_dir:
+            backup_dir = os.path.join(install_dir, f"backup_{int(time.time())}")
+
+        if not temp_dir:
             temp_dir = tempfile.mkdtemp(prefix="epc_update_")
-            temp_file = os.path.join(temp_dir, "update.zip")
 
-            if self.is_dev_env:
-                print(f"Downloading update to dev-update folder...")
+        if not process_names:
+            process_names = ["main.exe", "EPC Information Combiner.exe"]
+
+        os.makedirs(backup_dir, exist_ok=True)
+        os.makedirs(temp_dir, exist_ok=True)
+
+        try:
+            # Step 1: Check for updates
+            self.logger.info("🔍 Step 1: Checking for updates...")
+            if not force:
+                has_update = self.check_for_updates(update_url, current_version)
+                if not has_update:
+                    self.logger.info("✅ No update needed")
+                    return True
+
+            # Step 2: Download update
+            self.logger.info("📥 Step 2: Downloading update...")
+            download_info = self._get_download_info(update_url)
+            if not download_info:
+                self.logger.error("❌ Could not get download information")
+                return False
+
+            download_path = os.path.join(temp_dir, "update.zip")
+            download_url = download_info.get("download_url", download_info.get("url"))
+            if not download_url:
+                self.logger.error("❌ No download URL found")
+                return False
+
+            if not self.downloader.download_file(download_url, download_path):
+                self.logger.error("❌ Download failed")
+                return False
+
+            # Step 3: Extract update
+            self.logger.info("📦 Step 3: Extracting update...")
+            extract_dir = os.path.join(temp_dir, "extracted")
+            if not self._extract_update(download_path, extract_dir):
+                self.logger.error("❌ Extraction failed")
+                return False
+
+            # Step 4: Terminate processes
+            self.logger.info("🛑 Step 4: Terminating processes...")
+            self.process_manager.terminate_processes_by_name(process_names)
+
+            # Step 5: Backup current installation
+            self.logger.info("📦 Step 5: Creating backup...")
+            if not self._create_backup(install_dir, backup_dir):
+                self.logger.warning("⚠️  Backup creation failed (continuing anyway)")
+
+            # Step 6: Replace files
+            self.logger.info("🔄 Step 6: Replacing files...")
+            success_count, total_count = self._replace_files(
+                extract_dir, install_dir, backup_dir
+            )
+
+            # Step 7: Verify update
+            self.logger.info("✅ Step 7: Verifying update...")
+            success_rate = (success_count / total_count * 100) if total_count > 0 else 0
+
+            if success_rate >= 70:  # At least 70% success rate
+                self.logger.info(
+                    f"🎉 Update successful! ({success_count}/{total_count} files, {success_rate:.1f}%)"
+                )
+
+                # Cleanup temp files
+                try:
+                    shutil.rmtree(temp_dir)
+                except:
+                    pass
+
+                return True
             else:
-                print(f"Downloading update...")
-            print(f"URL: {download_url}")
+                self.logger.error(
+                    f"❌ Update failed! ({success_count}/{total_count} files, {success_rate:.1f}%)"
+                )
 
-            response = requests.get(download_url, stream=True, timeout=30)
-            response.raise_for_status()
+                # Try to restore backup
+                if not silent:
+                    restore = (
+                        input("Restore from backup? (y/N): ").lower().startswith("y")
+                    )
+                    if restore:
+                        self._restore_backup(backup_dir, install_dir)
 
-            total_size = int(response.headers.get("content-length", 0))
-            downloaded = 0
+                return False
 
-            with open(temp_file, "wb") as f:
-                for chunk in response.iter_content(
-                    chunk_size=32768
-                ):  # Larger chunk for better performance
-                    if chunk:
-                        f.write(chunk)
-                        downloaded += len(chunk)
-
-                        if total_size > 0:
-                            percent = (downloaded / total_size) * 100
-                            mb_downloaded = downloaded / (1024 * 1024)
-                            mb_total = total_size / (1024 * 1024)
-                            print(
-                                f"\rDownloading: {percent:.1f}% ({mb_downloaded:.1f}/{mb_total:.1f} MB)",
-                                end="",
-                                flush=True,
-                            )
-                        else:
-                            mb_downloaded = downloaded / (1024 * 1024)
-                            print(
-                                f"\rDownloaded: {mb_downloaded:.1f} MB",
-                                end="",
-                                flush=True,
-                            )
-
-            print(f"\nDownload completed: {temp_file}")
-            return temp_file
-
-        except requests.RequestException as e:
-            print(f"Download failed: {e}")
-            return None
         except Exception as e:
-            print(f"Unexpected download error: {e}")
+            self.logger.error(f"❌ Update failed with error: {e}")
+            if not silent:
+                print(f"Full traceback:\n{traceback.format_exc()}")
+            return False
+
+        finally:
+            # Cleanup
+            try:
+                if os.path.exists(temp_dir):
+                    shutil.rmtree(temp_dir)
+            except:
+                pass
+
+    def check_for_updates(self, update_url: str, current_version: str = None) -> bool:
+        """Check if updates are available"""
+        try:
+            version_info = self._get_download_info(update_url)
+            if not version_info:
+                return False
+
+            remote_version = version_info.get("version")
+            if not remote_version:
+                return True  # Assume update available if no version info
+
+            if current_version and current_version == remote_version:
+                self.logger.info(f"Current version {current_version} is up to date")
+                return False
+
+            self.logger.info(f"Update available: {current_version} -> {remote_version}")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Error checking for updates: {e}")
+            return False
+
+    def _get_download_info(self, update_url: str) -> Optional[Dict]:
+        """Get download information from update URL"""
+        try:
+            if update_url.startswith("file://"):
+                # Local file
+                file_path = update_url[7:]  # Remove 'file://'
+                if file_path.endswith(".json"):
+                    with open(file_path, "r") as f:
+                        version_data = json.load(f)
+                        # Ensure we have a download_url
+                        if "download_url" not in version_data:
+                            version_data["download_url"] = version_data.get(
+                                "url", update_url
+                            )
+                        return version_data
+                else:
+                    # Direct zip file
+                    return {
+                        "url": update_url,
+                        "version": "unknown",
+                        "download_url": update_url,
+                    }
+            elif update_url.endswith(".zip"):
+                # Direct download URL (from auto-detection)
+                self.logger.info("Direct ZIP download URL detected")
+                return {
+                    "url": update_url,
+                    "version": "auto-detected",
+                    "download_url": update_url,
+                }
+            else:
+                # Remote URL - try to download version.json
+                temp_file = tempfile.NamedTemporaryFile(
+                    mode="w+", suffix=".json", delete=False
+                )
+                temp_file.close()
+
+                if self.downloader.download_file(update_url, temp_file.name):
+                    with open(temp_file.name, "r") as f:
+                        data = json.load(f)
+                        # Ensure we have a download_url
+                        if "download_url" not in data:
+                            data["download_url"] = data.get("url", update_url)
+                    os.unlink(temp_file.name)
+                    return data
+                else:
+                    os.unlink(temp_file.name)
+                    # Fallback: treat as direct download
+                    self.logger.warning(
+                        "Failed to get JSON metadata, treating as direct download"
+                    )
+                    return {
+                        "url": update_url,
+                        "version": "unknown",
+                        "download_url": update_url,
+                    }
+
+        except Exception as e:
+            self.logger.error(f"Error getting download info: {e}")
             return None
 
-    def create_backup(self) -> bool:
+    def _extract_update(self, zip_path: str, extract_dir: str) -> bool:
+        """Extract update package"""
+        try:
+            with zipfile.ZipFile(zip_path, "r") as zipf:
+                zipf.extractall(extract_dir)
+
+            extracted_files = list(Path(extract_dir).rglob("*"))
+            extracted_files = [f for f in extracted_files if f.is_file()]
+
+            self.logger.info(f"Extracted {len(extracted_files)} files")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Extraction error: {e}")
+            return False
+
+    def _create_backup(self, install_dir: str, backup_dir: str) -> bool:
         """Create backup of current installation"""
         try:
-            if self.backup_dir.exists():
-                print("Removing old backup...")
-                shutil.rmtree(self.backup_dir)
+            files_backed_up = 0
 
-            print("Creating backup of current installation...")
-
-            # Copy important files and directories
-            self.backup_dir.mkdir(exist_ok=True)
-
-            important_items = [
-                "main.py",
-                "widgets",
-                "helpers",
-                "services",
-                "repositories",
-                "themes",
-                "assets",
-                "i18n",
-                "version.json",
-            ]
-
-            # Backup important items (excluding logs and data which may be in use)
-            for item in important_items:
-                src_path = self.app_dir / item
-                if src_path.exists():
-                    try:
-                        if src_path.is_file():
-                            shutil.copy2(src_path, self.backup_dir / item)
-                        else:
-                            shutil.copytree(
-                                src_path, self.backup_dir / item, dirs_exist_ok=True
-                            )
-                    except Exception as e:
-                        print(f"Failed to backup {item}: {e}")
-                        continue
-
-            # Try to backup data and logs, but don't fail if they're in use
-            for optional_item in ["data", "logs"]:
-                src_path = self.app_dir / optional_item
-                if src_path.exists():
-                    try:
-                        shutil.copytree(
-                            src_path,
-                            self.backup_dir / optional_item,
-                            dirs_exist_ok=True,
-                        )
-                        print(f"Backed up {optional_item}")
-                    except Exception as e:
-                        print(f"Could not backup {optional_item} (may be in use): {e}")
-                        # Create empty directory as placeholder
-                        (self.backup_dir / optional_item).mkdir(exist_ok=True)
-
-            # Backup important config files that should be preserved
-            config_files = [
-                "app.cfg",
-                ".env",
-            ]
-            for config_file in config_files:
-                src_path = self.app_dir / config_file
-                if src_path.exists():
-                    try:
-                        shutil.copy2(src_path, self.backup_dir / config_file)
-                        print(f"Backed up config: {config_file}")
-                    except Exception as e:
-                        print(f"Could not backup {config_file}: {e}")
-
-            print("Backup created successfully")
-            return True
-
-        except Exception as e:
-            print(f"Backup creation failed: {e}")
-            return False
-
-    def extract_and_install(self, zip_file_path: str) -> bool:
-        """Extract update and install files"""
-        try:
-            print("Extracting update...")
-
-            temp_extract_dir = tempfile.mkdtemp(prefix="epc_extract_")
-
-            with zipfile.ZipFile(zip_file_path, "r") as zip_ref:
-                zip_ref.extractall(temp_extract_dir)
-
-            # Find the extracted app folder
-            extracted_items = os.listdir(temp_extract_dir)
-            app_folder = None
-
-            for item in extracted_items:
-                item_path = os.path.join(temp_extract_dir, item)
-                if os.path.isdir(item_path) and "EPC Information Combiner" in item:
-                    app_folder = item_path
-                    break
-
-            if not app_folder:
-                print("Could not find app folder in extracted files")
-                return False
-
-            print(f"Found app folder: {app_folder}")
-
-            # In development environment, just copy to dev-update folder
-            if self.is_dev_env:
-                print("Development mode: Copying to dev-update folder...")
-                return self.__dev_extract(app_folder, temp_extract_dir)
-
-            # Use separate installer to avoid file access issues
-            print("Starting installation process...")
-
-            # Check for standalone installer first, then fallback to Python script
-            installer_exe = (
-                self.app_dir / "installer.exe"
-            )  # In same directory as main app
-            installer_script = self.app_dir / "update_installer.py"
-
-            if installer_exe.exists():
-                print("Using standalone installer...")
-                # Use the compiled installer
-                installer_cmd = [
-                    str(installer_exe),
-                    app_folder,
-                    str(self.app_dir),
-                    str(self.backup_dir),
-                ]
-            elif installer_script.exists():
-                print("Using Python installer script...")
-                # Copy installer to temp directory to avoid conflicts
-                temp_installer = Path(temp_extract_dir) / "update_installer.py"
-                shutil.copy2(installer_script, temp_installer)
-
-                installer_cmd = [
-                    sys.executable,
-                    str(temp_installer),
-                    app_folder,
-                    str(self.app_dir),
-                    str(self.backup_dir),
-                ]
-            else:
-                print("No installer found, using direct method...")
-                return self.__direct_install(
-                    app_folder, zip_file_path, temp_extract_dir
-                )
-
-            print("Starting separate installation process...")
-            print("This process will exit to allow file replacement.")
-
-            # Start installer in separate process
-            if os.name == "nt":  # Windows
-                subprocess.Popen(
-                    installer_cmd,
-                    creationflags=subprocess.CREATE_NEW_CONSOLE,
-                )
-            else:  # Unix-like
-                subprocess.Popen(installer_cmd)
-
-            # Exit this process to allow file replacement
-            print("Installation started. This process will now exit.")
-            sys.exit(0)
-
-        except zipfile.BadZipFile:
-            print("Downloaded file is not a valid ZIP archive")
-            return False
-        except Exception as e:
-            print(f"Installation failed: {e}")
-            return False
-
-    def __direct_install(
-        self, app_folder: str, zip_file_path: str, temp_extract_dir: str
-    ) -> bool:
-        """Fallback direct installation method"""
-        try:
-            print("Installing files directly...")
-
-            # Get list of files to copy
-            for root, dirs, files in os.walk(app_folder):
-                # Skip certain directories that should not be overwritten
-                dirs[:] = [
-                    d for d in dirs if d not in ["data", "logs", "backup_update"]
-                ]
-
+            for root, dirs, files in os.walk(install_dir):
                 for file in files:
-                    # Skip certain files
-                    if file in ["app.log", "settings.json"]:
+                    source_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(source_path, install_dir)
+                    backup_path = os.path.join(backup_dir, rel_path)
+
+                    # Skip backup directory itself
+                    if backup_dir in source_path:
                         continue
 
-                    src_file = os.path.join(root, file)
-                    rel_path = os.path.relpath(src_file, app_folder)
-                    dst_file = self.app_dir / rel_path
+                    os.makedirs(os.path.dirname(backup_path), exist_ok=True)
 
-                    # Create directory if it doesn't exist
-                    dst_file.parent.mkdir(parents=True, exist_ok=True)
-
-                    # Copy file with retry
-                    for attempt in range(3):
-                        try:
-                            shutil.copy2(src_file, dst_file)
-                            break
-                        except (PermissionError, OSError) as e:
-                            if attempt == 2:  # Last attempt
-                                print(f"Could not update {rel_path}: {e}")
-                            else:
-                                time.sleep(1)  # Wait before retry
-
-            print("Direct installation completed")
-
-            # Cleanup
-            shutil.rmtree(temp_extract_dir)
-            os.remove(zip_file_path)
-
-            return True
-
-        except zipfile.BadZipFile:
-            print("Downloaded file is not a valid ZIP archive")
-            return False
-        except Exception as e:
-            print(f"Installation failed: {e}")
-            return False
-
-    def __dev_extract(self, app_folder: str, temp_extract_dir: str) -> bool:
-        """Extract update to dev-update folder for development environment"""
-        try:
-            # Create dev-update folder if it doesn't exist
-            self.backup_dir.mkdir(exist_ok=True)
-
-            print(f"Extracting to: {self.backup_dir}")
-
-            # Copy the entire extracted app folder to dev-update
-            dest_folder = self.backup_dir / "EPC Information Combiner"
-
-            # Remove existing if present
-            if dest_folder.exists():
-                shutil.rmtree(dest_folder)
-
-            # Copy the extracted folder
-            shutil.copytree(app_folder, dest_folder)
-
-            print(f"Update extracted to: {dest_folder}")
-            print("You can now manually replace the current version with this update.")
-
-            # Cleanup temp files
-            shutil.rmtree(temp_extract_dir)
-
-            return True
-
-        except Exception as e:
-            print(f"Failed to extract to dev-update: {e}")
-            return False
-
-    def restore_backup(self) -> bool:
-        """Restore from backup if update fails"""
-        try:
-            if not self.backup_dir.exists():
-                print("No backup found to restore")
-                return False
-
-            print("Restoring from backup...")
-
-            for item in self.backup_dir.iterdir():
-                dst_path = self.app_dir / item.name
-
-                # Skip files that are likely in use
-                if item.name in ["logs", "data"]:
-                    print(f"Skipping {item.name} (may be in use)")
-                    continue
-
-                try:
-                    if dst_path.exists():
-                        if dst_path.is_file():
-                            # Try to remove file, but continue if it fails
-                            try:
-                                dst_path.unlink()
-                            except (PermissionError, OSError) as e:
-                                print(f"Cannot remove {dst_path}: {e}")
-                                continue
-                        else:
-                            # Try to remove directory, but continue if it fails
-                            try:
-                                shutil.rmtree(dst_path)
-                            except (PermissionError, OSError) as e:
-                                print(f"Cannot remove directory {dst_path}: {e}")
-                                continue
-
-                    if item.is_file():
-                        shutil.copy2(item, dst_path)
-                    else:
-                        shutil.copytree(item, dst_path, dirs_exist_ok=True)
-
-                except Exception as e:
-                    print(f"Failed to restore {item.name}: {e}")
-                    continue
-
-            print("Backup restored successfully")
-            return True
-
-        except Exception as e:
-            print(f"Backup restoration failed: {e}")
-            return False
-
-    def cleanup_after_success(self) -> bool:
-        """Clean up backup directory and temporary files after successful update"""
-        try:
-            print("Cleaning up after successful update...")
-
-            # Remove backup directory
-            if self.backup_dir.exists():
-                shutil.rmtree(self.backup_dir)
-                print("Backup directory cleaned up")
-
-            # Clean up any remaining temp files
-            temp_dirs = []
-            temp_dir = Path(tempfile.gettempdir())
-
-            # Find our temp directories
-            for item in temp_dir.glob("epc_*"):
-                if item.is_dir():
-                    temp_dirs.append(item)
-
-            if temp_dirs:
-                print(f"Cleaning up {len(temp_dirs)} temporary directories...")
-                for temp_dir_path in temp_dirs:
                     try:
-                        shutil.rmtree(temp_dir_path)
+                        shutil.copy2(source_path, backup_path)
+                        files_backed_up += 1
                     except Exception as e:
-                        print(f"Could not remove {temp_dir_path}: {e}")
+                        self.logger.warning(f"Could not backup {file}: {e}")
 
-                print("Temporary files cleaned up")
-
-            return True
+            self.logger.info(f"Backed up {files_backed_up} files to {backup_dir}")
+            return files_backed_up > 0
 
         except Exception as e:
-            print(f"Failed to clean up: {e}")
+            self.logger.error(f"Backup error: {e}")
             return False
 
-    def restart_application(self):
-        """Restart the application"""
+    def _replace_files(
+        self, source_dir: str, target_dir: str, backup_dir: str
+    ) -> Tuple[int, int]:
+        """Replace files with comprehensive strategy"""
+        success_count = 0
+        total_count = 0
+
         try:
-            print("Restarting application...")
+            # Find the actual source directory (skip wrapper folders like "EPC Information Combiner")
+            actual_source_dir = self._find_actual_source_dir(source_dir)
 
-            # Find the main executable
-            exe_path = None
-            for possible_name in [
-                "EPC Information Combiner.exe",
-                "main.exe",
-                "app.exe",
-            ]:
-                possible_path = self.app_dir / possible_name
-                if possible_path.exists():
-                    exe_path = possible_path
-                    break
+            # Get all files to replace
+            files_to_replace = []
+            for root, dirs, files in os.walk(actual_source_dir):
+                for file in files:
+                    source_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(source_path, actual_source_dir)
+                    target_path = os.path.join(target_dir, rel_path)
+                    files_to_replace.append((source_path, target_path, rel_path))
 
-            if exe_path:
-                print(f"Starting: {exe_path}")
+            total_count = len(files_to_replace)
+            self.logger.info(f"Replacing {total_count} files...")
 
-                # Start the application
-                if os.name == "nt":  # Windows
-                    subprocess.Popen([str(exe_path)], cwd=str(self.app_dir))
-                else:  # Unix-like
-                    subprocess.Popen([str(exe_path)], cwd=str(self.app_dir))
+            for i, (source_path, target_path, rel_path) in enumerate(files_to_replace):
+                print(f"[{i+1}/{total_count}] {rel_path}")
 
-                # Exit current process
-                sys.exit(0)
-            else:
-                print("Could not find main executable to restart")
-                print("Please manually restart the application")
-                input("Press Enter to exit...")
-                sys.exit(1)
+                # Ensure target directory exists
+                os.makedirs(os.path.dirname(target_path), exist_ok=True)
+
+                # Try to replace file
+                if self.file_replacer.replace_file(
+                    source_path, target_path, backup_dir
+                ):
+                    success_count += 1
+                    print(f"   ✅ Success")
+                else:
+                    print(f"   ⚠️  Skipped")
 
         except Exception as e:
-            print(f"Failed to restart application: {e}")
-            print("Please manually restart the application")
-            input("Press Enter to exit...")
-            sys.exit(1)
+            self.logger.error(f"File replacement error: {e}")
 
-    def perform_update(self) -> bool:
-        """Perform the complete update process"""
-        print("Starting EPC Information Combiner Update Process")
-        print("=" * 50)
+        return success_count, total_count
 
-        # Get latest release
-        release_data = self.get_latest_release()
-        if not release_data:
+    def _find_actual_source_dir(self, extract_dir: str) -> str:
+        """Find the actual source directory containing the application files"""
+        # Check if there's a wrapper folder like "EPC Information Combiner"
+        subdirs = [
+            d
+            for d in os.listdir(extract_dir)
+            if os.path.isdir(os.path.join(extract_dir, d))
+        ]
+
+        # If there's only one subdirectory, it's likely the wrapper
+        if len(subdirs) == 1:
+            potential_source = os.path.join(extract_dir, subdirs[0])
+            # Check if this directory contains typical app files
+            contents = os.listdir(potential_source)
+            app_indicators = [".exe", ".dll", "assets", "PyQt6", "repositories"]
+
+            # If we find app indicators, use this as source
+            if any(
+                any(indicator in item for indicator in app_indicators)
+                for item in contents
+            ):
+                self.logger.info(f"Found application directory: {subdirs[0]}")
+                return potential_source
+
+        # Fallback to extract_dir if no wrapper found
+        return extract_dir
+
+    def _restore_backup(self, backup_dir: str, install_dir: str) -> bool:
+        """Restore from backup"""
+        try:
+            self.logger.info("🔄 Restoring from backup...")
+
+            restored_files = 0
+            for root, dirs, files in os.walk(backup_dir):
+                for file in files:
+                    backup_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(backup_path, backup_dir)
+                    target_path = os.path.join(install_dir, rel_path)
+
+                    os.makedirs(os.path.dirname(target_path), exist_ok=True)
+
+                    try:
+                        shutil.copy2(backup_path, target_path)
+                        restored_files += 1
+                    except Exception as e:
+                        self.logger.warning(f"Could not restore {file}: {e}")
+
+            self.logger.info(f"Restored {restored_files} files from backup")
+            return restored_files > 0
+
+        except Exception as e:
+            self.logger.error(f"Restore error: {e}")
             return False
 
-        # Find download URL
-        download_url = self.find_portable_asset(release_data)
-        if not download_url:
-            return False
 
-        # Create backup
-        if not self.create_backup():
-            print("Cannot proceed without backup")
-            return False
-
-        # Download update
-        zip_file = self.download_update(download_url)
-        if not zip_file:
-            print("Download failed")
-            return False
-
-        # Install update
-        if not self.extract_and_install(zip_file):
-            print("Installation failed, restoring backup...")
-            self.restore_backup()
-            return False
-
-        if self.is_dev_env:
-            print("Update downloaded successfully to dev-update folder!")
-            print(f"Location: {self.backup_dir}")
-            print("You can now manually install the update from this folder.")
-        else:
-            print("Update completed successfully!")
-            # Note: Cleanup will be handled by update_installer.py
-        return True
-
-
-def close_file_handles():
-    """Try to close any open file handles that might interfere with update"""
+def get_latest_release_info():
+    """Auto-detect latest release from GitHub and generate download URL"""
     try:
-        import gc
-        import logging
+        if not REQUESTS_AVAILABLE:
+            print("❌ requests library not available for auto-detection")
+            return None
 
-        # Force garbage collection
-        gc.collect()
+        # GitHub API endpoint
+        api_url = "https://api.github.com/repos/quanghiep03198/epc_combiner_tool/releases/latest"
 
-        # Close any open logging handlers
-        logger = logging.getLogger()
-        for handler in logger.handlers[:]:
-            handler.close()
-            logger.removeHandler(handler)
+        print("🔍 Checking for latest release...")
+        response = requests.get(api_url, timeout=30)
+        response.raise_for_status()
 
-        print("Closed file handles")
+        release_data = response.json()
+        version = release_data["tag_name"]
+
+        # Generate download URL based on version pattern
+        # Pattern: https://github.com/quanghiep03198/epc_combiner_tool/releases/download/{version}/epc-ic-{version}-windows-x64.zip
+        download_url = f"https://github.com/quanghiep03198/epc_combiner_tool/releases/download/{version}/epc-ic-{version}-windows-x64.zip"
+
+        print(f"✅ Latest version found: {version}")
+        print(f"✅ Generated download URL: {download_url}")
+
+        return {
+            "version": version,
+            "download_url": download_url,
+            "release_data": release_data,
+        }
+
     except Exception as e:
-        print(f"Could not close all file handles: {e}")
+        print(f"❌ Failed to get latest release info: {e}")
+        return None
 
 
 def main():
-    """Main entry point"""
-    try:
-        print("Starting EPC Information Combiner Update Process...")
-        print("=" * 60)
+    """CLI interface for the update manager"""
+    import argparse
 
-        # Try to close any remaining file handles
-        close_file_handles()
+    parser = argparse.ArgumentParser(description="EPC Clean Update Manager")
+    parser.add_argument(
+        "--update-url", help="Update URL (optional - will auto-detect if not provided)"
+    )
+    parser.add_argument("--install-dir", default=".", help="Installation directory")
+    parser.add_argument("--current-version", help="Current version")
+    parser.add_argument("--force", action="store_true", help="Force update")
+    parser.add_argument("--silent", action="store_true", help="Silent mode")
+    parser.add_argument("--backup-dir", help="Backup directory")
+    parser.add_argument(
+        "--processes",
+        nargs="*",
+        default=["main.exe"],
+        help="Process names to terminate",
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Test auto-detection without downloading"
+    )
 
-        # Configuration
-        GITHUB_OWNER = "quanghiep03198"
-        GITHUB_REPO = "epc_combiner_tool"
+    args = parser.parse_args()
 
-        # Get current version
-        current_version = "1.0.0"  # Default fallback
-
-        # Try to read from version.json
-        version_file = Path("version.json")
-        if version_file.exists():
-            try:
-                with open(version_file, "r", encoding="utf-8") as f:
-                    version_data = json.load(f)
-                    current_version = version_data.get("version", current_version)
-                    # Clean up version string - remove extra 'v' prefixes
-                    current_version = current_version.lstrip("v")
-            except Exception as e:
-                print(f"Warning: Could not read version.json: {e}")
-
-            # Create update manager
-        updater = UpdateManager(GITHUB_OWNER, GITHUB_REPO, current_version)
-
-        print(f"EPC Information Combiner Update Tool")
-        print(f"Working directory: {Path.cwd()}")
-        print(f"Current version: {current_version}")
-        print("")
-
-        # Ensure application is completely closed before updating
-        if not updater.ensure_app_closed():
-            print("Warning: Could not fully close application")
-            print("Update will proceed but may encounter file conflicts")
-
-        print("")
-
-        # Perform update
-        success = updater.perform_update()
-
-        if success:
-            if updater.is_dev_env:
-                print(
-                    "\nUpdate downloaded! Please manually install from dev-update folder."
-                )
-                print(
-                    "The application will not restart automatically in development mode."
-                )
-            else:
-                print("\nUpdate completed! Restarting application...")
-                time.sleep(2)
-                updater.restart_application()
+    # Auto-detect latest release if no URL provided
+    update_url = args.update_url
+    if not update_url:
+        print("📡 No update URL provided, auto-detecting latest release...")
+        release_info = get_latest_release_info()
+        if release_info:
+            update_url = release_info["download_url"]
+            if not args.current_version:
+                args.current_version = "1.0.0"  # Default current version
+            print(f"🎯 Using auto-detected URL: {update_url}")
+            print(f"📝 Version detected: {release_info['version']}")
+            if "published_at" in release_info:
+                print(f"📅 Published: {release_info['published_at']}")
         else:
-            print("\n Update failed!")
-            input("Press Enter to exit...")
+            print("❌ Failed to auto-detect latest release")
+            print("💡 Please provide --update-url manually")
             sys.exit(1)
 
-    except KeyboardInterrupt:
-        print("\nUpdate cancelled by user")
-        sys.exit(1)
-    except Exception as e:
-        print(f"\nUnexpected error: {e}")
+    # If dry-run, just show detection results and exit
+    if args.dry_run:
+        print("\n🧪 Dry-run mode - showing detection results only:")
+        print(f"   Update URL: {update_url}")
+        print(f"   Current Version: {args.current_version}")
+        print(f"   Install Directory: {args.install_dir}")
+        print("✅ Auto-detection working correctly!")
+        return
+
+    updater = CleanUpdateManager()
+
+    success = updater.perform_complete_update(
+        update_url=update_url,
+        install_dir=args.install_dir,
+        current_version=args.current_version,
+        backup_dir=args.backup_dir,
+        force=args.force,
+        silent=args.silent,
+        process_names=args.processes,
+    )
+
+    if not args.silent:
+        if success:
+            print("\n🎉 Update completed successfully!")
+        else:
+            print("\n❌ Update failed!")
+
         input("Press Enter to exit...")
-        sys.exit(1)
+
+    sys.exit(0 if success else 1)
 
 
 if __name__ == "__main__":

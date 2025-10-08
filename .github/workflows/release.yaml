@@ -270,12 +270,12 @@ jobs:
           ${COMMITS}
 
           ## Downloads
-          - **Windows Portable**: epc-ic-v${VERSION_NUMBER}-windows-x64.zip (Complete application folder)
+          - **Windows windows-x64**: epc-ic-v${VERSION_NUMBER}-windows-x64.zip (Complete application folder)
           - **Windows Installer**: epc-ic-${VERSION_NUMBER}-windows-installer-x64.exe (Recommended for most users)
 
           ## Installation
 
-          ### Option 1: Portable Version (Recommended)
+          ### Option 1: windows-x64 Version (Recommended)
           1. Download \`epc-ic-v${VERSION_NUMBER}-windows-x64.zip\`
           2. Extract the ZIP file to your desired location
           3. Run \`EPC Information Combiner.exe\` from the extracted folder
