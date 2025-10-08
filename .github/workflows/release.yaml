@@ -161,15 +161,15 @@ jobs:
               # Create ZIP archive
               cd "executable-windows/dist"
               echo "Creating ZIP archive from 'EPC Information Combiner' folder..."
-              zip -r "../../epc-ic-v${VERSION_NUMBER}-windows-x64.zip" "EPC Information Combiner"
+              zip -r "../../epc-ic-${VERSION_NUMBER}-windows-x64.zip" "EPC Information Combiner"
               cd ../..
               
-              echo "Archive created: epc-ic-v${VERSION_NUMBER}-windows-x64.zip"
-              ls -la epc-ic-v${VERSION_NUMBER}-windows-x64.zip
+              echo "Archive created: epc-ic-${VERSION_NUMBER}-windows-x64.zip"
+              ls -la epc-ic-${VERSION_NUMBER}-windows-x64.zip
               
               # Verify zip contents (show first 10 files)
               echo -e "\n ZIP file contents (first 10 files):"
-              unzip -l "epc-ic-v${VERSION_NUMBER}-windows-x64.zip" | head -15
+              unzip -l "epc-ic-${VERSION_NUMBER}-windows-x64.zip" | head -15
               
             else
               echo "EPC Information Combiner.exe not found in $EXPECTED_PATH"
@@ -194,11 +194,11 @@ jobs:
               cd "$(dirname "$EXE_DIR")"
               FOLDER_NAME=$(basename "$EXE_DIR")
               echo "Creating ZIP from folder: $FOLDER_NAME"
-              zip -r "../epc-ic-v${VERSION}-windows-x64.zip" "$FOLDER_NAME"
+              zip -r "../epc-ic-${VERSION}-windows-x64.zip" "$FOLDER_NAME"
               cd ..
               
-              echo "Archive created: epc-ic-v${VERSION}-windows-x64.zip"
-              ls -la epc-ic-v${VERSION}-windows-x64.zip
+              echo "Archive created: epc-ic-${VERSION}-windows-x64.zip"
+              ls -la epc-ic-${VERSION}-windows-x64.zip
               
             else
               echo "EPC Information Combiner.exe not found anywhere in artifacts!"
@@ -275,13 +275,13 @@ jobs:
 
           ## Installation
 
-          ### Option 1: windows-x64 Version (Recommended)
+          ### Option 1: Portable Version (Recommended)
           1. Download \`epc-ic-v${VERSION_NUMBER}-windows-x64.zip\`
           2. Extract the ZIP file to your desired location
           3. Run \`EPC Information Combiner.exe\` from the extracted folder
 
           ### Option 2: Windows Installer (Recommended)
-          1. Download \`epc-ic-${VERSION_NUMBER}-windows-installer-x64.exe\`
+          1. Download \`epc-ic-v${VERSION_NUMBER}-windows-installer-x64.exe\`
           2. Run the installer as administrator
           3. Follow the installation wizard
           4. Launch from Start Menu or Desktop shortcut
