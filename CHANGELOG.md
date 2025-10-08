@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2024-10-02
 
-### Added
+### Features
 
 - Login with MES account
 - Searching command number and order information
@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.1-rc] - 2025-10-04
 
-### Added 
+### Features 
 - Refetch command number information
 - Continuos Integration: Windows installation downloader
 
@@ -37,12 +37,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - EPC Combination form validation
 - Multi-language display
 
-## [1.1.2-rc] - 2025-10-06
+## [1.1.2] - 2025-10-08
+
+### Added
+
+- CI/CD on new version release created
+
+### Features
+
+- Check for new version if available
+- Install new version console window
 
 ### Fixed
-- Multi-language notification display
+
+- Clean up scanned EPC after write csv successfully
+
 
 
 [1.1]: https://github.com/quanghiep03198/epc_combiner_tool/releases/tag/v1.1
 [1.1.1-rc]: https://github.com/username/epc-combiner-tool/releases/tag/v1.1.1-rc
-[1.1.1]: https://github.com/username/epc-combiner-tool/releases/tag/v1.1.1
+[1.1.2]: https://github.com/username/epc-combiner-tool/releases/tag/v1.1.2
