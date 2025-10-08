@@ -1,6 +1,8 @@
 # Import built-in modules
 import sys
 import os
+import signal
+import atexit
 
 # Import PyQt6 modules
 from PyQt6.QtCore import *
@@ -30,6 +32,9 @@ from contexts.auth_context import auth_context
 from i18n import I18nService, Language
 from helpers.resolve_path import resolve_path
 from database import db_service
+
+# from version import get_latest_release_version
+from helpers.version import version_info
 
 
 class MainWindow(QMainWindow):
@@ -98,7 +103,7 @@ class MainWindow(QMainWindow):
         order_table_layout.setSpacing(10)
         self.order_detail_title = QLabel()
         self.order_detail_title.setObjectName("playground_section_title")
-        order_table_widget = QWidget(self.container)
+        order_table_widget = QWidget()
         order_table_widget.setLayout(order_table_layout)
         self.order_detail_table = OrderDetailTableWidget(self)
         order_table_layout.addWidget(self.order_detail_title)
@@ -112,7 +117,7 @@ class MainWindow(QMainWindow):
         sizing_table_layout.setSpacing(10)
         self.sizing_detail_title = QLabel()
         self.sizing_detail_title.setObjectName("playground_section_title")
-        sizing_table_widget = QWidget(self.container)
+        sizing_table_widget = QWidget()
         sizing_table_widget.setLayout(sizing_table_layout)
         self.sizing_detail_table = SizingDetailTableWidget(self)
         sizing_table_layout.addWidget(self.sizing_detail_title)
@@ -124,7 +129,7 @@ class MainWindow(QMainWindow):
         self.combine_form_layout = QVBoxLayout()
         self.combine_form_layout.setSpacing(10)
         self.combine_form_layout.setContentsMargins(0, 0, 0, 0)
-        self.combine_form_widget = QWidget(self.container)
+        self.combine_form_widget = QWidget()
         self.combine_form_widget.setLayout(self.combine_form_layout)
         self.combine_form_title = QLabel()
         self.combine_form_title.setObjectName("playground_section_title")
@@ -142,7 +147,14 @@ class MainWindow(QMainWindow):
         self.app_layout.setStretch(1, 3)
 
         self.setCentralWidget(self.container)
-        self.setWindowTitle("EPC IC - v1.1")
+        # Set window title with version
+        self.setWindowTitle(f"EPC Information Combiner {version_info}")
+
+        # Log version info
+        logger.info(f"Starting EPC Information Combiner {version_info}")
+        logger.info(
+            f"Build: {version_info.build_type} | Commit: {version_info.commit_hash}"
+        )
         self.addToolBar(self.toolbar)
 
         QMetaObject.connectSlotsByName(self)
@@ -156,6 +168,9 @@ class MainWindow(QMainWindow):
         __event_emitter__.on(UserActionEvent.AUTH_STATE_CHANGE.value)(
             self.on_auth_state_change
         )
+
+        # Setup signal handlers for graceful shutdown
+        self.setup_signal_handlers()
 
     def __translate__(self):
         self.order_detail_title.setText(I18nService.t("labels.order_detail_title"))
@@ -235,6 +250,9 @@ class MainWindow(QMainWindow):
         Bootstrap the application with the necessary configurations and settings.
         """
 
+        # Setup signal handlers for graceful shutdown
+        self.setup_signal_handlers()
+
         self.__set_font()
         self.__set_stylesheet()
 
@@ -250,9 +268,86 @@ class MainWindow(QMainWindow):
 
         self.show()
         self.on_auth_state_change(auth_context)
+        # version = get_latest_release_version("quanghiep03198", "epc_combiner_tool")
+        # print(f"Phiên bản mới nhất: {version}")
 
     def disconnect_reader(reader_name):
         pass
+
+    def setup_signal_handlers(self):
+        """Setup signal handlers for graceful shutdown"""
+
+        def signal_handler(signum, frame):
+            print(f"🔔 Received signal {signum}, initiating graceful shutdown...")
+            self.graceful_shutdown()
+
+        # Register signal handlers (Windows)
+        if hasattr(signal, "SIGTERM"):
+            signal.signal(signal.SIGTERM, signal_handler)
+        if hasattr(signal, "SIGINT"):
+            signal.signal(signal.SIGINT, signal_handler)
+
+        # Register exit handler
+        atexit.register(self.cleanup_on_exit)
+
+    def graceful_shutdown(self):
+        """Perform graceful shutdown operations"""
+        try:
+            print("🔄 Starting graceful shutdown...")
+
+            # Close any open dialogs
+            for widget in QApplication.allWidgets():
+                if isinstance(widget, QDialog) and widget.isVisible():
+                    widget.close()
+
+            # Disconnect from database
+            try:
+                db_service.close_connection()
+                print("✅ Database connection closed")
+            except:
+                pass
+
+            # Close main window
+            self.close()
+
+            # Quit application
+            QApplication.quit()
+
+        except Exception as e:
+            print(f"Error during graceful shutdown: {e}")
+        finally:
+            # Force exit if needed
+            sys.exit(0)
+
+    def cleanup_on_exit(self):
+        """Cleanup function called on exit"""
+        try:
+            print("🧹 Performing exit cleanup...")
+            # Any additional cleanup code here
+        except:
+            pass
+
+    def closeEvent(self, event):
+        """Override close event for proper cleanup"""
+        try:
+            print("🔄 Main window closing...")
+
+            # Save any pending data
+            # Close database connections
+            try:
+                db_service.close_connection()
+            except:
+                pass
+
+            # Accept the close event
+            event.accept()
+
+            # Ensure application quits
+            QApplication.quit()
+
+        except Exception as e:
+            print(f"Error during close event: {e}")
+            event.accept()  # Accept anyway
 
     # region Application shutdown
     def on_application_shutdown(self):

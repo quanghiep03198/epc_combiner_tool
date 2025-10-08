@@ -2,6 +2,7 @@ cn_dictionary: dict = {
     "actions": {
         "cancel": "取消",
         "change_languague": "更改语言",
+        "check_for_update": "检查更新",
         "close": "关闭",
         "compensate": "补",
         "compensating_combination": "补配对",

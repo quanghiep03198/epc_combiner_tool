@@ -35,7 +35,6 @@ class AppToolBar(QToolBar, I18nContext):
             }
         """
         )
-
         self.user_locale_layout = QHBoxLayout()
         self.user_locale_layout.setContentsMargins(4, 0, 0, 0)
         self.user_locale_layout.setSpacing(8)

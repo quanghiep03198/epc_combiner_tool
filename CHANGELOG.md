@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Translate combine EPC failure message
 - Escape single quotes in JSON data for database insertion
 
-## [1.1.1] - 2025-10-04
+## [1.1.1-rc] - 2025-10-04
 
 ### Added 
 - Refetch command number information
@@ -37,5 +37,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - EPC Combination form validation
 - Multi-language display
 
+## [1.1.2-rc] - 2025-10-06
+
+### Fixed
+- Multi-language notification display
+
+
 [1.1]: https://github.com/quanghiep03198/epc_combiner_tool/releases/tag/v1.1
+[1.1.1-rc]: https://github.com/username/epc-combiner-tool/releases/tag/v1.1.1-rc
 [1.1.1]: https://github.com/username/epc-combiner-tool/releases/tag/v1.1.1

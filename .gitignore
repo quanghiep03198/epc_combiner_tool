@@ -184,5 +184,6 @@ data/
 # VS Code settings
 .vscode/
 
-# Installer
-.installer/
+# Backup folders
+backup*/
+build*/

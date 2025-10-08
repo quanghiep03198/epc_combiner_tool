@@ -2,6 +2,7 @@ en_dictionary: dict = {
     "actions": {
         "cancel": "Cancel",
         "change_languague": "Change language",
+        "check_for_update": "Check for update",
         "close": "Close",
         "compensate": "Compensate",
         "compensating_combination": "Compensating combination",
