@@ -11,7 +11,9 @@ EPC Combiner Tool is a desktop application developed in Python for combining EPC
 
 ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
 ![Qt](https://img.shields.io/badge/Qt-%23217346.svg?style=for-the-badge&logo=Qt&logoColor=white)
-![Inno](https://img.shields.io/badge/inno-white?style=for-the-badge)
+![MicrosoftSQLServer](https://img.shields.io/badge/Microsoft%20SQL%20Server-CC2927?style=for-the-badge&logo=microsoft%20sql%20server&logoColor=white)
+![Inno](https://img.shields.io/badge/inno%20setup-005799?style=for-the-badge)
+![GitHub Actions](https://img.shields.io/badge/github%20actions-%232671E5.svg?style=for-the-badge&logo=githubactions&logoColor=white)
 
 ## Folder structure
 ```
