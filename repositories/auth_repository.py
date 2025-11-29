@@ -20,8 +20,6 @@ class AuthRepository:
             bind_values={"username": username},
         )
 
-        logger.debug(f"User query result for username '{username}': {result}")
-
         if result is None or len(result) == 0:
             return {
                 "id": None,
