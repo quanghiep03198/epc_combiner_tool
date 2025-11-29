@@ -5,7 +5,7 @@ from events import __event_emitter__
 
 class RFIDService:
     @staticmethod
-    def reset_and_add_combinations(data: dict) -> int | None:
+    def reset_and_add_combinations(data: list[dict]) -> int | None:
         """
         Cancel the previous combinations and add new the ones
         """

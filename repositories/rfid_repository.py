@@ -5,11 +5,19 @@ from database import db_service, DatabaseConnection
 from contexts.auth_context import auth_context
 from helpers.disutils import strtobool
 import json
+from constants import CombineAction
+from pathlib import Path
+from repositories.station_repository import StationRepository
+from PyQt6.QtCore import QDateTime
 
 
 class RFIDRepository:
+    __epc_trace_history_sql_file_path = (
+        Path(__file__).parent.resolve() / "./sql/epc_trace_history.sql"
+    )
+
     @staticmethod
-    def check_reasonable_combination(data: dict) -> list[dict]:
+    def check_reasonable_combination(data: list[dict]) -> list[dict]:
         result: list[dict] = []
         try:
             connection = db_service.get_connection(DatabaseConnection.DATA_LAKE)
@@ -38,17 +46,34 @@ class RFIDRepository:
             raise Exception("Error checking reasonable combination")
 
     @staticmethod
-    def reset_and_add_combinations(data: dict):
+    def reset_and_add_combinations(data: list[dict]) -> int | None:
+        connection = None
+        query = None
         try:
-
             connection = db_service.get_connection(DatabaseConnection.DATA_LAKE)
+
+            # Bắt đầu transaction
+            if not connection.transaction():
+                raise Exception("Failed to start transaction")
+
             query = QSqlQuery(connection)
             epc_params_str = ",".join([f"'{item['EPC_Code']}'" for item in data])
+            logger.info(f"EPC Params String: >> {epc_params_str}")
             fallback_station_no = "%s_%s" % (auth_context.get("factory_code"), "PA103")
 
             # Force end EPC's lifecycle
             query.prepare(
                 f"""-- sql
+                WITH CTE_MatchKeys AS (
+                    SELECT a.keyid as matchkeyid 
+                    FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst a
+                    INNER JOIN DV_DATA_LAKE.dbo.dv_RFIDrecordmst b
+                        ON a.EPC_Code = b.EPC_Code
+                        AND a.keyid = b.matchkeyid
+                    WHERE a.EPC_Code IN ({epc_params_str})
+                        AND a.ri_cancel = 0  
+                        AND b.stationNO NOT LIKE '%P%103'
+                )
                 UPDATE DV_DATA_LAKE.dbo.dv_RFIDrecordmst
                 SET stationNO = (
                     SELECT COALESCE(
@@ -72,17 +97,7 @@ class RFIDRepository:
                     user_name_updated = '{combine_form_context.get("user_name_updated")}',
                     record_time = DATEADD(DAY, -7, GETDATE()),
                     remark = 'Forced lifecycle end by {combine_form_context.get("user_name_updated")}'
-                WHERE 
-                    matchkeyid IN (
-                        SELECT a.keyid as matchkeyid 
-                        FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst a
-                        INNER JOIN DV_DATA_LAKE.dbo.dv_RFIDrecordmst b
-                            ON a.EPC_Code = b.EPC_Code
-                            AND a.keyid = b.matchkeyid
-                        WHERE a.EPC_Code IN ({epc_params_str})
-                            AND a.ri_cancel = 0  
-                            AND b.stationNO NOT LIKE '%P%103'
-                    )
+                WHERE matchkeyid IN (SELECT matchkeyid FROM CTE_MatchKeys)
                 ;
                 """
             )
@@ -111,7 +126,7 @@ class RFIDRepository:
 
             # Insert new records
             # Convert data to JSON format
-            json_data = json.dumps(data, ensure_ascii=False).replace("'", "''")
+            json_data = json.dumps(obj=data, ensure_ascii=False).replace("'", "''")
 
             # Use the JSON to perform an insert-select operation
             query.prepare(
@@ -163,11 +178,66 @@ class RFIDRepository:
             if not query.exec():
                 raise Exception(query.lastError().text())
 
+            if combine_form_context["ri_type"] == CombineAction.COMPENSATE.value:
+                trace_history_stations = StationRepository.get_station_history(
+                    mo_no=combine_form_context["mo_no"],
+                    size_numcode=combine_form_context["size_numcode"],
+                    station_seq_no=combine_form_context["station_seq_no"],
+                )
+                # Insert trace history for each station before compensation point
+                json_epcs_codes = json.dumps(
+                    obj=[item["EPC_Code"] for item in data],
+                    ensure_ascii=False,
+                )
+                for station in trace_history_stations:
+                    RFIDRepository.trace_history_at_station(
+                        query_runner=query,
+                        json_epcs_codes=json_epcs_codes,
+                        station_no=station["station_no"],
+                        record_time=station["last_record_time"],
+                    )
+                RFIDRepository.trace_history_at_station(
+                    query_runner=query,
+                    json_epcs_codes=json_epcs_codes,
+                    station_no=combine_form_context["station_no"],
+                    record_time=(
+                        QDateTime.currentDateTime()
+                        .addDays(-7)
+                        .toString("yyyy-MM-dd HH:mm:ss")
+                    ),
+                )
+
             connection.commit()
             return query.numRowsAffected()
         except Exception as e:
-            connection.rollback()
-            logger.error(f"Error in RFIDRepository: {e}")
+            # Rollback transaction nếu có lỗi
+            if connection is not None:
+                connection.rollback()
+                logger.error(f"Transaction rolled back due to error: {e}")
+            else:
+                logger.error(f"Connection not established: {e}")
             raise Exception(e)
         finally:
-            query.finish()
+            # Cleanup resources
+            if query is not None:
+                query.finish()
+            # Connection sẽ được quản lý bởi db_service, không cần close ở đây
+
+    @staticmethod
+    def trace_history_at_station(
+        query_runner: QSqlQuery,
+        json_epcs_codes: str,
+        station_no: str,
+        record_time: str,
+    ):
+        query_runner.prepare(
+            db_service.get_raw_sql(RFIDRepository.__epc_trace_history_sql_file_path)
+        )
+        query_runner.bindValue(":json_epcs_codes", json_epcs_codes)
+        query_runner.bindValue(":factory_code", auth_context.get("factory_code"))
+        query_runner.bindValue(":station_no", station_no)
+        query_runner.bindValue(":record_time", record_time)
+        query_runner.bindValue(":username", auth_context.get("user_code"))
+
+        if not query_runner.exec():
+            raise Exception(query_runner.lastError().text())
