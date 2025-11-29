@@ -268,8 +268,6 @@ class MainWindow(QMainWindow):
 
         self.show()
         self.on_auth_state_change(auth_context)
-        # version = get_latest_release_version("quanghiep03198", "epc_combiner_tool")
-        # print(f"Phiên bản mới nhất: {version}")
 
     def disconnect_reader(reader_name):
         pass
