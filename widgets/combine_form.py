@@ -16,6 +16,7 @@ from helpers.write_data import write_data
 from contexts.auth_context import auth_context
 from i18n import I18nContext
 from decorators.debounce import pyqtDebounce
+from repositories.station_repository import StationRepository
 
 
 class WorkerSignals(QObject):
@@ -94,10 +95,22 @@ class CombineForm(QFrame, I18nContext):
 
         self.action_select.setCurrentIndex(0)
         self.action_select.currentIndexChanged.connect(
-            lambda item: self.on_combine_from_state_change(
-                "ri_type", self.action_select.itemData(item)
-            )
+            lambda item: self.handle_action_change(self.action_select.itemData(item))
         )
+
+        # Action select
+        self.station_select = QComboBox(parent=self)
+        self.station_select.setObjectName("stationSelect")
+        self.station_select.setVisible(False)
+        self.station_select.currentIndexChanged.connect(self.handle_station_change)
+        # self.station_select.addItem(
+        #     CombineAction.COMBINE_NEW.value, CombineAction.COMBINE_NEW.value
+        # )
+        # self.action_select.addItem(
+        #     CombineAction.COMPENSATE.value, CombineAction.COMPENSATE.value
+        # )
+
+        # self.station_select.setCurrentIndex(0)
 
         # Size select
         self.size_select = QComboBox(parent=self)
@@ -122,6 +135,7 @@ class CombineForm(QFrame, I18nContext):
         self.combine_proceed_button.clicked.connect(self.on_combine_proceed)
 
         self.combine_form_layout.addWidget(self.action_select)
+        self.combine_form_layout.addWidget(self.station_select)
         self.combine_form_layout.addWidget(self.mo_noseq_select)
         self.combine_form_layout.addWidget(self.size_select)
         self.combine_form_layout.addWidget(self.combine_proceed_button)
@@ -194,15 +208,25 @@ class CombineForm(QFrame, I18nContext):
         combine_form_context.update(dept_code=f"{data['factory_code']}A0000")
         combine_form_context.update(dept_name=f"{data['factory_code']}A0000")
 
-    def handle_get_mo_noseq(self, data: list[str]):
-        try:
-            self.combine_proceed_button.setEnabled(False)
-            self.mo_noseq_select.clear()
-            self.mo_noseq_select.addItem(I18nService.t("labels.all"), "all")
-            for mo_noseq in data:
-                self.mo_noseq_select.addItem(mo_noseq, mo_noseq)
-        except Exception as e:
-            logger.error(e)
+        self.__target_trace_history_stations = StationRepository.get_stations()
+        self.station_select.clear()
+        for station in self.__target_trace_history_stations:
+            self.station_select.addItem(station["station_no"], station["station_no"])
+
+    @pyqtSlot(str)
+    def handle_action_change(self, value):
+        self.station_select.setVisible(value == CombineAction.COMPENSATE.value)
+        self.on_combine_from_state_change("ri_type", value)
+
+    @pyqtSlot(int)
+    def handle_station_change(self, index):
+        self.on_combine_from_state_change(
+            "station_no", self.__target_trace_history_stations[index]["station_no"]
+        )
+        self.on_combine_from_state_change(
+            "station_seq_no",
+            int(self.__target_trace_history_stations[index]["station_seq_no"]),
+        )
 
     @pyqtSlot(str)
     def handle_selected_size_change(self, value: str):
@@ -234,6 +258,16 @@ class CombineForm(QFrame, I18nContext):
         __event_emitter__.emit(UserActionEvent.MO_NOSEQ_CHANGE.value, value)
         if value == "all":
             self.combine_proceed_button.setEnabled(False)
+
+    def handle_get_mo_noseq(self, data: list[str]):
+        try:
+            self.combine_proceed_button.setEnabled(False)
+            self.mo_noseq_select.clear()
+            self.mo_noseq_select.addItem(I18nService.t("labels.all"), "all")
+            for mo_noseq in data:
+                self.mo_noseq_select.addItem(mo_noseq, mo_noseq)
+        except Exception as e:
+            logger.error(e)
 
     def on_combine_from_state_change(self, field, value) -> None:
         """
@@ -372,7 +406,7 @@ class CombineForm(QFrame, I18nContext):
         toast.show()
 
     def __validate_submission_criteria(self) -> bool:
-        return (
+        is_valid = (
             combine_form_context["ri_type"] is not None
             and combine_form_context["mo_no"] is not None
             and combine_form_context["mo_noseq"] is not None
@@ -385,3 +419,13 @@ class CombineForm(QFrame, I18nContext):
             and combine_form_context["cust_shoestyle"] is not None
             and combine_form_context["has_epc"]
         )
+        is_compensating = (
+            combine_form_context["ri_type"] == CombineAction.COMPENSATE.value
+        )
+        if is_compensating:
+            return (
+                is_valid
+                and combine_form_context["station_no"] is not None
+                and combine_form_context["station_seq_no"] is not None
+            )
+        return is_valid

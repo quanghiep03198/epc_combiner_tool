@@ -31,6 +31,8 @@ combine_form_context = {
     "sole_tag": "A",
     "sole_tag_rate": 1,
     "sole_tag_round": 1,
+    "station_no": None,
+    "station_seq_no": None,
     "isactive": "Y",
 }
 """

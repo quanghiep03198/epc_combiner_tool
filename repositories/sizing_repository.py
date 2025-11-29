@@ -1,12 +1,6 @@
 from PyQt6.QtSql import *
-from helpers.logger import logger
 from pathlib import Path
-from database import db_service, DataSources, DatabaseConnection
-from helpers.configuration import ConfigService
-
-# from database import DATA_SOURCE_ERP
-
-configuration = ConfigService.load_configs()
+from database import db_service, DatabaseConnection
 
 
 class SizingRepository:
