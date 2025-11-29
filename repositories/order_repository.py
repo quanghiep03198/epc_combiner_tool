@@ -36,30 +36,3 @@ class OrderRepository:
             sql_query=db_service.get_raw_sql(OrderRepository.__sql_file_path),
             bind_values={"mo_no": params["mo_no"]},
         )
-        # results = []
-        # try:
-        #     sql_statement = db_service.get_raw_sql(OrderRepository.__sql_file_path)
-        #     connection = db_service.get_connection(DatabaseConnection.ERP)
-        #     query = QSqlQuery(connection)
-        #     query.prepare(sql_statement)
-        #     query.bindValue(":mo_no", params["mo_no"])
-        #     query.exec()
-        #     while query.next():
-        #         results.append(
-        #             {
-        #                 "shoestyle_codefactory": query.value("shoestyle_codefactory"),
-        #                 "mo_no": query.value("mo_no"),
-        #                 "mat_code": query.value("mat_code"),
-        #                 "cust_shoestyle": query.value("cust_shoestyle"),
-        #                 "mo_noseq": query.value("mo_noseq"),
-        #                 "or_no": query.value("or_no"),
-        #                 "or_custpo": query.value("or_custpo"),
-        #                 "size_qty": query.value("size_qty"),
-        #             }
-        #         )
-
-        # except Exception as e:
-        #     logger.error(f"Error finding order detail: {e}")
-        # finally:
-        #     query.finish()
-        #     return results
