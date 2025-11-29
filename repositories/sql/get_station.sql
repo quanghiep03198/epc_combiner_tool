@@ -1,4 +1,4 @@
-DECLARE @mo_no NVARCHAR(10) = 'VA1';
+DECLARE @FactoryCode NVARCHAR(10) = :factory_code;
 
 SELECT DISTINCT device_name AS station_no,
 CASE 
@@ -11,7 +11,7 @@ END AS station_seq_no
 FROM DV_DATA_LAKE.dbo.dv_rfidreader 
 WHERE device_name NOT LIKE 'CUS%' -- Exclude customer RFID readers
 AND device_name NOT LIKE '%_FC%' -- Exclude FC department RFID readers
-AND device_name LIKE CONCAT('%', @mo_no, '%') 
+AND device_name LIKE CONCAT('%', @FactoryCode, '%') 
 ORDER BY
 station_seq_no ASC,
 device_name ASC;
