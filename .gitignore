@@ -38,9 +38,7 @@ pip-delete-this-directory.txt
 
 # Temporary files
 .tmp/
-
-# Inno Setup
-.inno/Output/
+.temp/
 
 # Unit test / coverage reports
 htmlcov/
