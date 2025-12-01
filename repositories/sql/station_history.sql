@@ -8,11 +8,12 @@ WITH BaseData AS (
       record_time,
       -- * Pre-calculate station type to avoid repeated CASE
       CASE 
-         WHEN stationNO LIKE '%P%' THEN 4
-         WHEN stationNO LIKE '%IH%' THEN 3
-         WHEN stationNO LIKE '%DH%' THEN 2
-         WHEN stationNO LIKE '%M%' THEN 1
-         ELSE 1
+         WHEN stationNO LIKE '%P%' THEN 5
+         WHEN stationNO LIKE '%IH%' THEN 4
+         WHEN stationNO LIKE '%DH%' THEN 3
+         WHEN stationNO LIKE '%M%' THEN 2
+         WHEN stationNO LIKE '%FC%' THEN 1
+         ELSE 999
       END AS station_seq_no,
       -- * Determine station type for branching
       CASE 
@@ -25,8 +26,9 @@ WITH BaseData AS (
    WHERE 
       mo_no = @MoNo
       AND size_code = @SizeNumCode
-      AND stationNO NOT LIKE '%FC%'
       AND stationNO NOT LIKE '%P%102'
+      AND stationNO NOT LIKE 'CUS%'
+
 ),
 ParallelStations AS (
    -- * Handle parallel stations (M, PA/PB/.../PG 101-103)

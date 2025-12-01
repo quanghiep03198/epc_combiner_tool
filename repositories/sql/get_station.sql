@@ -10,7 +10,7 @@ CASE
 END AS station_seq_no
 FROM DV_DATA_LAKE.dbo.dv_rfidreader 
 WHERE device_name NOT LIKE 'CUS%' -- Exclude customer RFID readers
-AND device_name NOT LIKE '%_FC%' -- Exclude FC department RFID readers
+AND device_name NOT LIKE '%FC%' -- Exclude FC department RFID readers
 AND device_name LIKE CONCAT('%', @FactoryCode, '%') 
 ORDER BY
 station_seq_no ASC,
