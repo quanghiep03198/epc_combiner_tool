@@ -82,6 +82,7 @@ cn_dictionary: dict = {
         "logout_success_title": "登出成功",
         "missing_setting_title": "缺少设置",
         "missing_setting_text": "请填写所有设置信息",
+        "missing_station_point_history": "无法补标：缺少补标点之前的站点历史记录.",
         "over_scan_limit_text": "请重新扫描以更新配双数量",
         "over_scan_limit_title": "EPC数量已超出所需的配双数量",
         "processing": "处理中...",

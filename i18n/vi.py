@@ -80,6 +80,7 @@ vi_dictionary: dict = {
         "logout_success_title": "Đăng xuất thành công",
         "missing_setting_title": "Cài đặt kết nối chưa được thiết lập đầy đủ",
         "missing_setting_text": "Vui lòng điền đầy đủ thông tin cài đặt.",
+        "missing_station_point_history": "Không thể bù: Thiếu lịch sử trạm trước trạm được bù.",
         "over_scan_limit_text": "Vui lòng quét lại với số lượng phối mới",
         "over_scan_limit_title": "Số lượng EPC vượt quá số lượng cần phối",
         "processing": "Đang xử lý...",

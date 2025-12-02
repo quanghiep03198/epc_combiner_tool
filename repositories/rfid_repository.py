@@ -9,6 +9,7 @@ from constants import CombineAction
 from pathlib import Path
 from repositories.station_repository import StationRepository
 from PyQt6.QtCore import QDateTime
+from i18n import I18nService
 
 
 class RFIDRepository:
@@ -179,27 +180,87 @@ class RFIDRepository:
                 raise Exception(query.lastError().text())
 
             if combine_form_context["ri_type"] == CombineAction.COMPENSATE.value:
-                trace_history_stations = StationRepository.get_station_history(
+                station_history = StationRepository.get_station_history(
                     mo_no=combine_form_context["mo_no"],
                     size_numcode=combine_form_context["size_numcode"],
                     station_seq_no=combine_form_context["station_seq_no"],
                 )
+                logger.debug(f"Station history: {station_history}")
+
+                # Get max station_seq_no in trace_history_stations
+                max_station_seq_no = max(
+                    station.get("station_seq_no", 0) for station in station_history
+                )
+                logger.debug(f"Max station_seq_no: {max_station_seq_no}")
+
+                """
+                Validate missing station history before compensation point
+                If missing, raise exception to rollback transaction
+                """
+                if combine_form_context["station_seq_no"] > max_station_seq_no:
+                    logger.error(
+                        "Cannot compensate: Missing station history before compensation point."
+                    )
+                    raise Exception(
+                        I18nService.t("notification.missing_station_point_history")
+                    )
                 # Insert trace history for each station before compensation point
                 json_epcs_codes = json.dumps(
                     obj=[item["EPC_Code"] for item in data],
                     ensure_ascii=False,
                 )
+                # Filter stations with station_seq_no < compensation point
+                trace_history_stations = [
+                    station
+                    for station in station_history
+                    if station.get("station_seq_no", 0)
+                    < combine_form_context["station_seq_no"]
+                ]
+                logger.debug(f"Actual trace history stations: {trace_history_stations}")
+                target_station: str = combine_form_context["station_no"]
                 for station in trace_history_stations:
-                    RFIDRepository.trace_history_at_station(
-                        query_runner=query,
-                        json_epcs_codes=json_epcs_codes,
-                        station_no=station["station_no"],
-                        record_time=station["last_record_time"],
+                    inoutbound_types: str | None = None
+                    trace_station_no: str = station.get("station_no", "")
+                    last_record_time: str = station.get(
+                        "last_record_time",
+                        (
+                            QDateTime.currentDateTime()
+                            .addDays(-7)
+                            .toString("yyyy-MM-dd HH:mm:ss")
+                        ),
                     )
+
+                    if "IH" in trace_station_no:
+                        inoutbound_types = (
+                            ["A", "B"]
+                            if combine_form_context.get("station_seq_no")
+                            > station.get("station_seq_no", 0)
+                            else ["A"]
+                        )
+                        for type in inoutbound_types:
+                            RFIDRepository.trace_history_at_station(
+                                query_runner=query,
+                                json_epcs_codes=json_epcs_codes,
+                                station_no=trace_station_no,
+                                target_station_no=target_station,
+                                inoutbound_type=type,
+                                record_time=last_record_time,
+                            )
+                    else:
+                        RFIDRepository.trace_history_at_station(
+                            query_runner=query,
+                            json_epcs_codes=json_epcs_codes,
+                            station_no=trace_station_no,
+                            target_station_no=target_station,
+                            inoutbound_type="A",
+                            record_time=last_record_time,
+                        )
                 RFIDRepository.trace_history_at_station(
                     query_runner=query,
                     json_epcs_codes=json_epcs_codes,
-                    station_no=combine_form_context["station_no"],
+                    station_no=target_station,
+                    target_station_no=target_station,
+                    inoutbound_type="A",
                     record_time=(
                         QDateTime.currentDateTime()
                         .addDays(-7)
@@ -218,24 +279,27 @@ class RFIDRepository:
                 logger.error(f"Connection not established: {e}")
             raise Exception(e)
         finally:
-            # Cleanup resources
             if query is not None:
                 query.finish()
-            # Connection sẽ được quản lý bởi db_service, không cần close ở đây
 
     @staticmethod
     def trace_history_at_station(
         query_runner: QSqlQuery,
         json_epcs_codes: str,
         station_no: str,
+        inoutbound_type: str,
+        target_station_no: str,
         record_time: str,
     ):
+
         query_runner.prepare(
             db_service.get_raw_sql(RFIDRepository.__epc_trace_history_sql_file_path)
         )
         query_runner.bindValue(":json_epcs_codes", json_epcs_codes)
         query_runner.bindValue(":factory_code", auth_context.get("factory_code"))
         query_runner.bindValue(":station_no", station_no)
+        query_runner.bindValue(":target_station_no", target_station_no)
+        query_runner.bindValue(":inoutbound_type", inoutbound_type)
         query_runner.bindValue(":record_time", record_time)
         query_runner.bindValue(":username", auth_context.get("user_code"))
 

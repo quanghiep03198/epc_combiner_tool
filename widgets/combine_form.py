@@ -103,14 +103,6 @@ class CombineForm(QFrame, I18nContext):
         self.station_select.setObjectName("stationSelect")
         self.station_select.setVisible(False)
         self.station_select.currentIndexChanged.connect(self.handle_station_change)
-        # self.station_select.addItem(
-        #     CombineAction.COMBINE_NEW.value, CombineAction.COMBINE_NEW.value
-        # )
-        # self.action_select.addItem(
-        #     CombineAction.COMPENSATE.value, CombineAction.COMPENSATE.value
-        # )
-
-        # self.station_select.setCurrentIndex(0)
 
         # Size select
         self.size_select = QComboBox(parent=self)
@@ -134,11 +126,15 @@ class CombineForm(QFrame, I18nContext):
         )
         self.combine_proceed_button.clicked.connect(self.on_combine_proceed)
 
-        self.combine_form_layout.addWidget(self.action_select)
-        self.combine_form_layout.addWidget(self.station_select)
-        self.combine_form_layout.addWidget(self.mo_noseq_select)
-        self.combine_form_layout.addWidget(self.size_select)
-        self.combine_form_layout.addWidget(self.combine_proceed_button)
+        self.combine_form_layout.addWidget(self.action_select, 2)
+        self.combine_form_layout.addWidget(self.station_select, 2)
+        self.combine_form_layout.addWidget(self.mo_noseq_select, 2)
+        self.combine_form_layout.addWidget(self.size_select, 2)
+        self.combine_form_layout.addWidget(self.combine_proceed_button, 1)
+        self.action_select.setMinimumWidth(200)
+        self.station_select.setMinimumWidth(200)
+        self.mo_noseq_select.setMinimumWidth(200)
+        self.size_select.setMinimumWidth(200)
 
         # region Event listeners
         # * On current language change
@@ -176,9 +172,7 @@ class CombineForm(QFrame, I18nContext):
         )
         self.mo_noseq_select.setItemText(0, I18nService.t("labels.all"))
         self.action_select.setItemText(0, I18nService.t("actions.new_combination"))
-        self.action_select.setItemText(
-            1, I18nService.t("actions.compensating_combination")
-        )
+        self.action_select.setItemText(1, I18nService.t("actions.compensate"))
         self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
 
     def on_size_list_change(self, data):
@@ -395,13 +389,12 @@ class CombineForm(QFrame, I18nContext):
 
     @pyqtSlot(Exception)
     def on_mutate_error(self, e: Exception):
-        logger.error(e)
         self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
         toast = Toaster(
             parent=self.root,
             title=I18nService.t("notification.combine_epc_failure_title"),
             preset=ToastPreset.ERROR_DARK,
-            text="",
+            text=str(e),
         )
         toast.show()
 
