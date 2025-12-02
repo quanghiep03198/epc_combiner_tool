@@ -1,12 +1,10 @@
 *{
-   
    border-width: 1px;
    border-color: #52525b;
    font-family: "Inter";
    font-weight: Normal;
    font-size: 16px;
    color: #fafafa;
-
 }
 
 QMainWindow, QDialog, #container{
