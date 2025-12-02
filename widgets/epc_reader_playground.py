@@ -39,6 +39,7 @@ class EpcReaderPlayground(QFrame, I18nContext):
 
         self.setObjectName("epc_reader_playground")
         self.setAutoFillBackground(True)
+        self.setMinimumWidth(300)
         self.epc_reader_layout = QVBoxLayout(self)
         self.epc_reader_layout.setContentsMargins(8, 8, 8, 8)
         self.epc_reader_layout.setSpacing(8)
