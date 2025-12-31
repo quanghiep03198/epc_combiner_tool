@@ -2,6 +2,7 @@ from constants import CombineAction
 
 global combine_form_context
 
+
 combine_form_context = {
     "has_epc": False,
     "mo_no": None,

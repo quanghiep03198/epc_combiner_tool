@@ -9,8 +9,337 @@ from helpers.logger import logger
 from events import __event_emitter__, UserActionEvent
 from widgets.loading_widget import LoadingWidget
 from i18n import I18nService, I18nContext
+from widgets.toaster import Toaster, ToastPreset
 
 from contexts.combine_form_context import combine_form_context
+
+
+class WorkerSignals(QObject):
+    """
+    Defines the signals available for storing data worker thread.
+    """
+
+    fulfill = pyqtSignal(int)
+    error = pyqtSignal(Exception)
+
+
+class SuborderMigrationWorker(QRunnable):
+    """
+    Worker thread for storing data to the database
+    """
+
+    def __init__(
+        self,
+        payload: dict,
+        on_success: Callable[[int], None],
+        on_error: Callable[[Exception], None],
+    ):
+        super().__init__()
+
+        self.signals = WorkerSignals()
+        self.payload = payload
+        self.signals.fulfill.connect(on_success)
+        self.signals.error.connect(on_error)
+
+    @pyqtSlot()
+    def run(self):
+        try:
+            query_result = SizingRepository.migrate_to_suborder(self.payload)
+            logger.debug(f"Query result: {query_result}, type: {type(query_result)}")
+            if isinstance(query_result, int):
+                self.signals.fulfill.emit(query_result)
+            else:
+                logger.error(f"Query result is not an int, it's {type(query_result)}")
+                self.signals.fulfill.emit(0)
+        except Exception as e:
+            logger.error(e.args)
+            self.signals.error.emit(e)
+
+
+class AdditionalQtyDelegate(QStyledItemDelegate):
+    """Custom delegate cho ô additional_qty với placeholder và validation"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent_widget = parent  # Lưu parent để dùng sau này
+        self.max_values = {}  # Lưu max value cho mỗi cột: {col: max_value}
+        self.size_codes = {}  # Lưu size_numcode cho mỗi cột: {col: size_code}
+        self.current_editing_col = None  # Lưu column đang edit
+        self.current_editing_row = 6  # Row của additional_qty luôn là 6
+
+    def set_max_value(self, col: int, max_value: int):
+        """Set max value cho một column"""
+        self.max_values[col] = max_value
+
+    def set_size_code(self, col: int, size_code: str):
+        """Set size_numcode cho một column"""
+        self.size_codes[col] = size_code
+
+    def createEditor(self, parent, option, index):
+        """Tạo editor với validation"""
+        editor = QLineEdit(parent)
+
+        # Lấy max value cho column này
+        max_value = self.max_values.get(index.column(), 999)
+
+        # Set placeholder
+        editor.setPlaceholderText(f"Max: {max_value}")
+
+        # Validator: chỉ cho phép số từ 1 đến max_value
+        validator = QIntValidator(1, max_value, editor)
+        editor.setValidator(validator)
+
+        # Set geometry để chiếm full width của cell
+        editor.setGeometry(option.rect)
+
+        # Style cho editor - full width
+        editor.setStyleSheet(
+            """
+            QLineEdit {
+                width: 100%;
+                padding: 6px 8px;
+                border: 2px solid #3b82f6;
+                background-color: #171717;
+                color: #ffffff;
+                font-size: 13px;
+            }
+            QLineEdit::placeholder {
+                width: 100%;
+                color: #737373;
+                font-size: 13px;
+            }
+        """
+        )
+
+        # Connect signal để validate realtime
+        editor.textChanged.connect(
+            lambda text: self._on_text_changed(editor, text, max_value)
+        )
+
+        return editor
+
+    def _on_text_changed(self, editor: QLineEdit, text: str, max_value: int):
+        """Validate realtime khi user đang nhập"""
+        if not text:
+            return
+
+        try:
+            value = int(text)
+            # Nếu vượt quá max, block và reset
+            if value > max_value:
+                # Lấy text trước đó (bỏ ký tự cuối)
+                editor.setText(text[:-1])
+                editor.setStyleSheet(
+                    """
+                    QLineEdit {
+                        width: 100%;
+                        padding: 6px 8px;
+                        border: 2px solid #ef4444;
+                        background-color: #171717;
+                        color: #ffffff;
+                        font-size: 13px;
+                    }
+                    QLineEdit::placeholder {
+                        width: 100%;
+                        color: #737373;
+                        font-size: 13px;
+                    }
+                """
+                )
+            elif value < 1:
+                editor.setStyleSheet(
+                    """
+                    QLineEdit {
+                        width: 100%;
+                        padding: 6px 8px;
+                        border: 2px solid #ef4444;
+                        background-color: #171717;
+                        color: #ffffff;
+                        font-size: 13px;
+                    }
+                    QLineEdit::placeholder {
+                        width: 100%;
+                        color: #737373;
+                        font-size: 13px;
+                    }
+                """
+                )
+            else:
+                # Valid
+                editor.setStyleSheet(
+                    """
+                    QLineEdit {
+                        width: 100%;
+                        padding: 6px 8px;
+                        border: 2px solid #22c55e;
+                        background-color: #171717;
+                        color: #ffffff;
+                        font-size: 13px;
+                    }
+                    QLineEdit::placeholder {
+                        width: 100%;
+                        color: #737373;
+                        font-size: 13px;
+                    }
+                """
+                )
+        except ValueError:
+            pass
+
+    def updateEditorGeometry(self, editor, option, index):
+        """Update geometry để editor chiếm full width"""
+        editor.setGeometry(option.rect)
+
+    def setEditorData(self, editor, index):
+        """Set data vào editor khi bắt đầu edit"""
+        value = index.model().data(index, Qt.ItemDataRole.EditRole)
+
+        # Nếu giá trị là placeholder hoặc rỗng thì không set
+        if value and not str(value).startswith("Max:"):
+            editor.setText(str(value))
+        else:
+            editor.clear()
+
+    def setModelData(self, editor, model, index):
+        """Lưu data từ editor vào model"""
+        text = editor.text().strip()
+        col = index.column()
+        max_value = self.max_values.get(col, 999)
+
+        # Nếu rỗng, set lại placeholder
+        if not text:
+            model.setData(index, f"Max: {max_value}", Qt.ItemDataRole.DisplayRole)
+            return
+
+        # Validate lần cuối
+        try:
+            value = int(text)
+
+            if value < 1:
+                # Hiển thị lỗi
+                QMessageBox.warning(
+                    editor,
+                    "Invalid Value",
+                    "Quantity must be at least 1",
+                )
+                model.setData(index, f"Max: {max_value}", Qt.ItemDataRole.DisplayRole)
+                return
+
+            if value > max_value:
+                # Hiển thị lỗi
+                QMessageBox.warning(
+                    editor,
+                    "Invalid Value",
+                    f"Quantity cannot exceed max value of {max_value}",
+                )
+                model.setData(index, f"Max: {max_value}", Qt.ItemDataRole.DisplayRole)
+                return
+
+            # Giá trị hợp lệ - Lưu và log
+            model.setData(index, value, Qt.ItemDataRole.EditRole)
+
+            # Lưu column đang edit để reset sau khi thành công
+            self.current_editing_col = col
+
+            # Log data
+            size_code = self.size_codes.get(col, "Unknown")
+            self.migrateToCurrentSubOrder(size_code, value)
+
+        except ValueError:
+            # Không phải số hợp lệ
+            model.setData(index, f"Max: {max_value}", Qt.ItemDataRole.DisplayRole)
+
+    def migrateToCurrentSubOrder(self, size_numcode: str, quantity: int):
+        """Log data người dùng đã nhập"""
+        data = {
+            "mo_no": combine_form_context.get("mo_no"),
+            "mo_noseq": combine_form_context.get("mo_noseq"),
+            "size_numcode": size_numcode,
+            "additional_qty": quantity,
+        }
+        logger.info(f"[AdditionalQtyDelegate] User input: {data}")
+        worker = SuborderMigrationWorker(
+            data, self.on_mutate_success, self.on_mutate_error
+        )
+        QThreadPool.globalInstance().start(worker)
+
+    @pyqtSlot(int)
+    def on_mutate_success(self, numRowsAffected: int):
+        # Reset cell về placeholder
+        if self.parent_widget and self.current_editing_col is not None:
+            max_value = self.max_values.get(self.current_editing_col, 999)
+            item = self.parent_widget.item(
+                self.current_editing_row, self.current_editing_col
+            )
+            if item:
+                item.setText(f"Max: {max_value}")
+                item.setForeground(QBrush(QColor("#737373")))
+
+        # Refetch data table
+        __event_emitter__.emit(
+            UserActionEvent.MO_NOSEQ_CHANGE.value, combine_form_context["mo_noseq"]
+        )
+
+        Toaster(
+            parent=self.parent_widget.root,
+            title=I18nService.t("notification.migrate_to_suborder_success_title"),
+            text=I18nService.t(
+                "notification.migrate_to_suborder_success_text",
+                plurals={
+                    "quantity": str(numRowsAffected),
+                    "mo_noseq": combine_form_context["mo_noseq"],
+                },
+            ),
+            preset=ToastPreset.SUCCESS_DARK,
+        ).show()
+
+    @pyqtSlot(Exception)
+    def on_mutate_error(self, error: Exception):
+        logger.error(error)
+        if self.parent_widget and hasattr(self.parent_widget, "root"):
+            Toaster(
+                parent=self.parent_widget.root,
+                title=I18nService.t("notification.migrate_to_suborder_failure_title"),
+                text=I18nService.t("notification.migrate_to_suborder_failure_text"),
+                preset=ToastPreset.ERROR_DARK,
+            ).show()
+
+    def displayText(self, value, locale):
+        """Hiển thị text trong cell"""
+        # Nếu là placeholder format thì giữ nguyên
+        if isinstance(value, str) and value.startswith("Max:"):
+            return value
+        # Nếu là số thì convert sang string
+        return str(value) if value else ""
+
+    def paint(self, painter, option, index):
+        """Custom paint để hiển thị placeholder với style khác"""
+        value = index.data(Qt.ItemDataRole.DisplayRole)
+
+        # Nếu là placeholder
+        if isinstance(value, str) and value.startswith("Max:"):
+            # Vẽ background
+            painter.save()
+            painter.fillRect(option.rect, QColor("#171717"))
+
+            # Vẽ text với màu placeholder
+            painter.setPen(QColor("#737373"))
+            font = painter.font()
+            font.setPointSize(10)  # Giảm cỡ chữ cho placeholder
+            painter.setFont(font)
+
+            # Tạo rect với padding bên trái để text không sát mép
+            text_rect = option.rect.adjusted(8, 0, 0, 0)
+
+            painter.drawText(
+                text_rect,
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                value,
+            )
+            painter.restore()
+        else:
+            # Vẽ bình thường
+            super().paint(painter, option, index)
 
 
 class FetchSizeDataWorker(
@@ -39,11 +368,18 @@ class SizingDetailTableWidget(QTableWidget, I18nContext):
         super().__init__(root.container)
         self.root = root
 
+        # Tạo delegate cho hàng 6
+        self.additional_qty_delegate = AdditionalQtyDelegate(self)
+
         self.setContentsMargins(2, 2, 2, 2)
         self.setAutoFillBackground(True)
         self.setFrameShape(QFrame.Shape.NoFrame)
         self.setFrameShadow(QFrame.Shadow.Plain)
-        self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.setEditTriggers(
+            QAbstractItemView.EditTrigger.DoubleClicked
+            | QAbstractItemView.EditTrigger.SelectedClicked
+            | QAbstractItemView.EditTrigger.EditKeyPressed
+        )
         self.setMidLineWidth(1)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
@@ -64,16 +400,14 @@ class SizingDetailTableWidget(QTableWidget, I18nContext):
             )
         )
         __event_emitter__.on(UserActionEvent.MO_NOSEQ_CHANGE.value)(
-            lambda value: self.handle_fetch_size_data(
-                {
-                    "mo_no": combine_form_context["mo_no"],
-                    "mo_noseq": value,
-                }
-            )
+            self.on_mo_noseq_change
         )
 
     def __translate__(self):
-        vertical_header_labels: list[str] = [
+        self.__handle_update_table_display()
+
+    def __handle_update_table_display(self):
+        self.vertical_header_labels: list[str] = [
             I18nService.t("fields.size_numcode"),
             I18nService.t("fields.size_qty"),
             I18nService.t("fields.combined_qty"),
@@ -81,11 +415,26 @@ class SizingDetailTableWidget(QTableWidget, I18nContext):
             I18nService.t("fields.compensated_qty"),
             I18nService.t("fields.cancelled_qty"),
         ]
-        self.setRowCount(len(vertical_header_labels))
-        for row in range(len(vertical_header_labels)):
+        if (
+            combine_form_context["mo_noseq"] is not None
+            and combine_form_context["mo_noseq"] != "all"
+            and combine_form_context["mo_noseq"] != "001"
+        ):
+            self.vertical_header_labels.append(I18nService.t("fields.additional_qty"))
+        self.setRowCount(len(self.vertical_header_labels))
+        for row in range(len(self.vertical_header_labels)):
             self.setRowHeight(row, 36)
         self.resizeRowsToContents()
-        self.setVerticalHeaderLabels(vertical_header_labels)
+        self.setVerticalHeaderLabels(self.vertical_header_labels)
+
+    def on_mo_noseq_change(self, value: str):
+        self.__handle_update_table_display()
+        self.handle_fetch_size_data(
+            {
+                "mo_no": combine_form_context["mo_no"],
+                "mo_noseq": value,
+            }
+        )
 
     def handle_fetch_size_data(self, data: dict):
         try:
@@ -102,12 +451,53 @@ class SizingDetailTableWidget(QTableWidget, I18nContext):
             __event_emitter__.emit(UserActionEvent.SIZE_LIST_CHANGE.value, result)
             col: int = 0
             for record in result:
+                # Tạo các items cho từng hàng
                 self.setItem(0, col, QTableWidgetItem(str(record["size_numcode"])))
                 self.setItem(1, col, QTableWidgetItem(str(record["size_qty"])))
                 self.setItem(2, col, QTableWidgetItem(str(record["combined_qty"])))
                 self.setItem(3, col, QTableWidgetItem(str(record["in_use_qty"])))
                 self.setItem(4, col, QTableWidgetItem(str(record["compensated_qty"])))
                 self.setItem(5, col, QTableWidgetItem(str(record["cancelled_qty"])))
+
+                # Set tất cả các ô từ hàng 0-5 là read-only
+                for row in range(6):
+                    if self.item(row, col):
+                        self.item(row, col).setFlags(
+                            Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
+                        )
+
+                # Chỉ hàng 6 mới editable (khi có sub-order hợp lệ)
+                if (
+                    combine_form_context["mo_noseq"] is not None
+                    and combine_form_context["mo_noseq"] != "all"
+                    and combine_form_context["mo_noseq"] != "001"
+                ):
+                    # Hàng 6: Set placeholder "Max: X"
+                    max_add_qty = record["max_add_qty"]
+                    size_numcode = record["size_numcode"]
+
+                    # Tạo placeholder item
+                    placeholder_item = QTableWidgetItem(f"Max: {max_add_qty}")
+                    placeholder_item.setForeground(QBrush(QColor("#737373")))
+                    placeholder_item.setFont(
+                        QFont("Inter", 10, QFont.Weight.Normal, False)
+                    )
+                    self.setItem(6, col, placeholder_item)
+
+                    # Set max value và size_code cho delegate
+                    self.additional_qty_delegate.set_max_value(col, max_add_qty)
+                    self.additional_qty_delegate.set_size_code(col, size_numcode)
+
+                    # Set flags để có thể edit
+                    self.item(6, col).setFlags(
+                        Qt.ItemFlag.ItemIsSelectable
+                        | Qt.ItemFlag.ItemIsEnabled
+                        | Qt.ItemFlag.ItemIsEditable
+                    )
+
+                    # Set delegate cho hàng 6
+                    self.setItemDelegateForRow(6, self.additional_qty_delegate)
+
                 self.handle_highlight_qty(
                     2, col, record["size_qty"], record["combined_qty"]
                 )
