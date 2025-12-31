@@ -66,6 +66,7 @@ class AdditionalQtyDelegate(QStyledItemDelegate):
         self.size_codes = {}  # Lưu size_numcode cho mỗi cột: {col: size_code}
         self.current_editing_col = None  # Lưu column đang edit
         self.current_editing_row = 6  # Row của additional_qty luôn là 6
+        self.enter_pressed = False  # Flag để check xem có phải Enter được nhấn không
 
     def set_max_value(self, col: int, max_value: int):
         """Set max value cho một column"""
@@ -101,12 +102,12 @@ class AdditionalQtyDelegate(QStyledItemDelegate):
                 border: 2px solid #3b82f6;
                 background-color: #171717;
                 color: #ffffff;
-                font-size: 13px;
+                font-size: 14px;
             }
             QLineEdit::placeholder {
                 width: 100%;
                 color: #737373;
-                font-size: 13px;
+                font-size: 14px;
             }
         """
         )
@@ -116,7 +117,14 @@ class AdditionalQtyDelegate(QStyledItemDelegate):
             lambda text: self._on_text_changed(editor, text, max_value)
         )
 
+        # Connect returnPressed để bắt sự kiện Enter
+        editor.returnPressed.connect(lambda: self._on_enter_pressed())
+
         return editor
+
+    def _on_enter_pressed(self):
+        """Được gọi khi user nhấn Enter"""
+        self.enter_pressed = True
 
     def _on_text_changed(self, editor: QLineEdit, text: str, max_value: int):
         """Validate realtime khi user đang nhập"""
@@ -137,12 +145,12 @@ class AdditionalQtyDelegate(QStyledItemDelegate):
                         border: 2px solid #ef4444;
                         background-color: #171717;
                         color: #ffffff;
-                        font-size: 13px;
+                        font-size: 14px;
                     }
                     QLineEdit::placeholder {
                         width: 100%;
                         color: #737373;
-                        font-size: 13px;
+                        font-size: 14px;
                     }
                 """
                 )
@@ -155,12 +163,12 @@ class AdditionalQtyDelegate(QStyledItemDelegate):
                         border: 2px solid #ef4444;
                         background-color: #171717;
                         color: #ffffff;
-                        font-size: 13px;
+                        font-size: 14px;
                     }
                     QLineEdit::placeholder {
                         width: 100%;
                         color: #737373;
-                        font-size: 13px;
+                        font-size: 14px;
                     }
                 """
                 )
@@ -174,12 +182,12 @@ class AdditionalQtyDelegate(QStyledItemDelegate):
                         border: 2px solid #22c55e;
                         background-color: #171717;
                         color: #ffffff;
-                        font-size: 13px;
+                        font-size: 14px;
                     }
                     QLineEdit::placeholder {
                         width: 100%;
                         color: #737373;
-                        font-size: 13px;
+                        font-size: 14px;
                     }
                 """
                 )
@@ -219,8 +227,8 @@ class AdditionalQtyDelegate(QStyledItemDelegate):
                 # Hiển thị lỗi
                 QMessageBox.warning(
                     editor,
-                    "Invalid Value",
-                    "Quantity must be at least 1",
+                    I18nService.t("messages.invalid_value"),
+                    I18nService.t("messages.quantity_must_be_at_least_one"),
                 )
                 model.setData(index, f"Max: {max_value}", Qt.ItemDataRole.DisplayRole)
                 return
@@ -229,21 +237,50 @@ class AdditionalQtyDelegate(QStyledItemDelegate):
                 # Hiển thị lỗi
                 QMessageBox.warning(
                     editor,
-                    "Invalid Value",
-                    f"Quantity cannot exceed max value of {max_value}",
+                    I18nService.t("messages.invalid_value"),
+                    I18nService.t("messages.quantity_cannot_exceed_max").replace(
+                        "{max_value}", str(max_value)
+                    ),
                 )
                 model.setData(index, f"Max: {max_value}", Qt.ItemDataRole.DisplayRole)
                 return
 
-            # Giá trị hợp lệ - Lưu và log
+            # Giá trị hợp lệ - Lưu vào model
             model.setData(index, value, Qt.ItemDataRole.EditRole)
 
-            # Lưu column đang edit để reset sau khi thành công
-            self.current_editing_col = col
+            # Chỉ submit khi Enter được nhấn
+            if self.enter_pressed:
+                # Hiển thị dialog xác nhận
+                reply = QMessageBox.question(
+                    editor,
+                    I18nService.t(key="actions.confirm_save"),
+                    I18nService.t(
+                        key="notification.confirm_migrate_suborder",
+                        plurals={
+                            "mo_noseq": combine_form_context.get("mo_noseq"),
+                            "size_numcode": self.size_codes.get(col, "Unknown"),
+                            "additional_qty": str(value),
+                        },
+                    ),
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No,
+                )
 
-            # Log data
-            size_code = self.size_codes.get(col, "Unknown")
-            self.migrateToCurrentSubOrder(size_code, value)
+                if reply == QMessageBox.StandardButton.Yes:
+                    # Lưu column đang edit để reset sau khi thành công
+                    self.current_editing_col = col
+
+                    # Log data
+                    size_code = self.size_codes.get(col, "Unknown")
+                    self.migrateToCurrentSubOrder(size_code, value)
+                else:
+                    # User chọn No - reset về placeholder
+                    model.setData(
+                        index, f"Max: {max_value}", Qt.ItemDataRole.DisplayRole
+                    )
+
+                # Reset flag
+                self.enter_pressed = False
 
         except ValueError:
             # Không phải số hợp lệ
@@ -325,7 +362,7 @@ class AdditionalQtyDelegate(QStyledItemDelegate):
             # Vẽ text với màu placeholder
             painter.setPen(QColor("#737373"))
             font = painter.font()
-            font.setPointSize(10)  # Giảm cỡ chữ cho placeholder
+            font.setPointSize(11)  # Giảm cỡ chữ cho placeholder
             painter.setFont(font)
 
             # Tạo rect với padding bên trái để text không sát mép
