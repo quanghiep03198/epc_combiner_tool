@@ -276,7 +276,7 @@ class MainWindow(QMainWindow):
         """Setup signal handlers for graceful shutdown"""
 
         def signal_handler(signum, frame):
-            print(f"🔔 Received signal {signum}, initiating graceful shutdown...")
+            logger.info(f"Received signal {signum}, initiating graceful shutdown...")
             self.graceful_shutdown()
 
         # Register signal handlers (Windows)
@@ -291,7 +291,7 @@ class MainWindow(QMainWindow):
     def graceful_shutdown(self):
         """Perform graceful shutdown operations"""
         try:
-            print("🔄 Starting graceful shutdown...")
+            logger.info("Starting graceful shutdown...")
 
             # Close any open dialogs
             for widget in QApplication.allWidgets():
@@ -301,7 +301,7 @@ class MainWindow(QMainWindow):
             # Disconnect from database
             try:
                 db_service.close_connection()
-                print("✅ Database connection closed")
+                logger.info("Database connection closed")
             except:
                 pass
 
@@ -320,7 +320,7 @@ class MainWindow(QMainWindow):
     def cleanup_on_exit(self):
         """Cleanup function called on exit"""
         try:
-            print("🧹 Performing exit cleanup...")
+            logger.info("Performing exit cleanup...")
             # Any additional cleanup code here
         except:
             pass
@@ -328,7 +328,7 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         """Override close event for proper cleanup"""
         try:
-            print("🔄 Main window closing...")
+            logger.info("Main window closing...")
 
             # Save any pending data
             # Close database connections

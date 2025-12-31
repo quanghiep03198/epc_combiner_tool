@@ -214,8 +214,8 @@ class EpcReaderPlayground(QFrame, I18nContext):
 
         self.scanned_epc_counter = QLabel(parent=self.reader_actions_group)
         self.scanned_epc_counter.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-        self.scanned_epc_counter.setStyleSheet("font-weight: 600;")
         self.scanned_epc_counter.setObjectName("scanned_epc_counter")
+        self.scanned_epc_counter.setStyleSheet("font-weight: 600; font-size: 18px")
 
         self.spacer = QSpacerItem(
             0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum

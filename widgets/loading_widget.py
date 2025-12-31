@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import QWidget
 from widgets.loading_spinner import LoadingSpinner
+from events import __event_emitter__, UserActionEvent
 
 
 class LoadingWidget:
@@ -21,7 +22,9 @@ class LoadingWidget:
     def show_loading(self):
         self.overlay.show()
         self.loading_spinner.show()
+        __event_emitter__.emit(UserActionEvent.LOADING_STATE_CHANGE.value, True)
 
     def close_loading(self):
         self.overlay.close()
         self.loading_spinner.close()
+        __event_emitter__.emit(UserActionEvent.LOADING_STATE_CHANGE.value, False)

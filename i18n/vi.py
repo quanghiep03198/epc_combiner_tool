@@ -31,6 +31,7 @@ vi_dictionary: dict = {
         "stop_reading": "Dừng đọc",
     },
     "fields": {
+        "additional_qty": "Số lượng bổ sung",
         "cancelled_qty": "Số lượng đã hủy",
         "combined_qty": "Số lượng đã phối",
         "compensated_qty": "Số lượng đã bù",
@@ -78,6 +79,10 @@ vi_dictionary: dict = {
         "login_success": "Đăng nhập thành công",
         "logout_success_text": "Bạn có thể sử dụng tài khoản khác để tiếp tục sử dụng ứng dụng.",
         "logout_success_title": "Đăng xuất thành công",
+        "migrate_to_suborder_success_title": "Tách lệnh thành công",
+        "migrate_to_suborder_success_text": "{quantity} tem đã được tách từ tiểu chỉ lệnh '001' sang tiểu chỉ lệnh '{mo_noseq}' thành công.",
+        "migrate_to_suborder_failure_title": "Tách đơn thất bại",
+        "migrate_to_suborder_failure_text": "Vui lòng thử lại sau.",
         "missing_setting_title": "Cài đặt kết nối chưa được thiết lập đầy đủ",
         "missing_setting_text": "Vui lòng điền đầy đủ thông tin cài đặt.",
         "missing_station_point_history": "Không thể bù: Thiếu lịch sử trạm trước trạm được bù.",
