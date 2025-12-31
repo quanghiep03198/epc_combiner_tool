@@ -33,6 +33,7 @@ cn_dictionary: dict = {
         "stop_reading": "停止读取",
     },
     "fields": {
+        "additional_qty": "补充数量",
         "cancelled_qty": "已取消数量",
         "combined_qty": "已配数量",
         "compensated_qty": "已补数量",
@@ -80,6 +81,10 @@ cn_dictionary: dict = {
         "login_success": "登入成功",
         "logout_success_text": "您可以使用其他账户继续使用该应",
         "logout_success_title": "登出成功",
+        "migrate_to_suborder_success_title": "子指令迁移成功",
+        "migrate_to_suborder_success_text": "{quantity} 个标签已成功从子指令 '001' 迁移到子指令 '{mo_noseq}'.",
+        "migrate_to_suborder_failure_title": "子指令迁移失败",
+        "migrate_to_suborder_failure_text": "请稍后再试.",
         "missing_setting_title": "缺少设置",
         "missing_setting_text": "请填写所有设置信息",
         "missing_station_point_history": "无法补标：缺少补标点之前的站点历史记录.",

@@ -13,9 +13,14 @@ class RefreshButton(QPushButton, I18nContext):
         self.setObjectName("refetch_button")
         self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.setFixedWidth(120)
+        self.setEnabled(False)
         self.clicked.connect(self.on_click)
 
         __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value)(self.__translate__)
+        __event_emitter__.on(UserActionEvent.MO_NO_CHANGE.value)(self.on_mo_no_change)
+        __event_emitter__.on(UserActionEvent.LOADING_STATE_CHANGE.value)(
+            lambda state: self.setEnabled(not state)
+        )
 
     def __translate__(self):
         self.setText(I18nService.t("actions.refetch"))
@@ -28,3 +33,6 @@ class RefreshButton(QPushButton, I18nContext):
                 UserActionEvent.MO_NO_CHANGE.value,
                 {"mo_no": combine_form_context.get("mo_no")},
             )
+
+    def on_mo_no_change(self, mo_no: str):
+        self.setEnabled(mo_no is not None and mo_no != "")

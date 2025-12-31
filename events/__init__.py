@@ -19,6 +19,7 @@ class UserActionEvent(Enum):
     SETTINGS_CHANGE = "settings_change"
     AUTH_STATE_CHANGE = "auth_state_change"
     LANGUAGE_CHANGE = "language_change"
+    LOADING_STATE_CHANGE = "loading_state_change"
 
 
 global __event_emitter__
