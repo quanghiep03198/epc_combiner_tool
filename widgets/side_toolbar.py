@@ -25,6 +25,7 @@ class SideToolbar(QToolBar, I18nContext):
         self.root = root
 
         self.setObjectName("side_toolbar")
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.PreventContextMenu)
         self.setMovable(False)
         self.setFloatable(False)
         self.setFixedWidth(50)

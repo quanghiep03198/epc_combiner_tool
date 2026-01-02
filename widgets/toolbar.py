@@ -22,6 +22,7 @@ class AppToolBar(QToolBar, I18nContext):
         self.root = root
 
         self.setObjectName("toolbar")
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.PreventContextMenu)
         self.setMovable(False)
         self.setFloatable(False)
         self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
