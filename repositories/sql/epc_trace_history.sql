@@ -1,6 +1,5 @@
 DECLARE @JsonEpcCodes NVARCHAR(MAX) = :json_epcs_codes;
 DECLARE @StationNO NVARCHAR(30) = :station_no;
-DECLARE @TargetStationNO NVARCHAR(30) = :target_station_no;
 DECLARE @RecordTime DATETIME = :record_time;
 DECLARE @FactoryCode NVARCHAR(5) = :factory_code;
 DECLARE @Username NVARCHAR(100) = :username; -- Or replace with actual username variable
@@ -34,34 +33,34 @@ WHEN MATCHED THEN
 		target.record_time = ISNULL(@RecordTime, DATEADD(DAY, -7, GETDATE())),
 		target.user_code_updated = @Username,
 		target.user_name_updated = @Username,
-		target.remark = 'Trace history at station ' + @TargetStationNO
+		target.remark = 'Trace history for station ' + @StationNO
 WHEN NOT MATCHED THEN 
-INSERT (
-	matchkeyid, 
-	EPC_Code, 
-	mo_no, 
-	size_code, 
-	FC_server_code,
-	stationNO,
-   rfid_status,
-	inoutbound_type, 
-	record_time, 
-	user_code_created, 
-	user_name_created, 
-   remark
-)
-VALUES (
-	source.keyid, 
-	source.EPC_Code, 
-	source.mo_no, 
-	source.size_code, 
-	@FactoryCode,
-	@StationNO,
-	'A', -- Default rfid status
-	@InoutboundType,
-	ISNULL(@RecordTime, DATEADD(DAY, -7, GETDATE())),
-	@Username,
-	@Username,
-   'Trace history at station ' + @TargetStationNO
-)
+	INSERT (
+		matchkeyid, 
+		EPC_Code, 
+		mo_no, 
+		size_code, 
+		FC_server_code,
+		stationNO,
+		rfid_status,
+		inoutbound_type, 
+		record_time, 
+		user_code_created, 
+		user_name_created, 
+		remark
+	)
+	VALUES (
+		source.keyid, 
+		source.EPC_Code, 
+		source.mo_no, 
+		source.size_code, 
+		@FactoryCode,
+		@StationNO,
+		'A', -- Default rfid status
+		@InoutboundType,
+		ISNULL(@RecordTime, DATEADD(DAY, -7, GETDATE())),
+		@Username,
+		@Username,
+		'Trace history for station ' + @StationNO
+	)
 ;
