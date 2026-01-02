@@ -217,7 +217,7 @@ class RFIDRepository:
                     < combine_form_context["station_seq_no"]
                 ]
                 logger.debug(f"Actual trace history stations: {trace_history_stations}")
-                target_station: str = combine_form_context["station_no"]
+                # target_station: str = combine_form_context["station_no"]
                 for station in trace_history_stations:
                     inoutbound_types: str | None = None
                     trace_station_no: str = station.get("station_no", "")
@@ -242,31 +242,19 @@ class RFIDRepository:
                                 query_runner=query,
                                 json_epcs_codes=json_epcs_codes,
                                 station_no=trace_station_no,
-                                target_station_no=target_station,
                                 inoutbound_type=type,
                                 record_time=last_record_time,
+                                # target_station_no=target_station,
                             )
                     else:
                         RFIDRepository.trace_history_at_station(
                             query_runner=query,
                             json_epcs_codes=json_epcs_codes,
                             station_no=trace_station_no,
-                            target_station_no=target_station,
                             inoutbound_type="A",
                             record_time=last_record_time,
+                            # target_station_no=target_station,
                         )
-                RFIDRepository.trace_history_at_station(
-                    query_runner=query,
-                    json_epcs_codes=json_epcs_codes,
-                    station_no=target_station,
-                    target_station_no=target_station,
-                    inoutbound_type="A",
-                    record_time=(
-                        QDateTime.currentDateTime()
-                        .addDays(-7)
-                        .toString("yyyy-MM-dd HH:mm:ss")
-                    ),
-                )
 
             connection.commit()
             return query.numRowsAffected()
@@ -288,20 +276,21 @@ class RFIDRepository:
         json_epcs_codes: str,
         station_no: str,
         inoutbound_type: str,
-        target_station_no: str,
         record_time: str,
-    ):
-
+        # target_station_no: str,
+    ) -> int:
         query_runner.prepare(
             db_service.get_raw_sql(RFIDRepository.__epc_trace_history_sql_file_path)
         )
         query_runner.bindValue(":json_epcs_codes", json_epcs_codes)
         query_runner.bindValue(":factory_code", auth_context.get("factory_code"))
         query_runner.bindValue(":station_no", station_no)
-        query_runner.bindValue(":target_station_no", target_station_no)
         query_runner.bindValue(":inoutbound_type", inoutbound_type)
         query_runner.bindValue(":record_time", record_time)
         query_runner.bindValue(":username", auth_context.get("user_code"))
+        # query_runner.bindValue(":target_station_no", target_station_no)
 
         if not query_runner.exec():
             raise Exception(query_runner.lastError().text())
+
+        return query_runner.numRowsAffected()
