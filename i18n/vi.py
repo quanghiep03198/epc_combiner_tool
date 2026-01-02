@@ -31,6 +31,13 @@ vi_dictionary: dict = {
         "start_reading": "Bắt đầu đọc",
         "stop_reading": "Dừng đọc",
     },
+    "departments": {
+        "sewing": "May",
+        "shaping": "Định Hình",
+        "central_warehouse": "Kho QLSX",
+        "assembly_entry": "Trạm Đầu Thành Hình",
+        "assembly_label_collection": "Thu Tem Thành Hình",
+    },
     "fields": {
         "additional_qty": "Số lượng bổ sung",
         "cancelled_qty": "Số lượng đã hủy",
@@ -63,7 +70,7 @@ vi_dictionary: dict = {
         "password": "Mật khẩu",
         "per_page": "Hàng",
         "selected": "{count} EPC đã chọn",
-        "scanned": "{count} Đã quét",
+        "scanned": " Đã quét: {count}",
         "username": "Tên đăng nhập",
     },
     "notification": {

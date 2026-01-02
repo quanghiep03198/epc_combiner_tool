@@ -170,6 +170,8 @@ class CombineForm(QFrame, I18nContext):
         self.mo_noseq_select.setPlaceholderText(
             I18nService.t("placeholders.mo_noseq_placeholder")
         )
+        self.__retrive_station_list()
+
         self.mo_noseq_select.setItemText(0, I18nService.t("labels.all"))
         self.action_select.setItemText(0, I18nService.t("actions.new_combination"))
         self.action_select.setItemText(1, I18nService.t("actions.compensate"))
@@ -202,10 +204,31 @@ class CombineForm(QFrame, I18nContext):
         combine_form_context.update(dept_code=f"{data['factory_code']}A0000")
         combine_form_context.update(dept_name=f"{data['factory_code']}A0000")
 
+        self.__retrive_station_list()
+        # self.station_select.clear()
+        # for station in self.__target_trace_history_stations:
+        #     translated_station_no = I18nService.t(station["station_no"])
+        #     self.station_select.addItem(
+        #         translated_station_no, station["station_seq_no"]
+        #     )
+
+    def __retrive_station_list(self):
         self.__target_trace_history_stations = StationRepository.get_stations()
-        self.station_select.clear()
-        for station in self.__target_trace_history_stations:
-            self.station_select.addItem(station["station_no"], station["station_no"])
+        if auth_context["is_authenticated"] and self.station_select.count() > 0:
+            for i in range(len(self.__target_trace_history_stations)):
+                translated_station_no = I18nService.t(
+                    self.__target_trace_history_stations[i]["station_no"]
+                )
+                self.station_select.setItemText(i, translated_station_no)
+        else:
+            self.station_select.clear()
+            for station in self.__target_trace_history_stations:
+                translated_station_no = I18nService.t(station["station_no"])
+                self.station_select.addItem(
+                    translated_station_no,
+                    station["station_seq_no"],
+                )
+        # return self.__target_trace_history_stations
 
     @pyqtSlot(str)
     def handle_action_change(self, value):
@@ -214,9 +237,7 @@ class CombineForm(QFrame, I18nContext):
 
     @pyqtSlot(int)
     def handle_station_change(self, index):
-        self.on_combine_from_state_change(
-            "station_no", self.__target_trace_history_stations[index]["station_no"]
-        )
+
         self.on_combine_from_state_change(
             "station_seq_no",
             int(self.__target_trace_history_stations[index]["station_seq_no"]),
@@ -418,7 +439,7 @@ class CombineForm(QFrame, I18nContext):
         if is_compensating:
             return (
                 is_valid
-                and combine_form_context["station_no"] is not None
+                # and combine_form_context["station_no"] is not None
                 and combine_form_context["station_seq_no"] is not None
             )
         return is_valid

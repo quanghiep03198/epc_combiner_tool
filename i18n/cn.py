@@ -33,6 +33,13 @@ cn_dictionary: dict = {
         "start_reading": "开始读取",
         "stop_reading": "停止读取",
     },
+    "departments": {
+        "sewing": "针车",
+        "shaping": "定型组",
+        "central_warehouse": "中仓",
+        "assembly_entry": "成型投放",
+        "assembly_label_collection": "成型拆标",
+    },
     "fields": {
         "additional_qty": "补充数量",
         "cancelled_qty": "已取消数量",
@@ -66,7 +73,7 @@ cn_dictionary: dict = {
         "password": "密码",
         "per_page": "行",
         "selected": "{count} EPC 已选择",
-        "scanned": "{count} 已扫描",
+        "scanned": "已扫描: {count}",
         "username": "用户名",
     },
     "notification": {

@@ -33,6 +33,13 @@ en_dictionary: dict = {
         "start_reading": "Start reading",
         "stop_reading": "Stop reading",
     },
+    "departments": {
+        "sewing": "Sewing",
+        "shaping": "Shaping",
+        "central_warehouse": "Central Warehouse",
+        "assembly_entry": "Assembly Entry",
+        "assembly_label_collection": "Assembly Label Collection",
+    },
     "fields": {
         "additional_qty": "Additional quantity",
         "cancelled_qty": "Cancelled quantity",
@@ -66,7 +73,7 @@ en_dictionary: dict = {
         "password": "Password",
         "per_page": "Rows",
         "selected": "{count} selected EPC",
-        "scanned": "{count} Scanned",
+        "scanned": "Scanned: {count}",
         "username": "Username",
     },
     "notification": {
