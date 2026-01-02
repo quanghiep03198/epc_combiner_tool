@@ -12,8 +12,8 @@ from helpers.disutils import strtobool
 class StatusBar(QToolBar, I18nContext):
     def __init__(self, parent=QMainWindow):
         super().__init__(parent)
-
         self.configurations = ConfigService.load_configs()
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.PreventContextMenu)
         self.setMovable(False)
         self.setFloatable(False)
         self.setObjectName("status_bar")
