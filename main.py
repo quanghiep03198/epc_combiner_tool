@@ -148,6 +148,7 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(self.container)
         # Set window title with version
+        self.setWindowIcon(QIcon(resolve_path("./icon.ico")))
         self.setWindowTitle(f"EPC Information Combiner {version_info}")
 
         # Log version info
