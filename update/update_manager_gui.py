@@ -11,6 +11,9 @@ from tkinter import ttk, scrolledtext, messagebox, filedialog
 # Import the existing update manager logic
 from update_manager import CleanUpdateManager, get_latest_release_info, SafeLogger
 
+# Constants
+THREAD_JOIN_TIMEOUT = 2.0  # Seconds to wait for thread completion on exit
+
 
 class UpdateManagerGUI:
     """GUI wrapper for the Update Manager"""
@@ -196,8 +199,9 @@ class UpdateManagerGUI:
             try:
                 if gui_instance and gui_instance.log_text:
                     gui_instance.append_log(f"[{level}] {message}")
-            except:
-                pass  # Fail silently if GUI is not available
+            except (AttributeError, RuntimeError, tk.TclError):
+                # Fail silently if GUI is not available or already destroyed
+                pass
 
         SafeLogger.log = gui_log
 
@@ -376,7 +380,7 @@ class UpdateManagerGUI:
         # Wait for update thread to complete if it's running
         if self.update_thread and self.update_thread.is_alive():
             self.append_log("⏳ Đang chờ quá trình cập nhật hoàn tất...")
-            self.update_thread.join(timeout=2.0)  # Wait up to 2 seconds
+            self.update_thread.join(timeout=THREAD_JOIN_TIMEOUT)
         
         self.root.quit()
         self.root.destroy()
