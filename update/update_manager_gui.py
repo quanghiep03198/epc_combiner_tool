@@ -4,12 +4,9 @@ GUI Update Manager - Tkinter interface for EPC Update Manager
 Converts the console application to a graphical user interface
 """
 
-import os
-import sys
 import threading
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox, filedialog
-from pathlib import Path
 
 # Import the existing update manager logic
 from update_manager import CleanUpdateManager, get_latest_release_info, SafeLogger
@@ -34,6 +31,9 @@ class UpdateManagerGUI:
 
         # Redirect logger output to GUI
         self.setup_logger_redirect()
+        
+        # Handle window close event
+        self.root.protocol("WM_DELETE_WINDOW", self.exit_app)
 
     def create_widgets(self):
         """Create all GUI widgets"""
@@ -181,14 +181,23 @@ class UpdateManagerGUI:
             self.backup_dir_entry.insert(0, directory)
 
     def setup_logger_redirect(self):
-        """Redirect SafeLogger output to GUI"""
-        original_log = SafeLogger.log
+        """Redirect SafeLogger output to GUI safely"""
+        # Store original log function for restoration
+        if not hasattr(SafeLogger, '_original_log'):
+            SafeLogger._original_log = SafeLogger.log
+        
+        original_log = SafeLogger._original_log
+        gui_instance = self
 
         def gui_log(level: str, message: str):
-            # Call original log function
+            # Call original log function (still writes to file)
             original_log(level, message)
-            # Also display in GUI
-            self.append_log(f"[{level}] {message}")
+            # Also display in GUI if available
+            try:
+                if gui_instance and gui_instance.log_text:
+                    gui_instance.append_log(f"[{level}] {message}")
+            except:
+                pass  # Fail silently if GUI is not available
 
         SafeLogger.log = gui_log
 
@@ -247,7 +256,7 @@ class UpdateManagerGUI:
                     0, lambda: messagebox.showerror("Lỗi", f"Lỗi: {str(e)}")
                 )
 
-        # Run in background thread
+        # Run in background thread (daemon=True is OK for auto-detect as it's just a query)
         thread = threading.Thread(target=detect, daemon=True)
         thread.start()
 
@@ -345,7 +354,8 @@ class UpdateManagerGUI:
                 self.root.after(0, lambda: self.set_buttons_state(tk.NORMAL))
                 self.is_updating = False
 
-        self.update_thread = threading.Thread(target=update_task, daemon=True)
+        # Run update in background thread (not daemon - critical operation must complete)
+        self.update_thread = threading.Thread(target=update_task)
         self.update_thread.start()
 
     def set_buttons_state(self, state):
@@ -362,7 +372,12 @@ class UpdateManagerGUI:
                 "Quá trình cập nhật đang chạy!\nBạn có chắc chắn muốn thoát?",
             ):
                 return
-
+        
+        # Wait for update thread to complete if it's running
+        if self.update_thread and self.update_thread.is_alive():
+            self.append_log("⏳ Đang chờ quá trình cập nhật hoàn tất...")
+            self.update_thread.join(timeout=2.0)  # Wait up to 2 seconds
+        
         self.root.quit()
         self.root.destroy()
 
