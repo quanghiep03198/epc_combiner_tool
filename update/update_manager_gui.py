@@ -204,6 +204,11 @@ class UpdateManagerGUI:
                 pass
 
         SafeLogger.log = gui_log
+    
+    def restore_logger(self):
+        """Restore original logger when GUI is destroyed"""
+        if hasattr(SafeLogger, '_original_log'):
+            SafeLogger.log = SafeLogger._original_log
 
     def append_log(self, message: str):
         """Append message to log display"""
@@ -381,6 +386,13 @@ class UpdateManagerGUI:
         if self.update_thread and self.update_thread.is_alive():
             self.append_log("⏳ Đang chờ quá trình cập nhật hoàn tất...")
             self.update_thread.join(timeout=THREAD_JOIN_TIMEOUT)
+            
+            # Warn if thread is still alive after timeout
+            if self.update_thread.is_alive():
+                self.append_log("⚠ Cảnh báo: Quá trình cập nhật vẫn đang chạy trong nền")
+        
+        # Restore original logger
+        self.restore_logger()
         
         self.root.quit()
         self.root.destroy()
