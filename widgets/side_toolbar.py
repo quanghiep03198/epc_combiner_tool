@@ -269,169 +269,63 @@ class SideToolbar(QToolBar, I18nContext):
             )
 
     def start_update_process(self):
-        """Start the update process"""
+        """Start the update process using GUI update manager"""
         try:
-            # Check for update script/executable first
-            # In production, we use updater.exe; in development, update_manager.py
-            update_executable = None
-            update_batch = resolve_path("update.bat")
-
-            # Priority order: updater.exe > update_manager.py
-            updater_exe = resolve_path("updater.exe")
-            update_py = resolve_path("update/update_manager.py")
-
-            if os.path.exists(updater_exe):
-                update_executable = updater_exe
-            elif os.path.exists(update_py):
-                update_executable = update_py
-
-            if not update_executable:
+            # Check for GUI update manager
+            update_gui_py = resolve_path("update/update_manager_gui.py")
+            
+            if not os.path.exists(update_gui_py):
                 QMessageBox.critical(
                     self.root,
                     "Update Error",
-                    f"Update executable not found.\n\n"
-                    f"Looking for: updater.exe or update/update_manager.py\n"
+                    f"Update manager not found.\n\n"
+                    f"Looking for: update/update_manager_gui.py\n"
                     f"Please download the latest version manually from GitHub.",
                     QMessageBox.StandardButton.Ok,
                 )
                 return
 
-            # Prepare confirmation message based on environment
-            if is_development_environment():
-                confirm_msg = (
-                    "The update process will now start.\n\n"
-                    f"[Development Mode]\n"
-                    f"Update will be downloaded to '{get_update_directory()}' folder.\n"
-                    f"You can manually install it later.\n\n"
-                    f"Continue with the download?"
-                )
-            else:
-                confirm_msg = (
-                    "The update process will now start.\n\n"
-                    "The application will close and restart automatically.\n"
-                    "Make sure to save any unsaved work.\n\n"
-                    "Continue with the update?"
-                )
+            # Show confirmation message
+            confirm_msg = (
+                "The update manager will now open.\n\n"
+                "You can configure update settings and start the update process.\n"
+                "The main application will remain open.\n\n"
+                "Continue?"
+            )
 
-            # Show final confirmation without blocking
+            # Show final confirmation
             final_reply = QMessageBox.question(
                 self.root,
-                "Confirm Update",
+                "Open Update Manager",
                 confirm_msg,
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.Yes,
             )
 
             if final_reply == QMessageBox.StandardButton.Yes:
-                # Store update script paths for delayed execution
-                self.update_executable_path = update_executable
-                self.update_batch_path = (
-                    update_batch if os.path.exists(update_batch) else None
-                )
-
                 # Show a quick status message
-                self.root.statusBar().showMessage("Starting update process...", 2000)
+                self.root.statusBar().showMessage("Opening update manager...", 2000)
 
-                # Use QTimer to delay the update process
-                # This allows the dialog to close properly before exit
-                QTimer.singleShot(500, self.__execute_update_and_exit)
+                # Launch the GUI update manager in a separate process
+                if os.name == "nt":  # Windows
+                    subprocess.Popen(
+                        [sys.executable, update_gui_py],
+                        creationflags=subprocess.CREATE_NEW_CONSOLE,
+                        cwd=os.path.dirname(update_gui_py),
+                    )
+                else:  # Unix-like
+                    subprocess.Popen(
+                        [sys.executable, update_gui_py],
+                        cwd=os.path.dirname(update_gui_py),
+                    )
 
         except Exception as e:
-            logger.error(f"Failed to start update process: {e}")
+            logger.error(f"Failed to start update manager: {e}")
             QMessageBox.critical(
                 self.root,
                 "Update Error",
-                f"Failed to start update process:\n{str(e)}\n\n"
-                f"Please try updating manually.",
+                f"Failed to open update manager:\n{str(e)}\n\n"
+                f"Please try opening it manually.",
                 QMessageBox.StandardButton.Ok,
             )
 
-    def __execute_update_and_exit(self):
-        """Execute the update process and exit application"""
-        try:
-            # Start update process
-            if os.name == "nt" and self.update_batch_path:  # Windows with batch file
-                subprocess.Popen(
-                    [self.update_batch_path],
-                    creationflags=subprocess.CREATE_NEW_CONSOLE,
-                    cwd=os.path.dirname(self.update_batch_path),
-                )
-            elif os.name == "nt":  # Windows
-                # Check if it's an .exe file or .py file
-                if self.update_executable_path.endswith(".exe"):
-                    # Run executable directly
-                    subprocess.Popen(
-                        [self.update_executable_path],
-                        creationflags=subprocess.CREATE_NEW_CONSOLE,
-                    )
-                else:
-                    # Run Python script
-                    subprocess.Popen(
-                        [sys.executable, self.update_executable_path],
-                        creationflags=subprocess.CREATE_NEW_CONSOLE,
-                    )
-            else:  # Unix-like
-                if self.update_executable_path.endswith(".exe"):
-                    subprocess.Popen([self.update_executable_path])
-                else:
-                    subprocess.Popen([sys.executable, self.update_executable_path])
-
-            # Close all message boxes and dialogs first
-            print("🔄 Closing all dialogs and widgets...")
-            for widget in QApplication.allWidgets():
-                if isinstance(widget, QMessageBox) and widget.isVisible():
-                    widget.close()
-                    widget.deleteLater()
-
-            # Process events to ensure dialogs are closed
-            QApplication.processEvents()
-
-            # Force close main window with proper cleanup
-            if self.root:
-                print("🔄 Closing main window...")
-                self.root.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-                self.root.close()
-                self.root.deleteLater()
-
-            # Multiple attempts at clean exit
-            print("🔄 Initiating application shutdown...")
-
-            # Process any remaining events
-            QApplication.processEvents()
-
-            # Quit the application
-            QApplication.closeAllWindows()
-            QApplication.quit()
-
-            # Force exit after a brief delay to ensure cleanup
-            QTimer.singleShot(1000, self._force_exit)
-
-        except Exception as e:
-            logger.error(f"Failed to execute update: {e}")
-            print(f"Update execution failed: {e}")
-            # Force exit even if cleanup fails
-            self._force_exit()
-
-    def _force_exit(self):
-        """Force application exit with extreme measures"""
-        try:
-            print("🔄 Force exiting application...")
-
-            # Final cleanup
-            QApplication.processEvents()
-            QApplication.quit()
-
-            # Nuclear option - force process termination
-            if ConfigService.get_env("ENV") != "development":
-                import os
-
-                print("💀 Force terminating process...")
-                os._exit(0)  # Nuclear exit - bypasses cleanup
-            else:
-                sys.exit(0)
-
-        except:
-            # Last resort
-            import os
-
-            os._exit(0)
