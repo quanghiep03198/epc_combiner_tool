@@ -6,6 +6,8 @@ from widgets.toaster import Toaster
 from pyqttoast import ToastPreset
 from i18n import I18nService, I18nContext
 from uhf.reader import EnumG
+from themes.theme_manager import theme_manager
+from themes.colors import Theme, get_color
 
 
 class AppSettingsDialog(QDialog, I18nContext):
@@ -295,18 +297,7 @@ class AppSettingsDialog(QDialog, I18nContext):
         self.close_button = QPushButton("Đóng lại", self)
         self.close_button.setMinimumWidth(100)
         self.close_button.setFixedHeight(36)
-        self.close_button.setStyleSheet(
-            """
-            QPushButton{
-                background: transparent;
-                border: 1px solid #404040;
-                color: #fafafa
-            }
-            QPushButton:hover{
-                background-color: #404040;
-            }
-            """
-        )
+        self.close_button.setObjectName("close_button")
         self.close_button.clicked.connect(self.handle_close)
 
         self.button_group = QWidget(self)
@@ -332,11 +323,46 @@ class AppSettingsDialog(QDialog, I18nContext):
         self.setLayout(self.setting_form_container_layout)
 
         __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value, self.__translate__)
+        __event_emitter__.on(UserActionEvent.THEME_CHANGE.value)(
+            self.update_theme_styles
+        )
         # endregion
+
+        # Apply initial theme
+        self.update_theme_styles()
 
     def __translate__(self):
         self.save_button.setText(I18nService.t("actions.save"))
         self.close_button.setText(I18nService.t("actions.close"))
+
+    def update_theme_styles(self, theme: Theme = None):
+        """Update close button colors based on current theme (outline style)"""
+        if theme is None:
+            theme = theme_manager.current_theme
+
+        # Get colors from theme
+        fg_color = get_color(theme, "foreground")
+        border_color = get_color(theme, "border")
+        hover_bg = get_color(theme, "muted")
+
+        # Update close_button with outline style
+        self.close_button.setStyleSheet(
+            f"""
+            #close_button {{
+                background: transparent;
+                border: 1px solid {border_color};
+                color: {fg_color};
+            }}
+            #close_button:hover {{
+                background-color: {hover_bg};
+            }}
+            """
+        )
+
+        # Force update
+        self.close_button.style().unpolish(self.close_button)
+        self.close_button.style().polish(self.close_button)
+        self.close_button.update()
 
     @pyqtSlot(str, str)
     def on_form_state_change(self, field, value):

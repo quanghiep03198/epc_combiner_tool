@@ -73,6 +73,10 @@ vi_dictionary: dict = {
         "scanned": " Đã quét: {count}",
         "username": "Tên đăng nhập",
     },
+    "themes": {
+        "dark": "Nền tối",
+        "light": "Nền sáng",
+    },
     "notification": {
         "cancelled_epc_success": "{quantity} tem đã được hủy thành công.",
         "combine_epc_failure_title": "Phối EPC thất bại",

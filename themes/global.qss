@@ -382,6 +382,7 @@ QSlider::add-page:horizontal {
 #delete_button {
    background-color: #ef4444; 
    color: #fafafa;
+   border: 1px solid #ef4444;
 }
 
 #delete_button:hover {

@@ -10,6 +10,8 @@ from helpers.resolve_path import resolve_path
 from events import __event_emitter__, UserActionEvent
 from i18n import I18nService, I18nContext
 from decorators.debounce import pyqtDebounce
+from themes.theme_manager import theme_manager
+from themes.colors import Theme, get_color
 
 
 class LoginDialog(QDialog, I18nContext):
@@ -122,23 +124,12 @@ class LoginDialog(QDialog, I18nContext):
 
         self.exit_button = QPushButton("Thoát")
         self.exit_button.setFixedWidth(120)
+        self.exit_button.setObjectName("exit_button")
         self.exit_icon = QIcon()
         self.exit_icon.addPixmap(
             QPixmap(resolve_path("assets/icons/log-out.svg")),
             QIcon.Mode.Normal,
             QIcon.State.Off,
-        )
-        self.exit_button.setStyleSheet(
-            """
-             QPushButton{
-                background: transparent;
-                border: 1px solid #404040;
-                color: #fafafa
-            }
-            QPushButton:hover{
-                background-color: #404040;
-            }
-            """
         )
         self.exit_button.setAutoDefault(False)
         self.exit_button.setDefault(False)
@@ -154,7 +145,13 @@ class LoginDialog(QDialog, I18nContext):
         self.setLayout(layout)
 
         __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value)(self.__translate__)
+        __event_emitter__.on(UserActionEvent.THEME_CHANGE.value)(
+            self.update_theme_styles
+        )
         self.__translate__()
+
+        # Apply initial theme
+        self.update_theme_styles()
 
     def __translate__(self):
         self.setWindowTitle(I18nService.t("actions.login"))
@@ -166,6 +163,35 @@ class LoginDialog(QDialog, I18nContext):
         )
         self.exit_button.setText(I18nService.t("actions.exit"))
         self.login_button.setText(I18nService.t("actions.login"))
+
+    def update_theme_styles(self, theme: Theme = None):
+        """Update exit button colors based on current theme (outline style)"""
+        if theme is None:
+            theme = theme_manager.current_theme
+
+        # Get colors from theme
+        fg_color = get_color(theme, "foreground")
+        border_color = get_color(theme, "border")
+        hover_bg = get_color(theme, "muted")
+
+        # Update exit_button with outline style
+        self.exit_button.setStyleSheet(
+            f"""
+            #exit_button {{
+                background: transparent;
+                border: 1px solid {border_color};
+                color: {fg_color};
+            }}
+            #exit_button:hover {{
+                background-color: {hover_bg};
+            }}
+            """
+        )
+
+        # Force update
+        self.exit_button.style().unpolish(self.exit_button)
+        self.exit_button.style().polish(self.exit_button)
+        self.exit_button.update()
 
     def keyPressEvent(self, event):
         # Kiểm tra nếu phím được nhấn là Esc

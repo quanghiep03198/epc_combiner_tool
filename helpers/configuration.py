@@ -18,6 +18,8 @@ if not path.exists(__cfg_file__):
     config.set("LOCALE", "language", "en")
     config.add_section("DATA")
     config.set("DATA", "auto_save", "True")
+    config.add_section("UI")
+    config.set("UI", "theme", "dark")
 
     with open(__cfg_file__, "w", encoding="utf-8") as file:
         config.write(file)
@@ -29,6 +31,7 @@ __configs__.read(filenames=__cfg_file__)
 class ConfigSection(Enum):
     LOCALE = "LOCALE"
     DATA = "DATA"
+    UI = "UI"
 
 
 class ConfigService:

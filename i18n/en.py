@@ -76,6 +76,10 @@ en_dictionary: dict = {
         "scanned": "Scanned: {count}",
         "username": "Username",
     },
+    "themes": {
+        "dark": "Dark",
+        "light": "Light",
+    },
     "notification": {
         "cancelled_epc_success": "{quantity} EPC(s) have been cancelled",
         "combine_epc_failure_title": "Failed to combine EPC",

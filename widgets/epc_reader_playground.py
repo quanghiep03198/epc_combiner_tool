@@ -15,6 +15,8 @@ from events import UserActionEvent, __event_emitter__
 from helpers.configuration import ConfigService
 from i18n import I18nService, I18nContext
 from helpers.resolve_path import resolve_path
+from themes.theme_manager import theme_manager
+from themes.colors import Theme, get_color
 
 
 class EpcReaderPlayground(QFrame, I18nContext):
@@ -50,9 +52,7 @@ class EpcReaderPlayground(QFrame, I18nContext):
         self.search_box_layout.setContentsMargins(0, 0, 0, 0)
         self.search_box_layout.setSpacing(2)
         self.search_box = QFrame(parent=self)
-        self.search_box.setStyleSheet(
-            "height: 36px; background-color: #171717; color: #fafafa; border: 1px solid #404040; border-radius: 4px; padding: 0px 4px;"
-        )
+        self.search_box.setObjectName("search_box")
         self.search_box.setLayout(self.search_box_layout)
         self.search_box_input = QLineEdit(parent=self.search_box)
         self.search_box_input.setStyleSheet("border: none; padding: 0px")
@@ -87,7 +87,7 @@ class EpcReaderPlayground(QFrame, I18nContext):
         self.empty_state_layout.setSpacing(8)
 
         self.empty_state = QFrame(parent=self)
-        self.empty_state.setStyleSheet("background: #171717; border-radius: 4px")
+        self.empty_state.setObjectName("empty_state")
         self.empty_state.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
@@ -103,7 +103,7 @@ class EpcReaderPlayground(QFrame, I18nContext):
         self.empty_text = QLabel(parent=self.empty_state)
         self.empty_text.setText("No data")
         self.empty_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.empty_text.setStyleSheet("color: #a3a3a3")
+        self.empty_text.setObjectName("empty_text")
 
         self.empty_state.setLayout(self.empty_state_layout)
         self.empty_state_layout.addWidget(
@@ -256,7 +256,14 @@ class EpcReaderPlayground(QFrame, I18nContext):
         __event_emitter__.on(UserActionEvent.INVALID_COMBINATION_FOUND.value)(
             self.on_invalid_combination_found
         )
+
+        __event_emitter__.on(UserActionEvent.THEME_CHANGE.value)(
+            self.update_theme_styles
+        )
         # endregion
+
+        # Apply initial theme
+        self.update_theme_styles()
 
     def __translate__(self):
         if self.__current_tab_index == 1:
@@ -286,6 +293,34 @@ class EpcReaderPlayground(QFrame, I18nContext):
             self.toggle_play_button.setToolTip(I18nService.t("actions.stop_reading"))
         else:
             self.toggle_play_button.setToolTip(I18nService.t("actions.start_reading"))
+
+    def update_theme_styles(self, theme: Theme = None):
+        """Update widget colors based on current theme"""
+        if theme is None:
+            theme = theme_manager.current_theme
+
+        # Get colors from theme
+        bg_color = get_color(theme, "card")
+        fg_color = get_color(theme, "foreground")
+        border_color = get_color(theme, "border")
+        muted_fg_color = get_color(theme, "muted-foreground")
+
+        # Update search_box style
+        self.search_box.setStyleSheet(
+            f"height: 36px; background-color: {bg_color}; color: {fg_color}; border: 1px solid {border_color}; border-radius: 4px; padding: 0px 4px;"
+        )
+
+        # Update empty_state style
+        self.empty_state.setStyleSheet(f"background: {bg_color}; border-radius: 4px")
+
+        # Update empty_text style
+        self.empty_text.setStyleSheet(f"color: {muted_fg_color}")
+
+        # Force update
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.update()
+
 
     def on_mo_no_change(self, _):
         self.__max_epc_qty = 0
