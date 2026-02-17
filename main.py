@@ -32,6 +32,8 @@ from contexts.auth_context import auth_context
 from i18n import I18nService, Language
 from helpers.resolve_path import resolve_path
 from database import db_service
+from themes.theme_manager import theme_manager
+from themes.colors import Theme
 
 # from version import get_latest_release_version
 from helpers.version import version_info
@@ -170,6 +172,8 @@ class MainWindow(QMainWindow):
             self.on_auth_state_change
         )
 
+        __event_emitter__.on(UserActionEvent.THEME_CHANGE.value)(self.on_theme_change)
+
         # Setup signal handlers for graceful shutdown
         self.setup_signal_handlers()
 
@@ -183,11 +187,22 @@ class MainWindow(QMainWindow):
     # region Stylesheet setup
     def __set_stylesheet(self) -> None:
         """
-        Set the stylesheet of the application to the global stylesheet.
+        Set the stylesheet of the application using ThemeManager.
         """
-        with open(resolve_path("themes/global.qss"), "r", encoding="utf-8") as f:
-            stylesheet = f.read()
-            self.__app__.setStyleSheet(stylesheet)
+        # Load theme from config
+        theme_value = ConfigService.get_conf(
+            ConfigSection.UI.value, "theme", Theme.DARK.value
+        )
+        try:
+            theme = Theme(theme_value)
+        except ValueError:
+            theme = Theme.DARK
+
+        # Apply theme using ThemeManager
+        theme_manager.apply_theme(self.__app__, theme)
+
+        # Emit theme change event to update all widgets
+        __event_emitter__.emit(UserActionEvent.THEME_CHANGE.value, theme)
 
     # region Font setup
     def __set_font(self) -> None:
@@ -244,6 +259,18 @@ class MainWindow(QMainWindow):
             return
         else:
             self.overlay.close()
+
+    def on_theme_change(self, theme: Theme):
+        """
+        Handle theme change event
+
+        Args:
+            theme: New theme to apply
+        """
+        # Save theme to config
+        ConfigService.set_conf(ConfigSection.UI.value, "theme", theme.value)
+        # Apply theme
+        theme_manager.apply_theme(self.__app__, theme)
 
     # region Bootstrapping application
     def on_application_bootstrap(self):

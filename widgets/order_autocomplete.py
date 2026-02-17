@@ -7,6 +7,8 @@ from i18n import I18nService
 from helpers.resolve_path import resolve_path
 from decorators.debounce import pyqtDebounce
 from services.order_service import OrderService
+from themes.theme_manager import theme_manager
+from themes.colors import Theme, get_color
 
 
 class OrderAutoCompleteWidget(QPushButton):
@@ -24,9 +26,6 @@ class OrderAutoCompleteWidget(QPushButton):
         """
 
         self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.setStyleSheet(
-            "height: 36px; background-color: #171717; border: 1px solid #404040; color: #fafafa; text-align: left; padding: 2px 8px; font-weight: 400;"
-        )
         self.setFixedHeight(40)
 
         chevron_icon = QIcon()
@@ -43,9 +42,6 @@ class OrderAutoCompleteWidget(QPushButton):
         self.toggled.connect(self.handle_toggle_open)
         self.popover_content = QDialog(self)
         self.popover_content.setGraphicsEffect(None)
-        self.popover_content.setStyleSheet(
-            "border: 1px solid #404040; border-radius: 4px; background-color: #171717"
-        )
         self.popover_content.finished.connect(lambda: self.on_popover_content_close())
         self.popover_content.setWindowFlags(
             Qt.WindowType.Popup
@@ -57,18 +53,12 @@ class OrderAutoCompleteWidget(QPushButton):
         self.popover_content_layout.setSpacing(0)
         self.popover_content.setLayout(self.popover_content_layout)
         self.popover_input = QLineEdit(self.popover_content)
-        self.popover_input.setStyleSheet(
-            "border: 0px; border-bottom: 1px solid #404040; border-radius: 0px; height: 32px; padding: 2px 8px; background-color: #171717"
-        )
         self.popover_input.setPlaceholderText("Search...")
         self.popover_input.textChanged.connect(self.handle_find_mo_no)
 
         self.popover_content.layout().addWidget(self.popover_input)
         self.popover_menu_list = QListWidget(self.popover_content)
         self.popover_menu_list.setSpacing(1)
-        self.popover_menu_list.setStyleSheet(
-            "border: 0px; padding: 4px; background-color: #171717;"
-        )
 
         self.popover_menu_list.clear()
         self.popover_menu_list.itemClicked.connect(
@@ -80,6 +70,12 @@ class OrderAutoCompleteWidget(QPushButton):
         __event_emitter__.on(UserActionEvent.AUTH_STATE_CHANGE.value)(
             lambda _: self.handle_find_mo_no("")
         )
+        __event_emitter__.on(UserActionEvent.THEME_CHANGE.value)(
+            self.update_theme_styles
+        )
+
+        # Apply initial theme
+        self.update_theme_styles()
 
     def __translate__(self):
         if combine_form_context["mo_no"] is None:
@@ -87,6 +83,41 @@ class OrderAutoCompleteWidget(QPushButton):
         self.popover_input.setPlaceholderText(
             I18nService.t("placeholders.search_placeholder")
         )
+
+    def update_theme_styles(self, theme: Theme = None):
+        """Update widget colors based on current theme"""
+        if theme is None:
+            theme = theme_manager.current_theme
+
+        # Get colors from theme
+        bg_color = get_color(theme, "card")
+        fg_color = get_color(theme, "foreground")
+        border_color = get_color(theme, "border")
+
+        # Update button style
+        self.setStyleSheet(
+            f"height: 36px; background-color: {bg_color}; border: 1px solid {border_color}; color: {fg_color}; text-align: left; padding: 2px 8px; font-weight: 400;"
+        )
+
+        # Update popover content style
+        self.popover_content.setStyleSheet(
+            f"border: 1px solid {border_color}; border-radius: 4px; background-color: {bg_color}"
+        )
+
+        # Update popover input style
+        self.popover_input.setStyleSheet(
+            f"border: 0px; border-bottom: 1px solid {border_color}; border-radius: 0px; height: 32px; padding: 2px 8px; background-color: {bg_color}"
+        )
+
+        # Update popover menu list style
+        self.popover_menu_list.setStyleSheet(
+            f"border: 0px; padding: 4px; background-color: {bg_color};"
+        )
+
+        # Force update
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.update()
 
     @pyqtSlot(bool)
     def handle_toggle_open(self, checked_state: bool) -> None:

@@ -7,6 +7,8 @@ from widgets.switch import QToggle
 from events import __event_emitter__, UserActionEvent
 from i18n import I18nService, I18nContext
 from helpers.disutils import strtobool
+from themes.theme_manager import theme_manager
+from themes.colors import Theme, get_color
 
 
 class StatusBar(QToolBar, I18nContext):
@@ -18,15 +20,6 @@ class StatusBar(QToolBar, I18nContext):
         self.setFloatable(False)
         self.setObjectName("status_bar")
         self.setFixedHeight(50)
-        self.setStyleSheet(
-            """
-            QToolBar{
-                padding:4px 8px;
-                spacing: 24px;
-                background-color: #171717;
-            }
-        """
-        )
 
         # Database connection status
         # Primary database connection status
@@ -99,9 +92,38 @@ class StatusBar(QToolBar, I18nContext):
 
         self.addWidget(self.auto_save_form)
         __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value, self.__translate__)
+        __event_emitter__.on(
+            UserActionEvent.THEME_CHANGE.value, self.update_theme_styles
+        )
+
+        # Apply initial theme styles after all widgets are created
+        self.update_theme_styles()
 
     def __translate__(self):
         self.auto_save_label.setText(I18nService.t("labels.auto_save"))
+
+    def update_theme_styles(self, theme: Theme = None):
+        """Update status bar colors based on current theme"""
+        if theme is None:
+            theme = theme_manager.current_theme
+
+        bg_color = get_color(theme, "card")
+        border_color = get_color(theme, "border")
+        self.setStyleSheet(
+            f"""
+            QToolBar{{
+                padding:4px 8px;
+                spacing: 24px;
+                background-color: {bg_color};
+                border-top: 1px solid {border_color};
+            }}
+        """
+        )
+
+        # Force update to apply new styles
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.update()
 
     @pyqtSlot(Qt.CheckState)
     def update_auto_save(self, state: Qt.CheckState):

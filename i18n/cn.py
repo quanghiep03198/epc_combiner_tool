@@ -76,6 +76,10 @@ cn_dictionary: dict = {
         "scanned": "已扫描: {count}",
         "username": "用户名",
     },
+    "themes": {
+        "dark": "暗色",
+        "light": "亮色",
+    },
     "notification": {
         "cancelled_epc_success": "{quantity} 取消成功",
         "combine_epc_failure_title": "配标失败",

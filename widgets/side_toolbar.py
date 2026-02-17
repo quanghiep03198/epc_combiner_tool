@@ -16,6 +16,8 @@ from helpers.version import (
     is_development_environment,
     get_update_directory,
 )
+from themes.theme_manager import theme_manager
+from themes.colors import Theme, get_color
 
 
 class SideToolbar(QToolBar, I18nContext):
@@ -29,16 +31,6 @@ class SideToolbar(QToolBar, I18nContext):
         self.setMovable(False)
         self.setFloatable(False)
         self.setFixedWidth(50)
-        self.setStyleSheet(
-            """
-            QToolBar{
-                padding-left: 4px;
-                padding-right: 4px;
-                spacing: 18px;
-                background-color: #404040;
-            }
-            """
-        )
 
         # region File actions
         open_file_icon = QIcon()
@@ -154,6 +146,12 @@ class SideToolbar(QToolBar, I18nContext):
             self.menu.addAction(action)
 
         __event_emitter__.on(UserActionEvent.LANGUAGE_CHANGE.value)(self.__translate__)
+        __event_emitter__.on(UserActionEvent.THEME_CHANGE.value)(
+            self.update_theme_styles
+        )
+
+        # Apply initial theme styles after all widgets are created
+        self.update_theme_styles()
 
     def __translate__(self):
         self.open_folder_action.setToolTip(
@@ -165,6 +163,28 @@ class SideToolbar(QToolBar, I18nContext):
         self.setting_action.setToolTip(I18nService.t("actions.settings") + " (Ctrl+S)")
         self.help_action.setToolTip(I18nService.t("actions.help") + " (Ctrl+H)")
         self.check_update_action.setToolTip(I18nService.t("actions.check_for_update"))
+
+    def update_theme_styles(self, theme: Theme = None):
+        """Update side toolbar colors based on current theme"""
+        if theme is None:
+            theme = theme_manager.current_theme
+
+        bg_color = get_color(theme, "secondary")
+        self.setStyleSheet(
+            f"""
+            QToolBar{{
+                padding-left: 4px;
+                padding-right: 4px;
+                spacing: 18px;
+                background-color: {bg_color};
+            }}
+        """
+        )
+
+        # Force update to apply new styles
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.update()
 
     def open_setting_dialog(self):
         self.setting_window.exec()

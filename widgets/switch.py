@@ -45,6 +45,9 @@ from PyQt6.QtGui import (
     QCursor,
 )
 from PyQt6.QtWidgets import QCheckBox
+from themes.theme_manager import theme_manager
+from themes.colors import Theme, get_color
+from events import __event_emitter__, UserActionEvent
 
 
 class QToggle(QCheckBox):
@@ -76,6 +79,7 @@ class QToggle(QCheckBox):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        # Initialize with default colors (will be updated by theme)
         (
             self._bg_color,
             self._circle_color,
@@ -96,6 +100,14 @@ class QToggle(QCheckBox):
         self.stateChanged.connect(self.start_transition)
         self._user_checked = False  # Introduced flag to check user-initiated changes
 
+        # Listen to theme changes
+        __event_emitter__.on(UserActionEvent.THEME_CHANGE.value)(
+            self.update_theme_colors
+        )
+
+        # Apply initial theme colors
+        self.update_theme_colors()
+
     circle_pos = pyqtProperty(
         float,
         lambda self: self._circle_pos,
@@ -113,6 +125,33 @@ class QToggle(QCheckBox):
         :param duration: Duration in milliseconds.
         """
         self._animation_duration = duration
+
+    def update_theme_colors(self, theme: Theme = None):
+        """
+        Update toggle colors based on current theme.
+        """
+        if theme is None:
+            theme = theme_manager.current_theme
+
+        # Get colors from theme
+        bg_color = get_color(theme, "border")  # Background when off (better contrast)
+        circle_color = get_color(theme, "background")  # Circle color
+        active_color = get_color(theme, "primary")  # Background when on
+        disabled_color = get_color(theme, "muted-foreground")  # Disabled state
+        text_color = get_color(theme, "foreground")  # Text color
+
+        # Update colors
+        self._bg_color = QColor(bg_color)
+        self._circle_color = QColor(circle_color)
+        self._active_color = QColor(active_color)
+        self._disabled_color = QColor(disabled_color)
+        self._text_color = QColor(text_color)
+
+        # Update position and color based on current state
+        self.update_pos_color(self.isChecked())
+
+        # Force repaint
+        self.update()
 
     def update_pos_color(self, checked=None):
         self._circle_pos = self.height() * (1.1 if checked else 0.1)
