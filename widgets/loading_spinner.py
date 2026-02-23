@@ -2,11 +2,13 @@ from PyQt6.QtCore import *
 from PyQt6.QtSql import *
 from PyQt6.QtGui import *
 from PyQt6.QtWidgets import *
+from themes.theme_manager import ThemeManager
 
 
 class LoadingSpinner(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._theme = ThemeManager()
         self.angle = 0  # Góc xoay
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_animation)  # Cập nhật vòng lặp animation
@@ -30,7 +32,9 @@ class LoadingSpinner(QWidget):
         # Vẽ vòng tròn bằng QPainter
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        pen = QPen(Qt.GlobalColor.white, 2)  # Increased line width
+        pen = QPen(
+            QColor(self._theme.get_color("foreground")), 2
+        )  # Increased line width
         painter.setPen(pen)
 
         rect = self.rect()
