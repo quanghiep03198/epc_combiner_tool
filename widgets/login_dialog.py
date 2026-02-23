@@ -239,8 +239,13 @@ class LoginDialog(QDialog, I18nContext):
                     auth_context.update(user_code=user.get("user_code"))
                     auth_context.update(employee_code=user.get("employee_code"))
                     auth_context.update(employee_name=user.get("employee_name"))
-                    self.username_input.setStyleSheet("border: 1px solid #22c55e")
-                    self.password_input.setStyleSheet("border: 1px solid #22c55e")
+                    success_color = get_color(theme_manager.current_theme, "success")
+                    self.username_input.setStyleSheet(
+                        f"border: 1px solid {success_color}"
+                    )
+                    self.password_input.setStyleSheet(
+                        f"border: 1px solid {success_color}"
+                    )
                     if (
                         isinstance(self.error_toast, Toaster)
                         and self.error_toast.isVisible()
@@ -259,21 +264,24 @@ class LoginDialog(QDialog, I18nContext):
                 e.status = e.args[0]["status"]
                 e.message = e.args[0]["message"]
                 if e.status == StatusCode.UNAUTHORIZED.value:
+                    destructive_color = get_color(
+                        theme_manager.current_theme, "destructive"
+                    )
                     self.username_input.setStyleSheet(
-                        """
-                        QLineEdit{
-                            border: 1px solid #ef4444
-                        }
+                        f"""
+                        QLineEdit{{
+                            border: 1px solid {destructive_color}
+                        }}
                         """
                     )
                     self.password_input.setStyleSheet(
-                        """
-                        QLineEdit{
-                            border: 1px solid #ef4444
-                        }
-                        QLineEdit[echoMode="2"] {
+                        f"""
+                        QLineEdit{{
+                            border: 1px solid {destructive_color}
+                        }}
+                        QLineEdit[echoMode="2"] {{
                             lineedit-password-character: 8226;
-                        }
+                        }}
                         """
                     )
                     if (

@@ -1,13 +1,21 @@
 from PyQt6.QtWidgets import QWidget
+from PyQt6.QtGui import QColor
 from widgets.loading_spinner import LoadingSpinner
 from events import __event_emitter__, UserActionEvent
+from themes.theme_manager import ThemeManager
 
 
 class LoadingWidget:
     def __init__(self, parent):
+        theme = ThemeManager()
+        bg = QColor(theme.get_color("background"))
+
         self.overlay = QWidget(parent)
         self.overlay = QWidget(parent)
-        self.overlay.setStyleSheet("background-color: rgba(0, 0, 0, 128);")
+        self.overlay.setObjectName("overlay")
+        self.overlay.setStyleSheet(
+            f"background-color: rgba({bg.red()}, {bg.green()}, {bg.blue()}, 0.5);"
+        )
         self.overlay.setGeometry(
             0, 0, parent.frameSize().width(), parent.frameSize().height()
         )

@@ -417,6 +417,22 @@ QSlider::add-page:horizontal {{
    border-radius: 2px;
 }}
 
+#toast-close-button, #toast-icon-widget {{
+   background: transparent;
+   border: none;
+   height: auto;
+   spacing: 0px;
+}}
+
+#toast-close-button:hover, #toast-icon-widget:hover {{
+   background: transparent;
+}}
+
+#overlay{{
+   background-color: {bg};
+   background-opacity: 0.5
+}}
+
 #epc_reader_playground{{
    border: 1px solid {border};
    border-radius: 4px;

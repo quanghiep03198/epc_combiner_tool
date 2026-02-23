@@ -2,6 +2,7 @@ from pyqttoast import *
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
 from PyQt6.QtWidgets import *
+from themes.theme_manager import ThemeManager
 
 
 class Toaster(Toast):
@@ -14,6 +15,8 @@ class Toaster(Toast):
         duration: int = 3000,
     ):
         super().__init__(parent)
+
+        theme = ThemeManager()
 
         self.setTitle(title)
         self.setText(text)
@@ -28,12 +31,12 @@ class Toaster(Toast):
         self.setMaximumHeight(200)
         self.setPositionRelativeToWidget(parent)
         self.setPosition(ToastPosition.TOP_RIGHT)
-        self.setBackgroundColor(QColor("#0a0a0a"))
-        self.setTitleColor(QColor("#fafafa"))
-        self.setTextColor(QColor("#f5f5f5"))
-        self.setIconSeparatorColor(QColor("#292524"))
-        self.setCloseButtonIconColor(QColor("#737373"))
-        self.setShowDurationBar(False)
+        self.setBackgroundColor(QColor(theme.get_color("background")))
+        self.setTitleColor(QColor(theme.get_color("foreground")))
+        self.setTextColor(QColor(theme.get_color("card-foreground")))
+        self.setIconSeparatorColor(QColor(theme.get_color("border")))
+        self.setCloseButtonIconColor(QColor(theme.get_color("muted-foreground")))
+        self.setShowDurationBar(True)
         self.setTextSectionSpacing(4)
         self.setContentsMargins(10, 10, 10, 10)
         self.setResetDurationOnHover(False)
