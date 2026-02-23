@@ -212,7 +212,15 @@ class FileReplacer:
         if self._try_force_replacement(source_path, target_path, backup_dir):
             return True
 
-        # Strategy 4: Skip file (log and continue)
+        # Strategy 4: Robocopy replacement (good for locked files like .ico)
+        if self._try_robocopy_replacement(source_path, target_path, backup_dir):
+            return True
+
+        # Strategy 5: Schedule replacement on reboot for stubborn locked files
+        if self._try_pending_rename_replacement(source_path, target_path):
+            return True
+
+        # Strategy 6: Skip file (log and continue)
         self.logger.warning(
             f"Could not replace {os.path.basename(target_path)} - skipping"
         )
@@ -335,6 +343,126 @@ class FileReplacer:
         except Exception as e:
             self.logger.warning(
                 f"Force replacement failed for {os.path.basename(target_path)}: {e}"
+            )
+            return False
+
+    def _try_robocopy_replacement(
+        self, source_path: str, target_path: str, backup_dir: Optional[str] = None
+    ) -> bool:
+        """Try replacement using robocopy (effective for locked files like .ico)"""
+        try:
+            if not os.path.exists(source_path):
+                return False
+
+            source_dir = os.path.dirname(source_path)
+            target_dir = os.path.dirname(target_path)
+            filename = os.path.basename(source_path)
+
+            # Create backup first
+            if backup_dir and os.path.exists(target_path):
+                os.makedirs(backup_dir, exist_ok=True)
+                try:
+                    shutil.copy2(
+                        target_path,
+                        os.path.join(backup_dir, os.path.basename(target_path)),
+                    )
+                except:
+                    pass
+
+            # Use robocopy to force overwrite
+            result = subprocess.run(
+                [
+                    "robocopy",
+                    source_dir,
+                    target_dir,
+                    filename,
+                    "/IS",
+                    "/IT",
+                    "/NFL",
+                    "/NDL",
+                    "/NJH",
+                    "/NJS",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+
+            # robocopy returns 0-7 for success, 8+ for errors
+            if result.returncode < 8 and os.path.exists(target_path):
+                self.logger.info(
+                    f"Robocopy replacement successful: {os.path.basename(target_path)}"
+                )
+                return True
+            else:
+                self.logger.warning(
+                    f"Robocopy replacement failed for {os.path.basename(target_path)}: exit code {result.returncode}"
+                )
+                return False
+
+        except Exception as e:
+            self.logger.warning(
+                f"Robocopy replacement failed for {os.path.basename(target_path)}: {e}"
+            )
+            return False
+
+    def _try_pending_rename_replacement(
+        self, source_path: str, target_path: str
+    ) -> bool:
+        """Schedule file replacement on next reboot using MoveFileEx (for stubborn locked files)"""
+        try:
+            # Copy the new file next to the target with a .pending extension
+            pending_path = target_path + ".pending"
+            shutil.copy2(source_path, pending_path)
+
+            # Use PowerShell to call MoveFileEx with MOVEFILE_DELAY_UNTIL_REBOOT
+            script = f"""
+            Add-Type @"
+                using System;
+                using System.Runtime.InteropServices;
+                public class FileOps {{
+                    [DllImport("kernel32.dll", SetLastError=true, CharSet=CharSet.Unicode)]
+                    public static extern bool MoveFileEx(string lpExistingFileName, string lpNewFileName, int dwFlags);
+                    public const int MOVEFILE_DELAY_UNTIL_REBOOT = 0x4;
+                    public const int MOVEFILE_REPLACE_EXISTING = 0x1;
+                }}
+"@
+            [FileOps]::MoveFileEx("{pending_path}", "{target_path}", [FileOps]::MOVEFILE_DELAY_UNTIL_REBOOT -bor [FileOps]::MOVEFILE_REPLACE_EXISTING)
+            """
+
+            result = subprocess.run(
+                [
+                    "powershell",
+                    "-NoProfile",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-Command",
+                    script,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+
+            if result.returncode == 0:
+                self.logger.info(
+                    f"Scheduled pending replacement on reboot: {os.path.basename(target_path)}"
+                )
+                return True
+            else:
+                # Clean up pending file
+                try:
+                    os.remove(pending_path)
+                except:
+                    pass
+                self.logger.warning(
+                    f"Pending rename failed for {os.path.basename(target_path)}: {result.stderr}"
+                )
+                return False
+
+        except Exception as e:
+            self.logger.warning(
+                f"Pending rename failed for {os.path.basename(target_path)}: {e}"
             )
             return False
 
@@ -722,6 +850,13 @@ class CleanUpdateManager:
             total_count = len(files_to_replace)
             self.logger.info(f"Replacing {total_count} files...")
 
+            # Check if any .ico files need replacing and clear icon cache first
+            has_ico_files = any(
+                rel_path.lower().endswith(".ico") for _, _, rel_path in files_to_replace
+            )
+            if has_ico_files:
+                self._clear_icon_cache()
+
             for i, (source_path, target_path, rel_path) in enumerate(files_to_replace):
                 print(f"[{i+1}/{total_count}] {rel_path}")
 
@@ -768,6 +903,57 @@ class CleanUpdateManager:
 
         # Fallback to extract_dir if no wrapper found
         return extract_dir
+
+    def _clear_icon_cache(self):
+        """Clear Windows icon cache to release locked .ico files"""
+        self.logger.info("🧹 Clearing Windows icon cache for .ico file replacement...")
+        try:
+            # Stop Windows Explorer to release icon cache locks
+            subprocess.run(
+                ["taskkill", "/f", "/im", "explorer.exe"],
+                capture_output=True,
+                timeout=10,
+            )
+            time.sleep(1)
+
+            # Delete icon cache files
+            local_app_data = os.environ.get("LOCALAPPDATA", "")
+            if local_app_data:
+                icon_cache_dir = os.path.join(
+                    local_app_data, "Microsoft", "Windows", "Explorer"
+                )
+                if os.path.exists(icon_cache_dir):
+                    for f in os.listdir(icon_cache_dir):
+                        if f.startswith("iconcache") or f.startswith("thumbcache"):
+                            try:
+                                os.remove(os.path.join(icon_cache_dir, f))
+                            except:
+                                pass
+
+            # Also try the legacy icon cache location
+            icon_cache_legacy = os.path.join(local_app_data, "IconCache.db")
+            if os.path.exists(icon_cache_legacy):
+                try:
+                    os.remove(icon_cache_legacy)
+                except:
+                    pass
+
+            self.logger.info("✅ Icon cache cleared")
+
+        except Exception as e:
+            self.logger.warning(f"⚠️  Could not fully clear icon cache: {e}")
+
+        finally:
+            # Always restart Explorer
+            try:
+                subprocess.Popen(
+                    ["explorer.exe"],
+                    creationflags=subprocess.DETACHED_PROCESS,
+                )
+                time.sleep(2)
+                self.logger.info("✅ Explorer restarted")
+            except Exception as e:
+                self.logger.warning(f"⚠️  Could not restart Explorer: {e}")
 
     def _restore_backup(self, backup_dir: str, install_dir: str) -> bool:
         """Restore from backup"""
