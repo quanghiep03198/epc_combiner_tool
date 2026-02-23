@@ -53,7 +53,10 @@ class MainWindow(QMainWindow):
 
         # Global overlay
         self.overlay = QWidget(self)
-        self.overlay.setStyleSheet("background-color: rgba(0, 0, 0, 128);")
+        self.bg = QColor(theme_manager.get_color("background"))
+        self.overlay.setStyleSheet(
+            f"background-color: rgba({self.bg.red()}, {self.bg.green()}, {self.bg.blue()}, 0.5);"
+        )
         self.overlay.setGeometry(self.rect())
 
         # Import and setup separated widgets
@@ -231,7 +234,9 @@ class MainWindow(QMainWindow):
         configuration = ConfigService.load_configs()
         if "" in configuration.values():
             self.overlay = QWidget(self)
-            self.overlay.setStyleSheet("background-color: rgba(0, 0, 0, 128);")
+            self.overlay.setStyleSheet(
+                f"background-color: rgba({self.bg.red()}, {self.bg.green()}, {self.bg.blue()}, 0.5);"
+            )
             self.overlay.setGeometry(window.rect())
             self.overlay.show()
             QMessageBox.warning(
@@ -251,7 +256,9 @@ class MainWindow(QMainWindow):
     def on_auth_state_change(self, data):
         if not data.get("is_authenticated"):
             self.overlay = QWidget(self)
-            self.overlay.setStyleSheet("background-color: rgba(0, 0, 0, 128);")
+            self.overlay.setStyleSheet(
+                f"background-color: rgba({self.bg.red()}, {self.bg.green()}, {self.bg.blue()}, 0.5);"
+            )
             self.overlay.setGeometry(self.rect())
             self.overlay.show()
             login_dialog = LoginDialog(parent=self)
