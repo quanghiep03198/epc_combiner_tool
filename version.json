@@ -1,12 +1,12 @@
 {
-  "version": "v1.3.1",
+  "version": "v1.3.2",
   "build_type": "release",
-  "build_date": "2026-02-23T15:33:47.974156",
-  "build_timestamp": 1771835627,
+  "build_date": "2026-02-25T10:04:44.448522",
+  "build_timestamp": 1771988684,
   "git": {
-    "commit_hash": "c083895",
-    "commit_date": "2026-02-18 02:55:37 +0700",
-    "branch": "main"
+    "commit_hash": "a07a1a5",
+    "commit_date": "2026-02-23 16:32:46 +0700",
+    "branch": "develop"
   },
   "platform": {
     "system": "nt",
