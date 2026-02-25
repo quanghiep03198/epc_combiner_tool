@@ -27,6 +27,25 @@ if not path.exists(__cfg_file__):
 __configs__ = ConfigParser()
 __configs__.read(filenames=__cfg_file__)
 
+# Ensure required sections exist in the config file (and create with sensible defaults if missing)
+_required_sections = {
+    "LOCALE": {"language": "en"},
+    "DATA": {"auto_save": "True"},
+    "UI": {"theme": "dark"},
+}
+
+_changed = False
+for _section, _defaults in _required_sections.items():
+    if not __configs__.has_section(_section):
+        __configs__.add_section(_section)
+        for _k, _v in _defaults.items():
+            __configs__.set(_section, _k, str(_v))
+        _changed = True
+
+if _changed:
+    with open(__cfg_file__, "w", encoding="utf-8") as _file:
+        __configs__.write(_file)
+
 
 class ConfigSection(Enum):
     LOCALE = "LOCALE"
