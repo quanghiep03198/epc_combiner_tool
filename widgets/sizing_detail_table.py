@@ -12,6 +12,8 @@ from i18n import I18nService, I18nContext
 from widgets.toaster import Toaster, ToastPreset
 
 from contexts.combine_form_context import combine_form_context
+from themes.theme_manager import theme_manager
+from themes.colors import get_color
 
 
 class WorkerSignals(QObject):
@@ -94,23 +96,27 @@ class AdditionalQtyDelegate(QStyledItemDelegate):
         editor.setGeometry(option.rect)
 
         # Style cho editor - full width
-        editor.setStyleSheet(
-            """
-            QLineEdit {
+        # Theme-aware styles
+        card_bg = get_color(theme_manager.current_theme, "card")
+        fg = get_color(theme_manager.current_theme, "foreground")
+        accent = get_color(theme_manager.current_theme, "accent")
+        muted_fg = get_color(theme_manager.current_theme, "muted-foreground")
+
+        editor.setStyleSheet(f"""
+            QLineEdit {{
                 width: 100%;
                 padding: 6px 8px;
-                border: 2px solid #3b82f6;
-                background-color: #171717;
-                color: #ffffff;
+                border: 2px solid {accent};
+                background-color: {card_bg};
+                color: {fg};
                 font-size: 14px;
-            }
-            QLineEdit::placeholder {
+            }}
+            QLineEdit::placeholder {{
                 width: 100%;
-                color: #737373;
+                color: {muted_fg};
                 font-size: 14px;
-            }
-        """
-        )
+            }}
+        """)
 
         # Connect signal để validate realtime
         editor.textChanged.connect(
@@ -137,60 +143,65 @@ class AdditionalQtyDelegate(QStyledItemDelegate):
             if value > max_value:
                 # Lấy text trước đó (bỏ ký tự cuối)
                 editor.setText(text[:-1])
-                editor.setStyleSheet(
-                    """
-                    QLineEdit {
+                destructive = get_color(theme_manager.current_theme, "destructive")
+                card_bg = get_color(theme_manager.current_theme, "card")
+                muted_fg = get_color(theme_manager.current_theme, "muted-foreground")
+                fg = get_color(theme_manager.current_theme, "foreground")
+
+                editor.setStyleSheet(f"""
+                    QLineEdit {{
                         width: 100%;
                         padding: 6px 8px;
-                        border: 2px solid #ef4444;
-                        background-color: #171717;
-                        color: #ffffff;
+                        border: 2px solid {destructive};
+                        background-color: {card_bg};
+                        color: {fg};
                         font-size: 14px;
-                    }
-                    QLineEdit::placeholder {
+                    }}
+                    QLineEdit::placeholder {{
                         width: 100%;
-                        color: #737373;
+                        color: {muted_fg};
                         font-size: 14px;
-                    }
-                """
-                )
+                    }}
+                """)
             elif value < 1:
-                editor.setStyleSheet(
-                    """
-                    QLineEdit {
+                destructive = get_color(theme_manager.current_theme, "destructive")
+                card_bg = get_color(theme_manager.current_theme, "card")
+                muted_fg = get_color(theme_manager.current_theme, "muted-foreground")
+                editor.setStyleSheet(f"""
+                    QLineEdit {{
                         width: 100%;
                         padding: 6px 8px;
-                        border: 2px solid #ef4444;
-                        background-color: #171717;
-                        color: #ffffff;
+                        border: 2px solid {destructive};
+                        background-color: {card_bg};
+                        color: {fg};
                         font-size: 14px;
-                    }
-                    QLineEdit::placeholder {
+                    }}
+                    QLineEdit::placeholder {{
                         width: 100%;
-                        color: #737373;
+                        color: {muted_fg};
                         font-size: 14px;
-                    }
-                """
-                )
+                    }}
+                """)
             else:
                 # Valid
-                editor.setStyleSheet(
-                    """
-                    QLineEdit {
+                success = get_color(theme_manager.current_theme, "success")
+                card_bg = get_color(theme_manager.current_theme, "card")
+                muted_fg = get_color(theme_manager.current_theme, "muted-foreground")
+                editor.setStyleSheet(f"""
+                    QLineEdit {{
                         width: 100%;
                         padding: 6px 8px;
-                        border: 2px solid #22c55e;
-                        background-color: #171717;
-                        color: #ffffff;
+                        border: 2px solid {success};
+                        background-color: {card_bg};
+                        color: {fg};
                         font-size: 14px;
-                    }
-                    QLineEdit::placeholder {
+                    }}
+                    QLineEdit::placeholder {{
                         width: 100%;
-                        color: #737373;
+                        color: {muted_fg};
                         font-size: 14px;
-                    }
-                """
-                )
+                    }}
+                """)
         except ValueError:
             pass
 
@@ -310,7 +321,13 @@ class AdditionalQtyDelegate(QStyledItemDelegate):
             )
             if item:
                 item.setText(f"Max: {max_value}")
-                item.setForeground(QBrush(QColor("#737373")))
+                item.setForeground(
+                    QBrush(
+                        QColor(
+                            get_color(theme_manager.current_theme, "muted-foreground")
+                        )
+                    )
+                )
 
         # Refetch data table
         __event_emitter__.emit(
@@ -357,10 +374,15 @@ class AdditionalQtyDelegate(QStyledItemDelegate):
         if isinstance(value, str) and value.startswith("Max:"):
             # Vẽ background
             painter.save()
-            painter.fillRect(option.rect, QColor("#171717"))
+            # Use theme card color for editor background and muted color for placeholder
+            painter.fillRect(
+                option.rect, QColor(get_color(theme_manager.current_theme, "card"))
+            )
 
             # Vẽ text với màu placeholder
-            painter.setPen(QColor("#737373"))
+            painter.setPen(
+                QColor(get_color(theme_manager.current_theme, "muted-foreground"))
+            )
             font = painter.font()
             font.setPointSize(11)  # Giảm cỡ chữ cho placeholder
             painter.setFont(font)
@@ -567,8 +589,14 @@ class SizingDetailTableWidget(QTableWidget, I18nContext):
         self, row: int, col: int, original_qty: int, actual_qty: int
     ):
         if actual_qty == original_qty:
-            self.item(row, col).setForeground(QBrush(QColor("#22c55e")))
+            self.item(row, col).setForeground(
+                QBrush(QColor(get_color(theme_manager.current_theme, "success")))
+            )
         elif actual_qty > original_qty:
-            self.item(row, col).setForeground(QBrush(QColor("#ef4444")))
+            self.item(row, col).setForeground(
+                QBrush(QColor(get_color(theme_manager.current_theme, "destructive")))
+            )
         else:
-            self.item(row, col).setForeground(QBrush(QColor("#eab308")))
+            self.item(row, col).setForeground(
+                QBrush(QColor(get_color(theme_manager.current_theme, "warning")))
+            )
