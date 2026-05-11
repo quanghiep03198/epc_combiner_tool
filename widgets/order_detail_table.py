@@ -81,9 +81,9 @@ class OrderDetailTableWidget(QTableWidget):
 
     def __translate__(self):
         horizontal_headers = [
-            I18nService.t("fields.customer_order_code"),
-            I18nService.t("fields.shoes_style_code"),
-            I18nService.t("fields.shoes_style_code_factory"),
+            I18nService.t("fields.factory_shoe_style"),
+            I18nService.t("fields.shoe_style_code"),
+            I18nService.t("fields.cust_shoe_style"),
             I18nService.t("fields.mo_noseq"),
             I18nService.t("fields.or_no"),
             I18nService.t("fields.or_custpo"),
