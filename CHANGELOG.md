@@ -96,6 +96,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Update translations for customer order fields and improve order detail table headers
+- Format i18n python file sorting dictionary key by ascending
 
 [1.1]: https://github.com/quanghiep03198/epc_combiner_tool/releases/tag/v1.1
 [1.1.1-rc]: https://github.com/quanghiep03198/epc_combiner_tool/releases/tag/v1.1.1-rc
