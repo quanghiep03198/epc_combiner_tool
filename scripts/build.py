@@ -214,7 +214,7 @@ def build_update_scripts():
         update_cmd = pyinstaller_cmd + [
             str(Path("update/update_manager.py").absolute()),
             "--onefile",
-            "--console",
+            "--no-console",
             "--name=updater",
             f"--distpath={output_dir}",
             "--workpath=build_update",
