@@ -147,10 +147,10 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           # Remove 'v' prefix for file naming if present
           VERSION_NUMBER=${VERSION#v}
-          
+
           # The expected path should be: executable-windows/dist/EPC Information Combiner/
           EXPECTED_PATH="executable-windows/dist/EPC Information Combiner"
-          
+
           if [ -d "$EXPECTED_PATH" ]; then
             echo "Found EPC Information Combiner folder at expected location: $EXPECTED_PATH"
             
@@ -212,11 +212,33 @@ jobs:
 
       - name: Prepare installation assets
         run: |
-          VERSION_NUMBER="${{ steps.version.outputs.version }}"
-          VERSION_NUMBER=${VERSION_NUMBER#v}  # Remove 'v' prefix for file naming
-          
+          VERSION_TAG="${{ steps.version.outputs.version }}"
+
           # Create a directory for release assets
           mkdir -p release-assets
+
+          # Normalize latest installer name for release attachment
+          TARGET_INSTALLER="release-assets/epc-ic-${VERSION_TAG}-windows-installer-x64.exe"
+          CANDIDATE_INSTALLER=""
+
+          if [ -d "installer-windows" ]; then
+            CANDIDATE_INSTALLER=$(find installer-windows -type f -name "*.exe" 2>/dev/null | sort | tail -1)
+          fi
+
+          if [ -z "$CANDIDATE_INSTALLER" ] && [ -d "installation" ]; then
+            CANDIDATE_INSTALLER=$(find installation -type f -name "*.exe" 2>/dev/null | grep -Ei "(installer|setup)" | head -1)
+            if [ -z "$CANDIDATE_INSTALLER" ]; then
+              CANDIDATE_INSTALLER=$(find installation -type f -name "*.exe" 2>/dev/null | head -1)
+            fi
+          fi
+
+          if [ -n "$CANDIDATE_INSTALLER" ]; then
+            echo "Found installer candidate: $CANDIDATE_INSTALLER"
+            cp "$CANDIDATE_INSTALLER" "$TARGET_INSTALLER"
+            echo "Prepared installer asset: $TARGET_INSTALLER"
+          else
+            echo "No installer executable found in installer-windows/ or installation/"
+          fi
 
           # Copy installation files if they exist
           if [ -d "installation" ]; then
@@ -263,7 +285,7 @@ jobs:
           # Save changelog to file  
           VERSION_TAG="${{ steps.version.outputs.version }}"
           VERSION_NUMBER=${VERSION_TAG#v}  # Remove 'v' prefix for file naming
-          
+
           cat > changelog.md << EOF
           ## Changes in ${VERSION_TAG}
 
@@ -271,7 +293,7 @@ jobs:
 
           ## Downloads
           - **Windows windows-x64**: epc-ic-v${VERSION_NUMBER}-windows-x64.zip (Complete application folder)
-          - **Windows Installer**: epc-ic-${VERSION_NUMBER}-windows-installer-x64.exe (Recommended for most users)
+          - **Windows Installer**: epc-ic-v${VERSION_NUMBER}-windows-installer-x64.exe (Recommended for most users)
 
           ## Installation
 
@@ -303,7 +325,7 @@ jobs:
           prerelease: ${{ inputs.prerelease }}
           files: |
             epc-ic-v*-windows-x64.zip
-            installer-windows/*.exe
+            release-assets/epc-ic-v*-windows-installer-x64.exe
             executable-windows/*
             release-assets/*
             installation/*
