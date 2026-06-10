@@ -294,23 +294,51 @@ class SideToolbar(QToolBar, I18nContext):
             # Check for update script/executable first
             # In production, we use updater.exe; in development, update_manager.py
             update_executable = None
-            update_batch = resolve_path("update.bat")
 
-            # Priority order: updater.exe > update_manager.py
-            updater_exe = resolve_path("updater.exe")
-            update_py = resolve_path("update/update_manager.py")
+            if getattr(sys, "frozen", False):
+                app_dir = os.path.dirname(sys.executable)
+            else:
+                app_dir = resolve_path(".")
 
-            if os.path.exists(updater_exe):
-                update_executable = updater_exe
-            elif os.path.exists(update_py):
-                update_executable = update_py
+            update_batch_candidates = [
+                os.path.join(app_dir, "update.bat"),
+                resolve_path("update.bat"),
+            ]
+            update_batch = next(
+                (p for p in update_batch_candidates if os.path.exists(p)), None
+            )
+
+            updater_candidates = [
+                os.path.join(app_dir, "updater.exe"),
+                os.path.join(app_dir, "update", "updater.exe"),
+                resolve_path("updater.exe"),
+                resolve_path("update/updater.exe"),
+            ]
+            update_py_candidates = [
+                os.path.join(app_dir, "update", "update_manager.py"),
+                resolve_path("update/update_manager.py"),
+            ]
+
+            for candidate in updater_candidates:
+                if os.path.exists(candidate):
+                    update_executable = candidate
+                    break
 
             if not update_executable:
+                for candidate in update_py_candidates:
+                    if os.path.exists(candidate):
+                        update_executable = candidate
+                        break
+
+            if not update_executable:
+                searched_paths = updater_candidates + update_py_candidates
                 QMessageBox.critical(
                     self.root,
                     "Update Error",
                     f"Update executable not found.\n\n"
-                    f"Looking for: updater.exe or update/update_manager.py\n"
+                    f"Searched paths:\n- "
+                    + "\n- ".join(searched_paths)
+                    + "\n\n"
                     f"Please download the latest version manually from GitHub.",
                     QMessageBox.StandardButton.Ok,
                 )
@@ -345,12 +373,16 @@ class SideToolbar(QToolBar, I18nContext):
             if final_reply == QMessageBox.StandardButton.Yes:
                 # Store update script paths for delayed execution
                 self.update_executable_path = update_executable
-                self.update_batch_path = (
-                    update_batch if os.path.exists(update_batch) else None
-                )
+                self.update_batch_path = None
+                if (
+                    update_executable
+                    and not update_executable.lower().endswith(".exe")
+                    and os.path.exists(update_batch)
+                ):
+                    self.update_batch_path = update_batch
 
-                # Show a quick status message
-                self.root.statusBar().showMessage("Starting update process...", 2000)
+                # # Show a quick status message
+                # self.root.statusBar().showMessage("Starting update process...", 2000)
 
                 # Use QTimer to delay the update process
                 # This allows the dialog to close properly before exit
@@ -382,7 +414,11 @@ class SideToolbar(QToolBar, I18nContext):
                     # Run executable directly
                     subprocess.Popen(
                         [self.update_executable_path],
-                        creationflags=subprocess.CREATE_NEW_CONSOLE,
+                        cwd=os.path.dirname(self.update_executable_path),
+                        creationflags=(
+                            subprocess.DETACHED_PROCESS
+                            | subprocess.CREATE_NEW_PROCESS_GROUP
+                        ),
                     )
                 else:
                     # Run Python script

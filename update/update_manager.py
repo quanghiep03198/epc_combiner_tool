@@ -66,6 +66,21 @@ except Exception:
     app_theme_manager = None
 
 
+def _hidden_subprocess_kwargs(extra_creationflags: int = 0) -> Dict[str, Any]:
+    """Return subprocess kwargs that keep child console windows hidden on Windows."""
+    if os.name != "nt":
+        return {}
+
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    startupinfo.wShowWindow = 0
+
+    return {
+        "startupinfo": startupinfo,
+        "creationflags": subprocess.CREATE_NO_WINDOW | extra_creationflags,
+    }
+
+
 class SafeLogger:
     """Safe logging system that never fails"""
 
@@ -153,7 +168,11 @@ class ProcessManager:
 
         try:
             result = subprocess.run(
-                ["tasklist", "/fo", "csv"], capture_output=True, text=True, timeout=10
+                ["tasklist", "/fo", "csv"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                **_hidden_subprocess_kwargs(),
             )
 
             if result.returncode == 0:
@@ -214,6 +233,7 @@ class ProcessManager:
                     capture_output=True,
                     text=True,
                     timeout=10,
+                    **_hidden_subprocess_kwargs(),
                 )
                 if result.returncode == 0:
                     terminated.append(f"{name} (PID: {pid})")
@@ -373,6 +393,7 @@ class FileReplacer:
                     shell=True,
                     capture_output=True,
                     timeout=5,
+                    **_hidden_subprocess_kwargs(),
                 )
             except:
                 pass
@@ -430,6 +451,7 @@ class FileReplacer:
                 capture_output=True,
                 text=True,
                 timeout=15,
+                **_hidden_subprocess_kwargs(),
             )
 
             # robocopy returns 0-7 for success, 8+ for errors
@@ -486,6 +508,7 @@ class FileReplacer:
                 capture_output=True,
                 text=True,
                 timeout=10,
+                **_hidden_subprocess_kwargs(),
             )
 
             if result.returncode == 0:
@@ -523,6 +546,10 @@ class UpdateDownloader:
         for attempt in range(max_retries):
             self.logger.info(f"Download attempt {attempt + 1}/{max_retries}: {url}")
 
+            # Prefer in-process download to avoid spawning console windows.
+            if self._try_requests_download(url, output_path):
+                return True
+
             # Try curl first (more reliable)
             if self._try_curl_download(url, output_path):
                 return True
@@ -555,7 +582,7 @@ class UpdateDownloader:
             ]
 
             print("Downloading with curl... (43MB file, may take a few minutes)")
-            result = subprocess.run(cmd, timeout=180)
+            result = subprocess.run(cmd, timeout=180, **_hidden_subprocess_kwargs())
 
             if result.returncode == 0 and os.path.exists(output_path):
                 size = os.path.getsize(output_path)
@@ -592,8 +619,13 @@ class UpdateDownloader:
                 "-Command",
                 script,
             ]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=300,
+                **_hidden_subprocess_kwargs(),
+            )
             if result.returncode == 0 and os.path.exists(output_path):
                 size = os.path.getsize(output_path)
                 self.logger.info(f"PowerShell download successful: {size} bytes")
@@ -604,6 +636,30 @@ class UpdateDownloader:
 
         except Exception as e:
             self.logger.warning(f"PowerShell download error: {e}")
+            return False
+
+    def _try_requests_download(self, url: str, output_path: str) -> bool:
+        """Try downloading with requests to avoid spawning console subprocesses."""
+        if not REQUESTS_AVAILABLE:
+            return False
+
+        try:
+            with requests.get(url, stream=True, timeout=(30, 300)) as response:
+                response.raise_for_status()
+                with open(output_path, "wb") as output_file:
+                    for chunk in response.iter_content(chunk_size=1024 * 256):
+                        if chunk:
+                            output_file.write(chunk)
+
+            if os.path.exists(output_path):
+                size = os.path.getsize(output_path)
+                self.logger.info(f"Requests download successful: {size} bytes")
+                return True
+
+            return False
+
+        except Exception as e:
+            self.logger.warning(f"Requests download error: {e}")
             return False
 
 
@@ -791,6 +847,10 @@ class CleanUpdateManager:
     def _get_download_info(self, update_url: str) -> Optional[Dict]:
         """Get download information from update URL"""
         try:
+            if not update_url or not isinstance(update_url, str):
+                self.logger.error("Update URL is empty or invalid")
+                return None
+
             if update_url.startswith("file://"):
                 # Local file
                 file_path = update_url[7:]  # Remove 'file://'
@@ -1037,7 +1097,7 @@ class CleanUpdateManager:
             try:
                 subprocess.Popen(
                     ["explorer.exe"],
-                    creationflags=subprocess.DETACHED_PROCESS,
+                    **_hidden_subprocess_kwargs(subprocess.DETACHED_PROCESS),
                 )
                 time.sleep(2)
                 self.logger.info("Explorer restarted")
@@ -1150,6 +1210,14 @@ def apply_shared_theme(app: "QApplication", install_dir: Optional[str] = None) -
 
 def restart_updated_application(install_dir: str) -> bool:
     """Restart the updated application after update completion."""
+    # Ensure old app instances are gone before launching the updated process.
+    try:
+        ProcessManager().terminate_processes_by_name(
+            ["main.exe", "EPC Information Combiner.exe"]
+        )
+    except Exception:
+        pass
+
     candidates = [
         os.path.join(install_dir, "EPC Information Combiner.exe"),
         os.path.join(install_dir, "main.exe"),
@@ -1160,17 +1228,17 @@ def restart_updated_application(install_dir: str) -> bool:
             subprocess.Popen(
                 [candidate],
                 cwd=install_dir,
-                creationflags=(
-                    subprocess.CREATE_NEW_PROCESS_GROUP
-                    if os.name == "nt"
-                    else 0
-                ),
+                **_hidden_subprocess_kwargs(subprocess.CREATE_NEW_PROCESS_GROUP),
             )
             return True
 
     main_py = os.path.join(install_dir, "main.py")
     if os.path.exists(main_py):
-        subprocess.Popen([sys.executable, main_py], cwd=install_dir)
+        subprocess.Popen(
+            [sys.executable, main_py],
+            cwd=install_dir,
+            **(_hidden_subprocess_kwargs() if os.name == "nt" else {}),
+        )
         return True
 
     return False
@@ -1358,7 +1426,7 @@ def main():
     parser.add_argument(
         "--processes",
         nargs="*",
-        default=["main.exe"],
+        default=["main.exe", "EPC Information Combiner.exe"],
         help="Process names to terminate",
     )
     parser.add_argument(
@@ -1403,6 +1471,9 @@ def main():
         print(f"   Install Directory: {args.install_dir}")
         print("Auto-detection working correctly!")
         return
+
+    # Keep args in sync so GUI worker receives the detected URL.
+    args.update_url = update_url
 
     use_gui = PYQT_AVAILABLE and not args.no_gui and (args.gui or not args.silent)
 
