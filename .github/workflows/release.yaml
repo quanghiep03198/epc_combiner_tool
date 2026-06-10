@@ -221,10 +221,20 @@ jobs:
           TARGET_INSTALLER="release-assets/epc-ic-${VERSION_TAG}-windows-installer-x64.exe"
           CANDIDATE_INSTALLER=""
 
-          if [ -d "installer-windows" ]; then
+          # Priority 1: installer generated in root release folder
+          if [ -d "release" ]; then
+            CANDIDATE_INSTALLER=$(find release -type f -name "*.exe" 2>/dev/null | grep -Ei "(installer|setup)" | sort | tail -1)
+            if [ -z "$CANDIDATE_INSTALLER" ]; then
+              CANDIDATE_INSTALLER=$(find release -type f -name "*.exe" 2>/dev/null | sort | tail -1)
+            fi
+          fi
+
+          # Priority 2: installer artifact folder
+          if [ -z "$CANDIDATE_INSTALLER" ] && [ -d "installer-windows" ]; then
             CANDIDATE_INSTALLER=$(find installer-windows -type f -name "*.exe" 2>/dev/null | sort | tail -1)
           fi
 
+          # Priority 3: legacy installation folder
           if [ -z "$CANDIDATE_INSTALLER" ] && [ -d "installation" ]; then
             CANDIDATE_INSTALLER=$(find installation -type f -name "*.exe" 2>/dev/null | grep -Ei "(installer|setup)" | head -1)
             if [ -z "$CANDIDATE_INSTALLER" ]; then
@@ -237,7 +247,7 @@ jobs:
             cp "$CANDIDATE_INSTALLER" "$TARGET_INSTALLER"
             echo "Prepared installer asset: $TARGET_INSTALLER"
           else
-            echo "No installer executable found in installer-windows/ or installation/"
+            echo "No installer executable found in release/, installer-windows/, or installation/"
           fi
 
           # Copy installation files if they exist
