@@ -1,23 +1,21 @@
 import os
-import sys
 import subprocess
-from PyQt6.QtWidgets import *
-from PyQt6.QtGui import *
+import sys
+
 from PyQt6.QtCore import *
-from widgets.settings_dialog import AppSettingsDialog
-from i18n import I18nService, I18nContext, Language, __languages__
-from events import __event_emitter__, UserActionEvent
-from helpers.resolve_path import resolve_path
-from helpers.logger import logger
+from PyQt6.QtGui import *
+from PyQt6.QtWidgets import *
+
+from events import UserActionEvent, __event_emitter__
 from helpers.configuration import ConfigService
-from helpers.version import (
-    fetch_latest_version,
-    load_version_info,
-    is_development_environment,
-    get_update_directory,
-)
-from themes.theme_manager import theme_manager
+from helpers.logger import logger
+from helpers.resolve_path import resolve_path
+from helpers.version import (fetch_latest_version, get_update_directory,
+                             is_development_environment, load_version_info)
+from i18n import I18nContext, I18nService, Language, __languages__
 from themes.colors import Theme, get_color
+from themes.theme_manager import theme_manager
+from widgets.settings_dialog import AppSettingsDialog
 
 
 class SideToolbar(QToolBar, I18nContext):
@@ -130,13 +128,11 @@ class SideToolbar(QToolBar, I18nContext):
         self.menu = QMenu(self)
         self.menu.setFixedWidth(150)
         self.menu.setContentsMargins(4, 8, 4, 8)
-        self.menu.setStyleSheet(
-            """
+        self.menu.setStyleSheet("""
             QMenu::item {
                 padding-left: 8px;
             }
-        """
-        )
+        """)
 
         for language in __languages__:
             action = QAction(language["label"], self)
@@ -170,16 +166,14 @@ class SideToolbar(QToolBar, I18nContext):
             theme = theme_manager.current_theme
 
         bg_color = get_color(theme, "secondary")
-        self.setStyleSheet(
-            f"""
+        self.setStyleSheet(f"""
             QToolBar{{
                 padding-left: 4px;
                 padding-right: 4px;
                 spacing: 18px;
                 background-color: {bg_color};
             }}
-        """
-        )
+        """)
 
         # Force update to apply new styles
         self.style().unpolish(self)
@@ -336,9 +330,7 @@ class SideToolbar(QToolBar, I18nContext):
                     self.root,
                     "Update Error",
                     f"Update executable not found.\n\n"
-                    f"Searched paths:\n- "
-                    + "\n- ".join(searched_paths)
-                    + "\n\n"
+                    f"Searched paths:\n- " + "\n- ".join(searched_paths) + "\n\n"
                     f"Please download the latest version manually from GitHub.",
                     QMessageBox.StandardButton.Ok,
                 )

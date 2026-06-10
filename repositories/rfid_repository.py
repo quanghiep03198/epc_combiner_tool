@@ -1,15 +1,17 @@
-from PyQt6.QtSql import *
-from helpers.logger import logger
-from contexts.combine_form_context import combine_form_context
-from database import db_service, DatabaseConnection
-from contexts.auth_context import auth_context
-from helpers.disutils import strtobool
 import json
-from constants import CombineAction
 from pathlib import Path
-from repositories.station_repository import StationRepository
+
 from PyQt6.QtCore import QDateTime
+from PyQt6.QtSql import *
+
+from constants import CombineAction
+from contexts.auth_context import auth_context
+from contexts.combine_form_context import combine_form_context
+from database import DatabaseConnection, db_service
+from helpers.disutils import strtobool
+from helpers.logger import logger
 from i18n import I18nService
+from repositories.station_repository import StationRepository
 
 
 class RFIDRepository:
@@ -24,16 +26,14 @@ class RFIDRepository:
             connection = db_service.get_connection(DatabaseConnection.DATA_LAKE)
             query = QSqlQuery(connection)
             epc_list = ",".join([f"'{item['EPC_Code']}'" for item in data])
-            query.prepare(
-                f"""--sql
+            query.prepare(f"""--sql
                 SELECT EPC_Code, 
                     CASE WHEN CAST(ri_date AS DATE) <= CAST(DATEADD(DAY, -2, GETDATE()) AS DATE) 
                     THEN 't' ELSE 'f' END AS recombinable
                 FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst
                 WHERE EPC_Code IN ({epc_list})
                     AND ri_cancel = 0
-                """
-            )
+                """)
             query.exec()
             while query.next():
                 result.append(
@@ -63,8 +63,7 @@ class RFIDRepository:
             fallback_station_no = "%s_%s" % (auth_context.get("factory_code"), "PA103")
 
             # Force end EPC's lifecycle
-            query.prepare(
-                f"""-- sql
+            query.prepare(f"""-- sql
                 WITH CTE_MatchKeys AS (
                     SELECT a.keyid as matchkeyid 
                     FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst a
@@ -100,15 +99,13 @@ class RFIDRepository:
                     remark = 'Forced lifecycle end by {combine_form_context.get("user_name_updated")}'
                 WHERE matchkeyid IN (SELECT matchkeyid FROM CTE_MatchKeys)
                 ;
-                """
-            )
+                """)
 
             if not query.exec():
                 raise Exception(query.lastError().text())
 
             # Cancel old records
-            query.prepare(
-                f"""--sql          
+            query.prepare(f"""--sql          
                 UPDATE DV_DATA_LAKE.dbo.dv_rfidmatchmst
                 SET ri_cancel = 1, 
                     ri_reason_cancel = 'EPC lifecycle ended', 
@@ -119,8 +116,7 @@ class RFIDRepository:
                     AND ri_cancel = 0
                     AND sole_tag = 'A'
                 ;
-                """
-            )
+                """)
 
             if not query.exec():
                 raise Exception(query.lastError().text())
@@ -130,8 +126,7 @@ class RFIDRepository:
             json_data = json.dumps(obj=data, ensure_ascii=False).replace("'", "''")
 
             # Use the JSON to perform an insert-select operation
-            query.prepare(
-                f"""--sql
+            query.prepare(f"""--sql
                 INSERT INTO DV_DATA_LAKE.dbo.dv_rfidmatchmst (
                     EPC_Code, mo_no, mo_noseq, mat_code, or_no, or_custpo, 
                     shoestyle_codefactory, cust_shoestyle, size_numcode, size_code, size_qty,
@@ -173,8 +168,7 @@ class RFIDRepository:
                     JSON_VALUE(value, '$.remark') AS remark
                 FROM OPENJSON('{json_data}')
                 ;
-                """
-            )
+                """)
 
             if not query.exec():
                 raise Exception(query.lastError().text())

@@ -4,20 +4,20 @@ Clean Ultimate Update Manager - No ctypes dependencies
 Production ready update system for EPC application
 """
 
-import os
-import sys
-import json
-import time
-import shutil
-import zipfile
-import tempfile
-import subprocess
-import traceback
 import configparser
 import importlib.util
-from pathlib import Path
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+import traceback
+import zipfile
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple, Any, Callable
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 try:
     import requests
@@ -38,17 +38,10 @@ except ImportError:
 try:
     # from helpers.resolve_path import resolve_path
     from PyQt6.QtCore import QObject, QThread, pyqtSignal
-    from PyQt6.QtWidgets import (
-        QApplication,
-        QDialog,
-        QVBoxLayout,
-        QLabel,
-        QProgressBar,
-        QTextEdit,
-        QPushButton,
-        QHBoxLayout,
-    )
     from PyQt6.QtGui import QIcon
+    from PyQt6.QtWidgets import (QApplication, QDialog, QHBoxLayout, QLabel,
+                                 QProgressBar, QPushButton, QTextEdit,
+                                 QVBoxLayout)
 
     PYQT_AVAILABLE = True
 except ImportError:
@@ -1139,7 +1132,9 @@ def load_current_theme_name(install_dir: Optional[str] = None) -> str:
         config_candidates.append(os.path.join(install_dir, "app.cfg"))
 
     config_candidates.append(
-        os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../app.cfg"))
+        os.path.abspath(
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "../app.cfg")
+        )
     )
     config_candidates.append(os.path.abspath("app.cfg"))
 
@@ -1168,12 +1163,16 @@ def _load_theme_manager_from_install_dir(install_dir: str):
         sys.path.insert(0, install_dir)
 
     try:
-        spec_colors = importlib.util.spec_from_file_location("themes.colors", colors_path)
+        spec_colors = importlib.util.spec_from_file_location(
+            "themes.colors", colors_path
+        )
         module_colors = importlib.util.module_from_spec(spec_colors)
         assert spec_colors and spec_colors.loader
         spec_colors.loader.exec_module(module_colors)
 
-        spec_manager = importlib.util.spec_from_file_location("themes.theme_manager", manager_path)
+        spec_manager = importlib.util.spec_from_file_location(
+            "themes.theme_manager", manager_path
+        )
         module_manager = importlib.util.module_from_spec(spec_manager)
         assert spec_manager and spec_manager.loader
         spec_manager.loader.exec_module(module_manager)
@@ -1307,7 +1306,6 @@ if PYQT_AVAILABLE:
             finally:
                 SafeLogger.set_listener(None)
 
-
     class UpdateProgressDialog(QDialog):
         def __init__(self, args):
             super().__init__()
@@ -1398,6 +1396,7 @@ if PYQT_AVAILABLE:
                 event.ignore()
                 return
             event.accept()
+
 
 def get_latest_release_info():
     """Auto-detect latest release from GitHub and generate download URL"""

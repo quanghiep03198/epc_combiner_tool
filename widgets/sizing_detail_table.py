@@ -1,19 +1,18 @@
-from PyQt6.QtWidgets import *
-from PyQt6.QtCore import *
-from PyQt6.QtGui import *
-from PyQt6.QtCore import *
 from typing import Callable
 
-from repositories.sizing_repository import SizingRepository
-from helpers.logger import logger
-from events import __event_emitter__, UserActionEvent
-from widgets.loading_widget import LoadingWidget
-from i18n import I18nService, I18nContext
-from widgets.toaster import Toaster, ToastPreset
+from PyQt6.QtCore import *
+from PyQt6.QtGui import *
+from PyQt6.QtWidgets import *
 
 from contexts.combine_form_context import combine_form_context
-from themes.theme_manager import theme_manager
+from events import UserActionEvent, __event_emitter__
+from helpers.logger import logger
+from i18n import I18nContext, I18nService
+from repositories.sizing_repository import SizingRepository
 from themes.colors import get_color
+from themes.theme_manager import theme_manager
+from widgets.loading_widget import LoadingWidget
+from widgets.toaster import Toaster, ToastPreset
 
 
 class WorkerSignals(QObject):
@@ -144,7 +143,7 @@ class AdditionalQtyDelegate(QStyledItemDelegate):
             card_bg = get_color(theme_manager.current_theme, "card")
             muted_fg = get_color(theme_manager.current_theme, "muted-foreground")
             fg = get_color(theme_manager.current_theme, "foreground")
-            
+
             if value > max_value:
                 # Lấy text trước đó (bỏ ký tự cuối)
                 editor.setText(text[:-1])

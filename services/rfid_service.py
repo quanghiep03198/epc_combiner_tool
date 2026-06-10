@@ -1,6 +1,7 @@
-from repositories.rfid_repository import RFIDRepository
 from PyQt6.QtSql import *
+
 from events import __event_emitter__
+from repositories.rfid_repository import RFIDRepository
 
 
 class RFIDService:

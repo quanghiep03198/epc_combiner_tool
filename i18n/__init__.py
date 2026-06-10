@@ -1,10 +1,10 @@
-from helpers.configuration import ConfigService, ConfigSection
-from enum import Enum
-from events import UserActionEvent, __event_emitter__
-from helpers.logger import logger
-from helpers.flatten_dict import flatten_dict
 from abc import abstractmethod
+from enum import Enum
 
+from events import UserActionEvent, __event_emitter__
+from helpers.configuration import ConfigSection, ConfigService
+from helpers.flatten_dict import flatten_dict
+from helpers.logger import logger
 from i18n.cn import cn_dictionary
 from i18n.en import en_dictionary
 from i18n.vi import vi_dictionary

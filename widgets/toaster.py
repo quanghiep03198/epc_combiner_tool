@@ -1,7 +1,8 @@
-from pyqttoast import *
-from PyQt6.QtGui import *
 from PyQt6.QtCore import *
+from PyQt6.QtGui import *
 from PyQt6.QtWidgets import *
+from pyqttoast import *
+
 from themes.theme_manager import ThemeManager
 
 

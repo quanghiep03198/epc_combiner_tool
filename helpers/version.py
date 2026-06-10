@@ -1,9 +1,11 @@
-import os
 import json
+import os
 from typing import Dict
-from helpers.resolve_path import resolve_path
-from helpers.logger import logger
+
 import requests
+
+from helpers.logger import logger
+from helpers.resolve_path import resolve_path
 
 
 class VersionInfo:

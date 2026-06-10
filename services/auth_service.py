@@ -1,7 +1,7 @@
-from repositories.auth_repository import AuthRepository
-from helpers.logger import logger
 from constants import StatusCode
+from helpers.logger import logger
 from i18n import I18nService
+from repositories.auth_repository import AuthRepository
 
 
 class AuthService:

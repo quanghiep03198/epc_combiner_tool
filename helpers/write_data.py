@@ -1,12 +1,14 @@
-import os
 import csv
+import os
 from datetime import datetime
-from helpers.configuration import ConfigService, ConfigSection
-from helpers.logger import logger
+
 from PyQt6.QtWidgets import QFileDialog
-from i18n import I18nService
-from helpers.disutils import strtobool
+
 from constants import CombineAction
+from helpers.configuration import ConfigSection, ConfigService
+from helpers.disutils import strtobool
+from helpers.logger import logger
+from i18n import I18nService
 
 
 def __write_file(csv_filepath: str, data: dict):

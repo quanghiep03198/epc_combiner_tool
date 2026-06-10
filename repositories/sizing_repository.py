@@ -1,6 +1,8 @@
-from PyQt6.QtSql import *
 from pathlib import Path
-from database import db_service, DatabaseConnection
+
+from PyQt6.QtSql import *
+
+from database import DatabaseConnection, db_service
 from helpers.logger import logger
 
 
@@ -36,8 +38,7 @@ class SizingRepository:
         try:
             connection = db_service.get_connection(DatabaseConnection.DATA_LAKE)
             query = QSqlQuery(connection)
-            query.prepare(
-                f"""--sql
+            query.prepare(f"""--sql
                     DECLARE @MoNo NVARCHAR(20) = :mo_no;
                     DECLARE @SizeNumCode NVARCHAR(20) = :size_numcode;
                     DECLARE @AdditionalQty INT = :additional_qty;
@@ -52,8 +53,7 @@ class SizingRepository:
                         AND ri_type = 'A'
                         AND sole_tag = 'A'
                         AND isactive = 'Y'
-                """
-            )
+                """)
             query.bindValue(":mo_no", data["mo_no"])
             query.bindValue(":size_numcode", data["size_numcode"])
             query.bindValue(":additional_qty", data["additional_qty"])

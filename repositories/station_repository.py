@@ -1,7 +1,9 @@
-from PyQt6.QtSql import *
 from pathlib import Path
-from database import db_service, DatabaseConnection
+
+from PyQt6.QtSql import *
+
 from contexts.auth_context import auth_context
+from database import DatabaseConnection, db_service
 from helpers.logger import logger
 from i18n import I18nService
 

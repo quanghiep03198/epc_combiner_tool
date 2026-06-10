@@ -1,14 +1,15 @@
-from PyQt6.QtWidgets import *
-from PyQt6.QtGui import *
 from PyQt6.QtCore import *
-from helpers.configuration import ConfigService, ConfigSection
-from helpers.resolve_path import resolve_path
-from widgets.switch import QToggle
-from events import __event_emitter__, UserActionEvent
-from i18n import I18nService, I18nContext
+from PyQt6.QtGui import *
+from PyQt6.QtWidgets import *
+
+from events import UserActionEvent, __event_emitter__
+from helpers.configuration import ConfigSection, ConfigService
 from helpers.disutils import strtobool
-from themes.theme_manager import theme_manager
+from helpers.resolve_path import resolve_path
+from i18n import I18nContext, I18nService
 from themes.colors import Theme, get_color
+from themes.theme_manager import theme_manager
+from widgets.switch import QToggle
 
 
 class StatusBar(QToolBar, I18nContext):
@@ -109,16 +110,14 @@ class StatusBar(QToolBar, I18nContext):
 
         bg_color = get_color(theme, "card")
         border_color = get_color(theme, "border")
-        self.setStyleSheet(
-            f"""
+        self.setStyleSheet(f"""
             QToolBar{{
                 padding:4px 8px;
                 spacing: 24px;
                 background-color: {bg_color};
                 border-top: 1px solid {border_color};
             }}
-        """
-        )
+        """)
 
         # Force update to apply new styles
         self.style().unpolish(self)

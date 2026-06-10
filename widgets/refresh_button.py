@@ -1,9 +1,10 @@
-from PyQt6.QtCore import pyqtSlot, Qt
+from PyQt6.QtCore import Qt, pyqtSlot
 from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import QPushButton
-from decorators.debounce import pyqtDebounce
+
 from contexts.combine_form_context import combine_form_context
-from events import __event_emitter__, UserActionEvent
+from decorators.debounce import pyqtDebounce
+from events import UserActionEvent, __event_emitter__
 from i18n import I18nContext, I18nService
 
 

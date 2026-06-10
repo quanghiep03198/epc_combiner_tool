@@ -1,8 +1,8 @@
 from PyQt6.QtSql import QSqlQuery
-from database import db_service, DatabaseConnection
-from helpers.logger import logger
 
 from constants import FactoryNames, StatusCode
+from database import DatabaseConnection, db_service
+from helpers.logger import logger
 
 
 class AuthRepository:

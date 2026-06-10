@@ -1,22 +1,23 @@
 from ipaddress import ip_address
-from pyqttoast import ToastPreset
+
 from PyQt6.QtCore import *
-from PyQt6.QtSql import *
 from PyQt6.QtGui import *
+from PyQt6.QtSql import *
 from PyQt6.QtWidgets import *
+from pyqttoast import ToastPreset
 from uhf.reader import *
-from helpers.logger import logger
+
 from constants import CombineAction
 from contexts.combine_form_context import combine_form_context
-
-# Import widgets
-from widgets.toaster import Toaster
 from events import UserActionEvent, __event_emitter__
 from helpers.configuration import ConfigService
-from i18n import I18nService, I18nContext
+from helpers.logger import logger
 from helpers.resolve_path import resolve_path
-from themes.theme_manager import theme_manager
+from i18n import I18nContext, I18nService
 from themes.colors import Theme, get_color
+from themes.theme_manager import theme_manager
+# Import widgets
+from widgets.toaster import Toaster
 
 
 class EpcReaderPlayground(QFrame, I18nContext):
@@ -320,7 +321,6 @@ class EpcReaderPlayground(QFrame, I18nContext):
         self.style().unpolish(self)
         self.style().polish(self)
         self.update()
-
 
     def on_mo_no_change(self, _):
         self.__max_epc_qty = 0

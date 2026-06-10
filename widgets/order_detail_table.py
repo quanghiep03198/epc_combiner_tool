@@ -1,12 +1,14 @@
 from typing import Callable
-from PyQt6.QtWidgets import *
+
 from PyQt6.QtCore import *
-from repositories.order_repository import OrderRepository
-from helpers.logger import logger
+from PyQt6.QtWidgets import *
+
 from contexts.combine_form_context import combine_form_context
-from widgets.loading_widget import LoadingWidget
-from i18n import I18nService
 from events import UserActionEvent, __event_emitter__
+from helpers.logger import logger
+from i18n import I18nService
+from repositories.order_repository import OrderRepository
+from widgets.loading_widget import LoadingWidget
 
 
 class OrderDetailWorker(QRunnable):

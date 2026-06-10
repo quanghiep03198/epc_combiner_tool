@@ -1,12 +1,14 @@
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from PyQt6.QtWidgets import *
-from PyQt6.QtSql import QSqlDatabase, QSqlQuery
-from helpers.logger import logger
 from enum import Enum
-from helpers.configuration import ConfigService
+
 from dotenv import load_dotenv
+from PyQt6.QtSql import QSqlDatabase, QSqlQuery
+from PyQt6.QtWidgets import *
+
 from constants import DB_DRIVER
+from helpers.configuration import ConfigService
+from helpers.logger import logger
 
 load_dotenv()
 

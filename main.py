@@ -1,42 +1,40 @@
 # Import built-in modules
-import sys
-import os
-import signal
 import atexit
+import os
+import random
+import signal
+import sys
 
 # Import PyQt6 modules
 from PyQt6.QtCore import *
-from PyQt6.QtSql import *
 from PyQt6.QtGui import *
+from PyQt6.QtSql import *
 from PyQt6.QtWidgets import *
 from uhf.reader import GClient
-import random
 
-# Import widgets
-from widgets.toolbar import AppToolBar
-from widgets.status_bar import StatusBar
-from widgets.order_detail_table import OrderDetailTableWidget
-from widgets.sizing_detail_table import SizingDetailTableWidget
-from widgets.order_autocomplete import OrderAutoCompleteWidget
+from contexts.auth_context import auth_context
+from database import db_service
+from events import UserActionEvent, __event_emitter__
+# Import services
+from helpers.configuration import ConfigSection, ConfigService
+from helpers.logger import logger
+from helpers.resolve_path import resolve_path
+# from version import get_latest_release_version
+from helpers.version import version_info
+from i18n import I18nService, Language
+from themes.colors import Theme
+from themes.theme_manager import theme_manager
 from widgets.combine_form import CombineForm
 from widgets.epc_reader_playground import EpcReaderPlayground
 from widgets.login_dialog import LoginDialog
-from widgets.side_toolbar import SideToolbar
+from widgets.order_autocomplete import OrderAutoCompleteWidget
+from widgets.order_detail_table import OrderDetailTableWidget
 from widgets.refresh_button import RefreshButton
-
-# Import services
-from helpers.configuration import ConfigService, ConfigSection
-from helpers.logger import logger
-from events import __event_emitter__, UserActionEvent
-from contexts.auth_context import auth_context
-from i18n import I18nService, Language
-from helpers.resolve_path import resolve_path
-from database import db_service
-from themes.theme_manager import theme_manager
-from themes.colors import Theme
-
-# from version import get_latest_release_version
-from helpers.version import version_info
+from widgets.side_toolbar import SideToolbar
+from widgets.sizing_detail_table import SizingDetailTableWidget
+from widgets.status_bar import StatusBar
+# Import widgets
+from widgets.toolbar import AppToolBar
 
 
 class MainWindow(QMainWindow):

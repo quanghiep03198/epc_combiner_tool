@@ -1,8 +1,9 @@
-from PyQt6.QtWidgets import QWidget
 from PyQt6.QtGui import QColor
-from widgets.loading_spinner import LoadingSpinner
-from events import __event_emitter__, UserActionEvent
+from PyQt6.QtWidgets import QWidget
+
+from events import UserActionEvent, __event_emitter__
 from themes.theme_manager import ThemeManager
+from widgets.loading_spinner import LoadingSpinner
 
 
 class LoadingWidget:

@@ -4,8 +4,10 @@ Manages theme switching and generates dynamic stylesheets
 """
 
 from typing import Optional
+
 from PyQt6.QtWidgets import QApplication
-from themes.colors import Theme, get_theme_colors, get_color
+
+from themes.colors import Theme, get_color, get_theme_colors
 
 
 class ThemeManager:

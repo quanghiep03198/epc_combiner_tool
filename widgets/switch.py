@@ -27,27 +27,15 @@ The example demonstrates how to use the QToggle class by creating three
 different toggles with various settings such as custom height, colors, and font.
 """
 
-from PyQt6.QtCore import (
-    Qt,
-    QRect,
-    pyqtProperty,
-    QPropertyAnimation,
-    QPoint,
-    QEasingCurve,
-)
-from PyQt6.QtGui import (
-    QColor,
-    QFontMetrics,
-    QPainter,
-    QPainterPath,
-    QBrush,
-    QPen,
-    QCursor,
-)
+from PyQt6.QtCore import (QEasingCurve, QPoint, QPropertyAnimation, QRect, Qt,
+                          pyqtProperty)
+from PyQt6.QtGui import (QBrush, QColor, QCursor, QFontMetrics, QPainter,
+                         QPainterPath, QPen)
 from PyQt6.QtWidgets import QCheckBox
-from themes.theme_manager import theme_manager
+
+from events import UserActionEvent, __event_emitter__
 from themes.colors import Theme, get_color
-from events import __event_emitter__, UserActionEvent
+from themes.theme_manager import theme_manager
 
 
 class QToggle(QCheckBox):
