@@ -36,6 +36,7 @@ except ImportError:
     print("psutil not available - process management features limited")
 
 try:
+    # from helpers.resolve_path import resolve_path
     from PyQt6.QtCore import QObject, QThread, pyqtSignal
     from PyQt6.QtWidgets import (
         QApplication,
@@ -47,6 +48,7 @@ try:
         QPushButton,
         QHBoxLayout,
     )
+    from PyQt6.QtGui import QIcon
 
     PYQT_AVAILABLE = True
 except ImportError:
@@ -1407,6 +1409,9 @@ def main():
     if use_gui:
         app = QApplication.instance() or QApplication(sys.argv)
         apply_shared_theme(app, args.install_dir)
+        current_file = Path(__file__).resolve()
+        icon_path = str(current_file.parent.parent / "./icon.ico")
+        app.setWindowIcon(QIcon(icon_path))
 
         dialog = UpdateProgressDialog(args)
         dialog.exec()
