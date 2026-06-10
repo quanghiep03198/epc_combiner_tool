@@ -13,9 +13,11 @@ import zipfile
 import tempfile
 import subprocess
 import traceback
+import configparser
+import importlib.util
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Any, Callable
 
 try:
     import requests
@@ -23,7 +25,7 @@ try:
     REQUESTS_AVAILABLE = True
 except ImportError:
     REQUESTS_AVAILABLE = False
-    print("⚠️  requests not available - auto-detection features limited")
+    print("requests not available - auto-detection features limited")
 
 try:
     import psutil
@@ -31,17 +33,57 @@ try:
     PSUTIL_AVAILABLE = True
 except ImportError:
     PSUTIL_AVAILABLE = False
-    print("⚠️  psutil not available - process management features limited")
+    print("psutil not available - process management features limited")
+
+try:
+    from PyQt6.QtCore import QObject, QThread, pyqtSignal
+    from PyQt6.QtWidgets import (
+        QApplication,
+        QDialog,
+        QVBoxLayout,
+        QLabel,
+        QProgressBar,
+        QTextEdit,
+        QPushButton,
+        QHBoxLayout,
+    )
+
+    PYQT_AVAILABLE = True
+except ImportError:
+    PYQT_AVAILABLE = False
+
+try:
+    # Keep explicit imports so PyInstaller can discover these modules.
+    from themes.colors import Theme as AppTheme
+    from themes.theme_manager import theme_manager as app_theme_manager
+
+    THEME_MANAGER_AVAILABLE = True
+except Exception:
+    THEME_MANAGER_AVAILABLE = False
+    AppTheme = None
+    app_theme_manager = None
 
 
 class SafeLogger:
     """Safe logging system that never fails"""
+
+    _listener: Optional[Callable[[str], None]] = None
+
+    @staticmethod
+    def set_listener(listener: Optional[Callable[[str], None]]) -> None:
+        SafeLogger._listener = listener
 
     @staticmethod
     def log(level: str, message: str):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         formatted_msg = f"[{timestamp}] [{level}] {message}"
         print(formatted_msg)
+
+        if SafeLogger._listener:
+            try:
+                SafeLogger._listener(formatted_msg)
+            except Exception:
+                pass
 
         # Try to log to file if possible
         try:
@@ -510,7 +552,7 @@ class UpdateDownloader:
                 "3",
             ]
 
-            print(f"📦 Downloading with curl... (43MB file, may take a few minutes)")
+            print("Downloading with curl... (43MB file, may take a few minutes)")
             result = subprocess.run(cmd, timeout=180)
 
             if result.returncode == 0 and os.path.exists(output_path):
@@ -584,13 +626,21 @@ class CleanUpdateManager:
         force: bool = False,
         silent: bool = False,
         process_names: List[str] = None,
+        progress_callback: Optional[Callable[[int, str], None]] = None,
     ) -> bool:
         """
         Perform complete update with all safeguards
         """
 
-        self.logger.info("🚀 Starting Clean Update Manager")
-        self.logger.info("=" * 60)
+        def update_progress(value: int, status: str):
+            if progress_callback:
+                try:
+                    progress_callback(value, status)
+                except Exception:
+                    pass
+
+        self.logger.info("Starting Clean Update Manager")
+        update_progress(2, "Starting update")
 
         # Setup directories
         if not backup_dir:
@@ -607,60 +657,74 @@ class CleanUpdateManager:
 
         try:
             # Step 1: Check for updates
-            self.logger.info("🔍 Step 1: Checking for updates...")
+            self.logger.info("Step 1: Checking for updates...")
+            update_progress(10, "Checking for updates")
             if not force:
                 has_update = self.check_for_updates(update_url, current_version)
                 if not has_update:
-                    self.logger.info("✅ No update needed")
+                    self.logger.info("No update needed")
+                    update_progress(100, "No update needed")
                     return True
 
             # Step 2: Download update
-            self.logger.info("📥 Step 2: Downloading update...")
+            self.logger.info("Step 2: Downloading update...")
+            update_progress(20, "Getting update information")
             download_info = self._get_download_info(update_url)
             if not download_info:
-                self.logger.error("❌ Could not get download information")
+                self.logger.error("Could not get download information")
                 return False
 
             download_path = os.path.join(temp_dir, "update.zip")
             download_url = download_info.get("download_url", download_info.get("url"))
             if not download_url:
-                self.logger.error("❌ No download URL found")
+                self.logger.error("No download URL found")
                 return False
 
             if not self.downloader.download_file(download_url, download_path):
-                self.logger.error("❌ Download failed")
+                self.logger.error("Download failed")
                 return False
+            update_progress(45, "Download completed")
 
             # Step 3: Extract update
-            self.logger.info("📦 Step 3: Extracting update...")
+            self.logger.info("Step 3: Extracting update...")
+            update_progress(55, "Extracting package")
             extract_dir = os.path.join(temp_dir, "extracted")
             if not self._extract_update(download_path, extract_dir):
-                self.logger.error("❌ Extraction failed")
+                self.logger.error("Extraction failed")
                 return False
 
             # Step 4: Terminate processes
-            self.logger.info("🛑 Step 4: Terminating processes...")
+            self.logger.info("Step 4: Terminating processes...")
+            update_progress(65, "Closing running application")
             self.process_manager.terminate_processes_by_name(process_names)
 
             # Step 5: Backup current installation
-            self.logger.info("📦 Step 5: Creating backup...")
+            self.logger.info("Step 5: Creating backup...")
+            update_progress(72, "Creating backup")
             if not self._create_backup(install_dir, backup_dir):
-                self.logger.warning("⚠️  Backup creation failed (continuing anyway)")
+                self.logger.warning("Backup creation failed (continuing anyway)")
 
             # Step 6: Replace files
-            self.logger.info("🔄 Step 6: Replacing files...")
+            self.logger.info("Step 6: Replacing files...")
             success_count, total_count = self._replace_files(
-                extract_dir, install_dir, backup_dir
+                extract_dir,
+                install_dir,
+                backup_dir,
+                progress_callback=progress_callback,
+                progress_start=75,
+                progress_end=95,
             )
 
             # Step 7: Verify update
-            self.logger.info("✅ Step 7: Verifying update...")
+            self.logger.info("Step 7: Verifying update...")
+            update_progress(97, "Verifying update")
             success_rate = (success_count / total_count * 100) if total_count > 0 else 0
 
             if success_rate >= 70:  # At least 70% success rate
                 self.logger.info(
-                    f"🎉 Update successful! ({success_count}/{total_count} files, {success_rate:.1f}%)"
+                    f"Update successful! ({success_count}/{total_count} files, {success_rate:.1f}%)"
                 )
+                update_progress(100, "Update completed")
 
                 # Cleanup temp files
                 try:
@@ -671,8 +735,9 @@ class CleanUpdateManager:
                 return True
             else:
                 self.logger.error(
-                    f"❌ Update failed! ({success_count}/{total_count} files, {success_rate:.1f}%)"
+                    f"Update failed! ({success_count}/{total_count} files, {success_rate:.1f}%)"
                 )
+                update_progress(100, "Update failed")
 
                 # Try to restore backup
                 if not silent:
@@ -685,7 +750,8 @@ class CleanUpdateManager:
                 return False
 
         except Exception as e:
-            self.logger.error(f"❌ Update failed with error: {e}")
+            self.logger.error(f"Update failed with error: {e}")
+            update_progress(100, "Update failed")
             if not silent:
                 print(f"Full traceback:\n{traceback.format_exc()}")
             return False
@@ -828,7 +894,13 @@ class CleanUpdateManager:
             return False
 
     def _replace_files(
-        self, source_dir: str, target_dir: str, backup_dir: str
+        self,
+        source_dir: str,
+        target_dir: str,
+        backup_dir: str,
+        progress_callback: Optional[Callable[[int, str], None]] = None,
+        progress_start: int = 0,
+        progress_end: int = 100,
     ) -> Tuple[int, int]:
         """Replace files with comprehensive strategy"""
         success_count = 0
@@ -858,7 +930,16 @@ class CleanUpdateManager:
                 self._clear_icon_cache()
 
             for i, (source_path, target_path, rel_path) in enumerate(files_to_replace):
-                print(f"[{i+1}/{total_count}] {rel_path}")
+                self.logger.info(f"[{i+1}/{total_count}] {rel_path}")
+
+                if progress_callback and total_count > 0:
+                    progress = progress_start + int(
+                        (i / total_count) * (progress_end - progress_start)
+                    )
+                    try:
+                        progress_callback(progress, f"Updating: {rel_path}")
+                    except Exception:
+                        pass
 
                 # Ensure target directory exists
                 os.makedirs(os.path.dirname(target_path), exist_ok=True)
@@ -868,9 +949,15 @@ class CleanUpdateManager:
                     source_path, target_path, backup_dir
                 ):
                     success_count += 1
-                    print(f"   ✅ Success")
+                    self.logger.info("   Success")
                 else:
-                    print(f"   ⚠️  Skipped")
+                    self.logger.warning("   Skipped")
+
+            if progress_callback:
+                try:
+                    progress_callback(progress_end, "File replacement completed")
+                except Exception:
+                    pass
 
         except Exception as e:
             self.logger.error(f"File replacement error: {e}")
@@ -906,7 +993,7 @@ class CleanUpdateManager:
 
     def _clear_icon_cache(self):
         """Clear Windows icon cache to release locked .ico files"""
-        self.logger.info("🧹 Clearing Windows icon cache for .ico file replacement...")
+        self.logger.info("Clearing Windows icon cache for .ico file replacement...")
         try:
             # Stop Windows Explorer to release icon cache locks
             subprocess.run(
@@ -938,10 +1025,10 @@ class CleanUpdateManager:
                 except:
                     pass
 
-            self.logger.info("✅ Icon cache cleared")
+            self.logger.info("Icon cache cleared")
 
         except Exception as e:
-            self.logger.warning(f"⚠️  Could not fully clear icon cache: {e}")
+            self.logger.warning(f"Could not fully clear icon cache: {e}")
 
         finally:
             # Always restart Explorer
@@ -951,14 +1038,14 @@ class CleanUpdateManager:
                     creationflags=subprocess.DETACHED_PROCESS,
                 )
                 time.sleep(2)
-                self.logger.info("✅ Explorer restarted")
+                self.logger.info("Explorer restarted")
             except Exception as e:
-                self.logger.warning(f"⚠️  Could not restart Explorer: {e}")
+                self.logger.warning(f"Could not restart Explorer: {e}")
 
     def _restore_backup(self, backup_dir: str, install_dir: str) -> bool:
         """Restore from backup"""
         try:
-            self.logger.info("🔄 Restoring from backup...")
+            self.logger.info("Restoring from backup...")
 
             restored_files = 0
             for root, dirs, files in os.walk(backup_dir):
@@ -983,17 +1070,252 @@ class CleanUpdateManager:
             return False
 
 
+def load_current_theme_name(install_dir: Optional[str] = None) -> str:
+    """Load UI theme from app.cfg with a safe fallback."""
+    config_candidates = []
+    if install_dir:
+        config_candidates.append(os.path.join(install_dir, "app.cfg"))
+
+    config_candidates.append(
+        os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../app.cfg"))
+    )
+    config_candidates.append(os.path.abspath("app.cfg"))
+
+    config_path = next((p for p in config_candidates if os.path.exists(p)), None)
+    if not config_path:
+        return "dark"
+
+    parser = configparser.ConfigParser()
+
+    try:
+        parser.read(config_path, encoding="utf-8")
+        return parser.get("UI", "theme", fallback="dark")
+    except Exception:
+        return "dark"
+
+
+def _load_theme_manager_from_install_dir(install_dir: str):
+    """Best-effort fallback loader for theme modules from installed app directory."""
+    colors_path = os.path.join(install_dir, "themes", "colors.py")
+    manager_path = os.path.join(install_dir, "themes", "theme_manager.py")
+
+    if not (os.path.exists(colors_path) and os.path.exists(manager_path)):
+        return None, None
+
+    if install_dir not in sys.path:
+        sys.path.insert(0, install_dir)
+
+    try:
+        spec_colors = importlib.util.spec_from_file_location("themes.colors", colors_path)
+        module_colors = importlib.util.module_from_spec(spec_colors)
+        assert spec_colors and spec_colors.loader
+        spec_colors.loader.exec_module(module_colors)
+
+        spec_manager = importlib.util.spec_from_file_location("themes.theme_manager", manager_path)
+        module_manager = importlib.util.module_from_spec(spec_manager)
+        assert spec_manager and spec_manager.loader
+        spec_manager.loader.exec_module(module_manager)
+
+        return module_colors.Theme, module_manager.theme_manager
+    except Exception:
+        return None, None
+
+
+def apply_shared_theme(app: "QApplication", install_dir: Optional[str] = None) -> None:
+    """Apply the same style system used by the main window."""
+    try:
+        theme_name = load_current_theme_name(install_dir).lower()
+
+        theme_enum = AppTheme
+        theme_manager_obj = app_theme_manager
+
+        if not THEME_MANAGER_AVAILABLE and install_dir:
+            theme_enum, theme_manager_obj = _load_theme_manager_from_install_dir(
+                install_dir
+            )
+
+        if theme_enum is None or theme_manager_obj is None:
+            raise RuntimeError("ThemeManager modules are not available")
+
+        theme = theme_enum.DARK
+        if theme_name == theme_enum.LIGHT.value:
+            theme = theme_enum.LIGHT
+
+        theme_manager_obj.apply_theme(app, theme)
+    except Exception as e:
+        print(f"Could not apply shared theme: {e}")
+
+
+def restart_updated_application(install_dir: str) -> bool:
+    """Restart the updated application after update completion."""
+    candidates = [
+        os.path.join(install_dir, "EPC Information Combiner.exe"),
+        os.path.join(install_dir, "main.exe"),
+    ]
+
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            subprocess.Popen(
+                [candidate],
+                cwd=install_dir,
+                creationflags=(
+                    subprocess.CREATE_NEW_PROCESS_GROUP
+                    if os.name == "nt"
+                    else 0
+                ),
+            )
+            return True
+
+    main_py = os.path.join(install_dir, "main.py")
+    if os.path.exists(main_py):
+        subprocess.Popen([sys.executable, main_py], cwd=install_dir)
+        return True
+
+    return False
+
+
+if PYQT_AVAILABLE:
+
+    class UpdateWorker(QObject):
+        progress_changed = pyqtSignal(int, str)
+        log_message = pyqtSignal(str)
+        finished = pyqtSignal(bool)
+
+        def __init__(self, args):
+            super().__init__()
+            self.args = args
+
+        def run(self):
+            updater = CleanUpdateManager()
+
+            def log_listener(message: str):
+                self.log_message.emit(message)
+
+            def on_progress(value: int, status: str):
+                self.progress_changed.emit(value, status)
+
+            SafeLogger.set_listener(log_listener)
+            try:
+                success = updater.perform_complete_update(
+                    update_url=self.args.update_url,
+                    install_dir=self.args.install_dir,
+                    current_version=self.args.current_version,
+                    backup_dir=self.args.backup_dir,
+                    force=self.args.force,
+                    silent=True,
+                    process_names=self.args.processes,
+                    progress_callback=on_progress,
+                )
+                self.finished.emit(success)
+            except Exception as e:
+                self.log_message.emit(f"Update error: {e}")
+                self.finished.emit(False)
+            finally:
+                SafeLogger.set_listener(None)
+
+
+    class UpdateProgressDialog(QDialog):
+        def __init__(self, args):
+            super().__init__()
+            self.args = args
+            self.success = False
+            self.setWindowTitle("EPC Updater")
+            self.setMinimumSize(720, 460)
+            self._setup_ui()
+            self._start_update_worker()
+
+        def _setup_ui(self):
+            layout = QVBoxLayout(self)
+            layout.setSpacing(10)
+
+            self.status_label = QLabel("Initializing update...")
+            layout.addWidget(self.status_label)
+
+            self.progress_bar = QProgressBar()
+            self.progress_bar.setFixedHeight(28)
+            self.progress_bar.setRange(0, 100)
+            self.progress_bar.setTextVisible(True)
+            self.progress_bar.setValue(0)
+            layout.addWidget(self.progress_bar)
+
+            self.log_view = QTextEdit()
+            self.log_view.setReadOnly(True)
+            self.log_view.setMinimumHeight(280)
+            layout.addWidget(self.log_view)
+
+            button_row = QHBoxLayout()
+            button_row.addStretch()
+            self.ok_button = QPushButton("OK")
+            self.ok_button.setEnabled(False)
+            self.ok_button.setFixedWidth(100)
+            self.ok_button.clicked.connect(self._on_ok_clicked)
+            button_row.addWidget(self.ok_button)
+            layout.addLayout(button_row)
+
+        def _start_update_worker(self):
+            self.thread = QThread(self)
+            self.worker = UpdateWorker(self.args)
+            self.worker.moveToThread(self.thread)
+
+            self.thread.started.connect(self.worker.run)
+            self.worker.progress_changed.connect(self._on_progress_changed)
+            self.worker.log_message.connect(self._append_log)
+            self.worker.finished.connect(self._on_finished)
+            self.worker.finished.connect(self.thread.quit)
+            self.thread.finished.connect(self.worker.deleteLater)
+            self.thread.finished.connect(self.thread.deleteLater)
+
+            self.thread.start()
+
+        def _on_progress_changed(self, value: int, status: str):
+            self.progress_bar.setValue(max(0, min(100, value)))
+            self.status_label.setText(status)
+
+        def _append_log(self, message: str):
+            self.log_view.append(message)
+            scrollbar = self.log_view.verticalScrollBar()
+            scrollbar.setValue(scrollbar.maximum())
+
+        def _on_finished(self, success: bool):
+            self.success = success
+            self.progress_bar.setValue(100)
+            if success:
+                self.status_label.setText("Update completed. Click OK to restart app.")
+                self._append_log("Update completed successfully.")
+                self.ok_button.setText("Restart")
+            else:
+                self.status_label.setText("Update failed. Check logs and close.")
+                self._append_log("Update failed.")
+                self.ok_button.setText("Close")
+
+            self.ok_button.setEnabled(True)
+
+        def _on_ok_clicked(self):
+            if self.success:
+                restarted = restart_updated_application(self.args.install_dir)
+                if not restarted:
+                    self._append_log(
+                        "Could not find application executable to restart automatically."
+                    )
+            self.close()
+
+        def closeEvent(self, event):
+            if self.thread.isRunning():
+                event.ignore()
+                return
+            event.accept()
+
 def get_latest_release_info():
     """Auto-detect latest release from GitHub and generate download URL"""
     try:
         if not REQUESTS_AVAILABLE:
-            print("❌ requests library not available for auto-detection")
+            print("requests library not available for auto-detection")
             return None
 
         # GitHub API endpoint
         api_url = "https://api.github.com/repos/quanghiep03198/epc_combiner_tool/releases/latest"
 
-        print("🔍 Checking for latest release...")
+        print("Checking for latest release...")
         response = requests.get(api_url, timeout=30)
         response.raise_for_status()
 
@@ -1004,8 +1326,8 @@ def get_latest_release_info():
         # Pattern: https://github.com/quanghiep03198/epc_combiner_tool/releases/download/{version}/epc-ic-{version}-windows-x64.zip
         download_url = f"https://github.com/quanghiep03198/epc_combiner_tool/releases/download/{version}/epc-ic-{version}-windows-x64.zip"
 
-        print(f"✅ Latest version found: {version}")
-        print(f"✅ Generated download URL: {download_url}")
+        print(f"Latest version found: {version}")
+        print(f"Generated download URL: {download_url}")
 
         return {
             "version": version,
@@ -1014,7 +1336,7 @@ def get_latest_release_info():
         }
 
     except Exception as e:
-        print(f"❌ Failed to get latest release info: {e}")
+        print(f"Failed to get latest release info: {e}")
         return None
 
 
@@ -1040,35 +1362,56 @@ def main():
     parser.add_argument(
         "--dry-run", action="store_true", help="Test auto-detection without downloading"
     )
+    parser.add_argument(
+        "--gui",
+        action="store_true",
+        help="Show PyQt update window",
+    )
+    parser.add_argument(
+        "--no-gui",
+        action="store_true",
+        help="Disable PyQt update window",
+    )
 
     args = parser.parse_args()
 
     # Auto-detect latest release if no URL provided
     update_url = args.update_url
     if not update_url:
-        print("📡 No update URL provided, auto-detecting latest release...")
+        print("No update URL provided, auto-detecting latest release...")
         release_info = get_latest_release_info()
         if release_info:
             update_url = release_info["download_url"]
             if not args.current_version:
                 args.current_version = "1.0.0"  # Default current version
-            print(f"🎯 Using auto-detected URL: {update_url}")
-            print(f"📝 Version detected: {release_info['version']}")
+            print(f"Using auto-detected URL: {update_url}")
+            print(f"Version detected: {release_info['version']}")
             if "published_at" in release_info:
-                print(f"📅 Published: {release_info['published_at']}")
+                print(f"Published: {release_info['published_at']}")
         else:
-            print("❌ Failed to auto-detect latest release")
-            print("💡 Please provide --update-url manually")
+            print("Failed to auto-detect latest release")
+            print("Please provide --update-url manually")
             sys.exit(1)
 
     # If dry-run, just show detection results and exit
     if args.dry_run:
-        print("\n🧪 Dry-run mode - showing detection results only:")
+        print("\nDry-run mode - showing detection results only:")
         print(f"   Update URL: {update_url}")
         print(f"   Current Version: {args.current_version}")
         print(f"   Install Directory: {args.install_dir}")
-        print("✅ Auto-detection working correctly!")
+        print("Auto-detection working correctly!")
         return
+
+    use_gui = PYQT_AVAILABLE and not args.no_gui and (args.gui or not args.silent)
+
+    if use_gui:
+        app = QApplication.instance() or QApplication(sys.argv)
+        apply_shared_theme(app, args.install_dir)
+
+        dialog = UpdateProgressDialog(args)
+        dialog.exec()
+
+        sys.exit(0 if dialog.success else 1)
 
     updater = CleanUpdateManager()
 
@@ -1084,9 +1427,9 @@ def main():
 
     if not args.silent:
         if success:
-            print("\n🎉 Update completed successfully!")
+            print("\nUpdate completed successfully!")
         else:
-            print("\n❌ Update failed!")
+            print("\nUpdate failed!")
 
         input("Press Enter to exit...")
 
