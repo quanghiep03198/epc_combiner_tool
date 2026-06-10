@@ -1210,35 +1210,59 @@ def apply_shared_theme(app: "QApplication", install_dir: Optional[str] = None) -
 
 def restart_updated_application(install_dir: str) -> bool:
     """Restart the updated application after update completion."""
+    install_dir_abs = os.path.abspath(install_dir)
+    process_manager = ProcessManager()
+
+    target_process_names = ["main.exe", "EPC Information Combiner.exe"]
+    preferred_executable: Optional[str] = None
+
+    # Prefer restarting the same executable that was running before update.
+    try:
+        running_processes = process_manager.find_processes_by_name(target_process_names)
+        for proc in running_processes:
+            exe_path = proc.get("exe")
+            if exe_path and exe_path != "Unknown" and os.path.exists(exe_path):
+                preferred_executable = exe_path
+                break
+    except Exception:
+        preferred_executable = None
+
     # Ensure old app instances are gone before launching the updated process.
     try:
-        ProcessManager().terminate_processes_by_name(
-            ["main.exe", "EPC Information Combiner.exe"]
-        )
+        process_manager.terminate_processes_by_name(target_process_names)
     except Exception:
         pass
 
-    candidates = [
-        os.path.join(install_dir, "EPC Information Combiner.exe"),
-        os.path.join(install_dir, "main.exe"),
-    ]
+    candidates: List[str] = []
+    if preferred_executable:
+        candidates.append(preferred_executable)
+
+    candidates.extend(
+        [
+            os.path.join(install_dir_abs, "EPC Information Combiner.exe"),
+            os.path.join(install_dir_abs, "main.exe"),
+        ]
+    )
+
+    # De-duplicate while preserving order.
+    seen = set()
+    candidates = [p for p in candidates if not (p in seen or seen.add(p))]
+
+    launch_kwargs: Dict[str, Any] = {"cwd": install_dir_abs}
+    if os.name == "nt":
+        # Do not hide the UI process; only detach it from updater lifecycle.
+        launch_kwargs["creationflags"] = (
+            subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        )
 
     for candidate in candidates:
         if os.path.exists(candidate):
-            subprocess.Popen(
-                [candidate],
-                cwd=install_dir,
-                **_hidden_subprocess_kwargs(subprocess.CREATE_NEW_PROCESS_GROUP),
-            )
+            subprocess.Popen([candidate], **launch_kwargs)
             return True
 
-    main_py = os.path.join(install_dir, "main.py")
+    main_py = os.path.join(install_dir_abs, "main.py")
     if os.path.exists(main_py):
-        subprocess.Popen(
-            [sys.executable, main_py],
-            cwd=install_dir,
-            **(_hidden_subprocess_kwargs() if os.name == "nt" else {}),
-        )
+        subprocess.Popen([sys.executable, main_py], **launch_kwargs)
         return True
 
     return False
