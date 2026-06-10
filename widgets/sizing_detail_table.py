@@ -140,13 +140,14 @@ class AdditionalQtyDelegate(QStyledItemDelegate):
         try:
             value = int(text)
             # Nếu vượt quá max, block và reset
+            destructive = get_color(theme_manager.current_theme, "destructive")
+            card_bg = get_color(theme_manager.current_theme, "card")
+            muted_fg = get_color(theme_manager.current_theme, "muted-foreground")
+            fg = get_color(theme_manager.current_theme, "foreground")
+            
             if value > max_value:
                 # Lấy text trước đó (bỏ ký tự cuối)
                 editor.setText(text[:-1])
-                destructive = get_color(theme_manager.current_theme, "destructive")
-                card_bg = get_color(theme_manager.current_theme, "card")
-                muted_fg = get_color(theme_manager.current_theme, "muted-foreground")
-                fg = get_color(theme_manager.current_theme, "foreground")
 
                 editor.setStyleSheet(f"""
                     QLineEdit {{
