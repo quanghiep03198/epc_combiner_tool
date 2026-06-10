@@ -126,6 +126,21 @@ QPushButton:pressed{{
    opacity: 0.9;
 }}
 
+QProgressBar {{
+   min-height: 24px;
+   border: 1px solid {border};
+   border-radius: 8px;
+   background-color: {secondary};
+   color: {primary_fg};
+   text-align: center;
+   padding: 1px;
+}}
+
+QProgressBar::chunk {{
+   background-color: {primary};
+   border-radius: 7px;
+}}
+
 QLineEdit{{
    height: 36px;
    background-color: {card};
