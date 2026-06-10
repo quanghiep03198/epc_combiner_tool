@@ -1,15 +1,15 @@
 {
-  "version": "v1.3.4",
+  "version": "v1.3.5",
   "build_type": "release",
-  "build_date": "2026-06-10T16:23:16.169315",
-  "build_timestamp": 1781083396,
+  "build_date": "2026-06-10T22:53:54.534016",
+  "build_timestamp": 1781106834,
   "git": {
-    "commit_hash": "b70e35c",
-    "commit_date": "2026-06-10 10:43:22 +0700",
+    "commit_hash": "9ebaba5",
+    "commit_date": "2026-06-10 22:53:50 +0700",
     "branch": "develop"
   },
   "platform": {
     "system": "nt",
-    "python_version": "3.13.1 (tags/v3.13.1:0671451, Dec  3 2024, 19:06:28) [MSC v.1942 64 bit (AMD64)]"
+    "python_version": "3.12.6 (tags/v3.12.6:a4a2d2b, Sep  6 2024, 20:11:23) [MSC v.1940 64 bit (AMD64)]"
   }
 }
