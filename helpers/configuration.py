@@ -1,10 +1,12 @@
-from os import path
-from dotenv import dotenv_values, set_key
-from constants import DB_DRIVER, DB_PORT
 from configparser import ConfigParser
-from helpers.logger import logger
 from enum import Enum
+from os import path
 from typing import Any, Callable
+
+from dotenv import dotenv_values, set_key
+
+from constants import DB_DRIVER, DB_PORT
+from helpers.logger import logger
 
 __cfg_file__ = path.abspath(
     path.join(path.dirname(path.abspath(__file__)), "../app.cfg")

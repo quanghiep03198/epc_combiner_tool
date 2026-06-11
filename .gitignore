@@ -33,6 +33,7 @@ MANIFEST
 *.spec
 
 # Installer logs
+logs/
 pip-log.txt
 pip-delete-this-directory.txt
 
@@ -178,9 +179,6 @@ cython_debug/
 
 # Output data
 data/
-
-# VS Code settings
-.vscode/
 
 # Backup folders
 backup*/

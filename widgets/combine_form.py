@@ -1,22 +1,23 @@
-from PyQt6.QtWidgets import *
+from typing import Callable
+
 from PyQt6.QtCore import *
 from PyQt6.QtGui import *
 from PyQt6.QtSql import *
-from typing import Callable
+from PyQt6.QtWidgets import *
 from pyqttoast import ToastPreset
-from events import __event_emitter__, UserActionEvent
-from services.rfid_service import RFIDService
-from repositories.rfid_repository import RFIDRepository
-from i18n import I18nService
+
 from constants import CombineAction
-from widgets.toaster import Toaster
+from contexts.auth_context import auth_context
 from contexts.combine_form_context import combine_form_context
+from decorators.debounce import pyqtDebounce
+from events import UserActionEvent, __event_emitter__
 from helpers.logger import logger
 from helpers.write_data import write_data
-from contexts.auth_context import auth_context
-from i18n import I18nContext
-from decorators.debounce import pyqtDebounce
+from i18n import I18nContext, I18nService
+from repositories.rfid_repository import RFIDRepository
 from repositories.station_repository import StationRepository
+from services.rfid_service import RFIDService
+from widgets.toaster import Toaster
 
 
 class WorkerSignals(QObject):

@@ -1,8 +1,8 @@
-import os
-import sys
-import json
 import argparse
+import json
+import os
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -209,17 +209,34 @@ def build_update_scripts():
 
         # Use the same output directory as main app
         output_dir = Path("dist") / "EPC Information Combiner"
+        themes_path = Path("themes").absolute()
+
+        # Avoid stale spec data entries pointing to wrong relative paths.
+        updater_spec = Path("build_update") / "updater.spec"
+        if updater_spec.exists():
+            updater_spec.unlink()
 
         # Build update_manager.py - put directly in main app directory
         update_cmd = pyinstaller_cmd + [
             str(Path("update/update_manager.py").absolute()),
             "--onefile",
-            "--console",
+            "--windowed",
+            "--noconsole",
             "--name=updater",
             f"--distpath={output_dir}",
             "--workpath=build_update",
             "--specpath=build_update",
             "--noconfirm",
+            # Hidden imports so in-process downloaders are available
+            # (avoids spawning curl/powershell console windows at runtime).
+            "--hidden-import=requests",
+            "--hidden-import=urllib3",
+            "--hidden-import=certifi",
+            "--hidden-import=psutil",
+            # Bundle theme modules so the updater window can apply the app theme.
+            f"--add-data={themes_path};themes",
+            "--hidden-import=themes.colors",
+            "--hidden-import=themes.theme_manager",
         ]
 
         print("Building updater.exe...")

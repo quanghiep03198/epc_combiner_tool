@@ -1,13 +1,14 @@
-from PyQt6.QtWidgets import *
 from PyQt6.QtCore import *
-from helpers.configuration import ConfigService
-from events import __event_emitter__, UserActionEvent
-from widgets.toaster import Toaster
+from PyQt6.QtWidgets import *
 from pyqttoast import ToastPreset
-from i18n import I18nService, I18nContext
 from uhf.reader import EnumG
-from themes.theme_manager import theme_manager
+
+from events import UserActionEvent, __event_emitter__
+from helpers.configuration import ConfigService
+from i18n import I18nContext, I18nService
 from themes.colors import Theme, get_color
+from themes.theme_manager import theme_manager
+from widgets.toaster import Toaster
 
 
 class AppSettingsDialog(QDialog, I18nContext):
@@ -264,13 +265,11 @@ class AppSettingsDialog(QDialog, I18nContext):
         self.db_pwd_input = QLineEdit(self.db_pwd_field_control)
         self.db_pwd_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.db_pwd_input.setPlaceholderText("******")
-        self.db_pwd_input.setStyleSheet(
-            """
+        self.db_pwd_input.setStyleSheet("""
                 QLineEdit[echoMode="2"] {
                     lineedit-password-character: 8226;
                 }
-            """
-        )
+            """)
         self.db_pwd_input.setFixedHeight(36)
         if self.__form_state.get("DB_PWD"):
             self.db_pwd_input.setText(self.__form_state.get("DB_PWD"))
@@ -346,8 +345,7 @@ class AppSettingsDialog(QDialog, I18nContext):
         hover_bg = get_color(theme, "muted")
 
         # Update close_button with outline style
-        self.close_button.setStyleSheet(
-            f"""
+        self.close_button.setStyleSheet(f"""
             #close_button {{
                 background: transparent;
                 border: 1px solid {border_color};
@@ -356,8 +354,7 @@ class AppSettingsDialog(QDialog, I18nContext):
             #close_button:hover {{
                 background-color: {hover_bg};
             }}
-            """
-        )
+            """)
 
         # Force update
         self.close_button.style().unpolish(self.close_button)

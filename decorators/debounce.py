@@ -1,8 +1,9 @@
 import threading
 import time
 from functools import wraps
-from typing import Callable, Any, Dict
-from PyQt6.QtCore import QTimer, QObject, pyqtSignal
+from typing import Any, Callable, Dict
+
+from PyQt6.QtCore import QObject, QTimer, pyqtSignal
 
 
 class DebounceManager:

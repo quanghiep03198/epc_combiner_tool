@@ -1,14 +1,15 @@
-from PyQt6.QtWidgets import *
 from PyQt6.QtCore import *
 from PyQt6.QtGui import *
+from PyQt6.QtWidgets import *
+
 from contexts.combine_form_context import combine_form_context
-from events import __event_emitter__, UserActionEvent
-from i18n import I18nService
-from helpers.resolve_path import resolve_path
 from decorators.debounce import pyqtDebounce
+from events import UserActionEvent, __event_emitter__
+from helpers.resolve_path import resolve_path
+from i18n import I18nService
 from services.order_service import OrderService
-from themes.theme_manager import theme_manager
 from themes.colors import Theme, get_color
+from themes.theme_manager import theme_manager
 
 
 class OrderAutoCompleteWidget(QPushButton):

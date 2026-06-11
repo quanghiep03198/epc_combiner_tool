@@ -1,17 +1,19 @@
-from PyQt6.QtWidgets import *
 import sys
+
 from PyQt6.QtCore import *
 from PyQt6.QtGui import *
-from services.auth_service import AuthService
-from contexts.auth_context import auth_context
-from widgets.toaster import Toaster, ToastPreset
+from PyQt6.QtWidgets import *
+
 from constants import StatusCode
-from helpers.resolve_path import resolve_path
-from events import __event_emitter__, UserActionEvent
-from i18n import I18nService, I18nContext
+from contexts.auth_context import auth_context
 from decorators.debounce import pyqtDebounce
-from themes.theme_manager import theme_manager
+from events import UserActionEvent, __event_emitter__
+from helpers.resolve_path import resolve_path
+from i18n import I18nContext, I18nService
+from services.auth_service import AuthService
 from themes.colors import Theme, get_color
+from themes.theme_manager import theme_manager
+from widgets.toaster import Toaster, ToastPreset
 
 
 class LoginDialog(QDialog, I18nContext):
@@ -83,13 +85,11 @@ class LoginDialog(QDialog, I18nContext):
         self.password_input.setEchoMode(QLineEdit.Password)
         self.password_input.setProperty("valid", False)
         self.password_input.setPlaceholderText("*******")
-        self.password_input.setStyleSheet(
-            """
+        self.password_input.setStyleSheet("""
             QLineEdit[echoMode="2"] {
                 lineedit-password-character: 8226;
             }
-            """
-        )
+            """)
         self.password_input.textChanged.connect(self.on_password_change)
 
         factory_label_layout = QHBoxLayout()
@@ -175,8 +175,7 @@ class LoginDialog(QDialog, I18nContext):
         hover_bg = get_color(theme, "muted")
 
         # Update exit_button with outline style
-        self.exit_button.setStyleSheet(
-            f"""
+        self.exit_button.setStyleSheet(f"""
             #exit_button {{
                 background: transparent;
                 border: 1px solid {border_color};
@@ -185,8 +184,7 @@ class LoginDialog(QDialog, I18nContext):
             #exit_button:hover {{
                 background-color: {hover_bg};
             }}
-            """
-        )
+            """)
 
         # Force update
         self.exit_button.style().unpolish(self.exit_button)
@@ -267,23 +265,19 @@ class LoginDialog(QDialog, I18nContext):
                     destructive_color = get_color(
                         theme_manager.current_theme, "destructive"
                     )
-                    self.username_input.setStyleSheet(
-                        f"""
+                    self.username_input.setStyleSheet(f"""
                         QLineEdit{{
                             border: 1px solid {destructive_color}
                         }}
-                        """
-                    )
-                    self.password_input.setStyleSheet(
-                        f"""
+                        """)
+                    self.password_input.setStyleSheet(f"""
                         QLineEdit{{
                             border: 1px solid {destructive_color}
                         }}
                         QLineEdit[echoMode="2"] {{
                             lineedit-password-character: 8226;
                         }}
-                        """
-                    )
+                        """)
                     if (
                         isinstance(self.error_toast, Toaster)
                         and self.error_toast.isVisible()

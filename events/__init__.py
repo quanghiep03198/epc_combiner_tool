@@ -1,6 +1,7 @@
-from pyee.base import EventEmitter
-from pyee.asyncio import AsyncIOEventEmitter
 from enum import Enum
+
+from pyee.asyncio import AsyncIOEventEmitter
+from pyee.base import EventEmitter
 
 
 class UserActionEvent(Enum):

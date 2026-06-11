@@ -17,21 +17,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1] - 2025-04-26
 
 ### Fixed
+
 - Translate combine EPC failure message
 - Escape single quotes in JSON data for database insertion
 
 ## [1.1.1-rc] - 2025-10-04
 
-### Features 
+### Features
+
 - Refetch command number information
 - Continuous Integration: Windows installation downloader
 
 ### Changed
+
 - Apply debounce decorator
-- Update settings form layout 
+- Update settings form layout
 - Refactor data service layer with new database service
 
-### Fixed 
+### Fixed
+
 - Parallel SQL executions
 - Debouncing combination submission
 - EPC Combination form validation
@@ -61,7 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Prevent context menu for side toolbar, status bar, and app toolbar
 - Remove unused zoom-in and zoom-out SVG icons
 - Add department translations and improve station selection logic
-- Add confirmation messages for suborder migration and improve UI elements 
+- Add confirmation messages for suborder migration and improve UI elements
 - Migrate CO & pre-order to official sub-order
 
 ## [1.3.1] - 2026-02-23
@@ -96,6 +100,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Update translations for customer order fields and improve order detail table headers
+- Format i18n python file sorting dictionary key by ascending
+
+## [1.3.5] - 2026-06-10
+
+### Added
+
+- add VSCode configuration files for Python debugging and formatting
+
+### Changed
+
+- update .gitignore to include logs directory and remove VS Code settings
+- update requirements.txt to reflect new dependency versions
+- reorganize import statements across multiple files for consistency and clarity
+- update theme styles and improve application restart logic
+- change build_update_scripts to use --no-console for PyInstaller
+
+### Fixed
+
+- remove outdated Windows installer executable for version 1.3.6
+- add custom styling for QProgressBar in theme manager
+- enhance update manager with theme support and progress callbacks
+- optimize max value validation in AdditionalQtyDelegate with improved styling
 
 [1.1]: https://github.com/quanghiep03198/epc_combiner_tool/releases/tag/v1.1
 [1.1.1-rc]: https://github.com/quanghiep03198/epc_combiner_tool/releases/tag/v1.1.1-rc
@@ -105,3 +131,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.3.2]: https://github.com/quanghiep03198/epc_combiner_tool/releases/tag/v1.3.2
 [1.3.3]: https://github.com/quanghiep03198/epc_combiner_tool/releases/tag/v1.3.3
 [1.3.4]: https://github.com/quanghiep03198/epc_combiner_tool/releases/tag/v1.3.4
+[1.3.5]: https://github.com/quanghiep03198/epc_combiner_tool/releases/tag/v1.3.5

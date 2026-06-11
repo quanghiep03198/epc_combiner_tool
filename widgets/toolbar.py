@@ -1,15 +1,16 @@
-from PyQt6.QtWidgets import *
-from PyQt6.QtGui import *
 from PyQt6.QtCore import *
+from PyQt6.QtGui import *
+from PyQt6.QtWidgets import *
 from pyqttoast import *
-from widgets.toaster import Toaster
-from helpers.resolve_path import resolve_path
+
 from contexts.auth_context import auth_context
-from events import __event_emitter__, UserActionEvent
-from i18n import __languages__, I18nService, I18nContext
+from events import UserActionEvent, __event_emitter__
+from helpers.configuration import ConfigSection, ConfigService
+from helpers.resolve_path import resolve_path
+from i18n import I18nContext, I18nService, __languages__
 from themes.colors import Theme, get_color
 from themes.theme_manager import theme_manager
-from helpers.configuration import ConfigService, ConfigSection
+from widgets.toaster import Toaster
 
 # from qtwidgets import AnimatedToggle
 
@@ -228,8 +229,7 @@ class AppToolBar(QToolBar, I18nContext):
         separator_bg = get_color(theme, "secondary")
         border_color = get_color(theme, "border")
 
-        self.setStyleSheet(
-            f"""
+        self.setStyleSheet(f"""
             QToolBar{{
                 padding-left: 8px;
                 padding-right: 8px;
@@ -237,8 +237,7 @@ class AppToolBar(QToolBar, I18nContext):
                 background-color: {toolbar_bg};
                 border-bottom: 1px solid {border_color};
             }}
-        """
-        )
+        """)
         self.separator.setStyleSheet(f"background-color: {separator_bg};")
 
         # Force update to apply new styles

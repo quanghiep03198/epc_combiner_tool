@@ -4,8 +4,10 @@ Manages theme switching and generates dynamic stylesheets
 """
 
 from typing import Optional
+
 from PyQt6.QtWidgets import QApplication
-from themes.colors import Theme, get_theme_colors, get_color
+
+from themes.colors import Theme, get_color, get_theme_colors
 
 
 class ThemeManager:
@@ -126,6 +128,21 @@ QPushButton:pressed{{
    opacity: 0.9;
 }}
 
+QProgressBar {{
+   min-height: 24px;
+   border: 1px solid {border};
+   border-radius: 4px;
+   background-color: {secondary};
+   color: {primary_fg};
+   text-align: center;
+   padding: 1px;
+}}
+
+QProgressBar::chunk {{
+   background-color: {primary};
+   border-radius: 7px;
+}}
+
 QLineEdit{{
    height: 36px;
    background-color: {card};
@@ -239,6 +256,14 @@ QTableWidget::item {{
    border: none;
    padding: 0px 8px;
    background-color: {card};
+}}
+
+QTextEdit {{
+   background-color: {card};
+   color: {fg};
+   border: 1px solid {input_border};
+   border-radius: 4px;
+   padding: 8px;
 }}
 
 QTableWidget::item:selected {{
