@@ -1,5 +1,4 @@
 {
-<<<<<<< HEAD
   "version": "v1.3.5",
   "build_type": "release",
   "build_date": "2026-06-10T22:53:54.534016",
@@ -7,15 +6,6 @@
   "git": {
     "commit_hash": "9ebaba5",
     "commit_date": "2026-06-10 22:53:50 +0700",
-=======
-  "version": "v1.3.4",
-  "build_type": "release",
-  "build_date": "2026-05-11T08:07:16.325275",
-  "build_timestamp": 1778461636,
-  "git": {
-    "commit_hash": "eebdd90",
-    "commit_date": "2026-05-11 08:06:32 +0700",
->>>>>>> origin/main
     "branch": "develop"
   },
   "platform": {
