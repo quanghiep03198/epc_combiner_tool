@@ -1,11 +1,11 @@
 {
-  "version": "v1.3.6-rc",
+  "version": "v1.3.6",
   "build_type": "release",
-  "build_date": "2026-07-03T11:20:41.772921",
-  "build_timestamp": 1783052441,
+  "build_date": "2026-07-03T16:25:01.059219",
+  "build_timestamp": 1783070701,
   "git": {
-    "commit_hash": "08f17e6",
-    "commit_date": "2026-07-03 11:07:14 +0700",
+    "commit_hash": "5d31116",
+    "commit_date": "2026-07-03 15:50:04 +0700",
     "branch": "develop"
   },
   "platform": {

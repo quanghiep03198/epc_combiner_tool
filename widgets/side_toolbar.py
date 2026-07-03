@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+import urllib.request
 
 from PyQt6.QtCore import *
 from PyQt6.QtGui import *
@@ -10,12 +11,93 @@ from events import UserActionEvent, __event_emitter__
 from helpers.configuration import ConfigService
 from helpers.logger import logger
 from helpers.resolve_path import resolve_path
-from helpers.version import (fetch_latest_version, get_update_directory,
-                             is_development_environment, load_version_info)
+from helpers.version import (
+    fetch_latest_version,
+    get_update_directory,
+    is_development_environment,
+    load_version_info,
+)
 from i18n import I18nContext, I18nService, Language, __languages__
 from themes.colors import Theme, get_color
 from themes.theme_manager import theme_manager
 from widgets.settings_dialog import AppSettingsDialog
+
+
+class UpdaterDownloadWorker(QObject):
+    progress_changed = pyqtSignal(int)
+    status_changed = pyqtSignal(str)
+    download_finished = pyqtSignal(str, str)
+    download_failed = pyqtSignal(str)
+    download_canceled = pyqtSignal()
+
+    def __init__(self, version_candidates: list[str], download_dir: str):
+        super().__init__()
+        self.version_candidates = version_candidates
+        self.download_dir = download_dir
+        self._is_canceled = False
+
+    @pyqtSlot()
+    def run(self):
+        last_error = None
+        for candidate in self.version_candidates:
+            if self._is_canceled:
+                self.download_canceled.emit()
+                return
+
+            updater_url = (
+                "https://github.com/quanghiep03198/epc_combiner_tool/releases/"
+                f"download/{candidate}/epc-ic-{candidate}-windows-updater-x64.exe"
+            )
+            updater_file = os.path.join(
+                self.download_dir, f"epc-ic-{candidate}-windows-updater-x64.exe"
+            )
+
+            try:
+                self.status_changed.emit(f"Downloading updater {candidate}...")
+                self.progress_changed.emit(0)
+
+                with urllib.request.urlopen(updater_url, timeout=30) as response:
+                    total_header = response.headers.get("Content-Length")
+                    total_size = int(total_header) if total_header else 0
+                    downloaded = 0
+
+                    with open(updater_file, "wb") as output_file:
+                        while True:
+                            if self._is_canceled:
+                                output_file.close()
+                                if os.path.exists(updater_file):
+                                    os.remove(updater_file)
+                                self.download_canceled.emit()
+                                return
+
+                            chunk = response.read(1024 * 128)
+                            if not chunk:
+                                break
+
+                            output_file.write(chunk)
+                            downloaded += len(chunk)
+
+                            if total_size > 0:
+                                progress = min(int(downloaded * 100 / total_size), 100)
+                                self.progress_changed.emit(progress)
+
+                if not os.path.exists(updater_file):
+                    raise RuntimeError("Updater downloaded but file was not found.")
+
+                self.progress_changed.emit(100)
+                self.download_finished.emit(updater_file, candidate)
+                return
+
+            except Exception as ex:
+                last_error = ex
+                if os.path.exists(updater_file):
+                    os.remove(updater_file)
+
+        self.download_failed.emit(f"Failed to download updater: {last_error}")
+
+    @pyqtSlot()
+    def cancel(self):
+        self._is_canceled = True
 
 
 class SideToolbar(QToolBar, I18nContext):
@@ -23,6 +105,9 @@ class SideToolbar(QToolBar, I18nContext):
         super().__init__()
 
         self.root = root
+        self.download_thread = None
+        self.download_worker = None
+        self.download_progress_dialog = None
 
         self.setObjectName("side_toolbar")
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.PreventContextMenu)
@@ -262,7 +347,7 @@ class SideToolbar(QToolBar, I18nContext):
                 )
 
                 if reply == QMessageBox.StandardButton.Yes:
-                    self.start_update_process()
+                    self.start_update_process(latest_version)
             else:
                 # No update available
                 QMessageBox.information(
@@ -282,103 +367,61 @@ class SideToolbar(QToolBar, I18nContext):
                 QMessageBox.StandardButton.Ok,
             )
 
-    def start_update_process(self):
-        """Start the update process"""
+    def start_update_process(self, version: str):
+        """Download updater from release assets, launch it, then close the app."""
         try:
-            # Check for update script/executable first
-            # In production, we use updater.exe; in development, update_manager.py
-            update_executable = None
-
-            if getattr(sys, "frozen", False):
-                app_dir = os.path.dirname(sys.executable)
-            else:
-                app_dir = resolve_path(".")
-
-            update_batch_candidates = [
-                os.path.join(app_dir, "update.bat"),
-                resolve_path("update.bat"),
-            ]
-            update_batch = next(
-                (p for p in update_batch_candidates if os.path.exists(p)), None
-            )
-
-            updater_candidates = [
-                os.path.join(app_dir, "updater.exe"),
-                os.path.join(app_dir, "update", "updater.exe"),
-                resolve_path("updater.exe"),
-                resolve_path("update/updater.exe"),
-            ]
-            update_py_candidates = [
-                os.path.join(app_dir, "update", "update_manager.py"),
-                resolve_path("update/update_manager.py"),
-            ]
-
-            for candidate in updater_candidates:
-                if os.path.exists(candidate):
-                    update_executable = candidate
-                    break
-
-            if not update_executable:
-                for candidate in update_py_candidates:
-                    if os.path.exists(candidate):
-                        update_executable = candidate
-                        break
-
-            if not update_executable:
-                searched_paths = updater_candidates + update_py_candidates
-                QMessageBox.critical(
+            if self.download_thread and self.download_thread.isRunning():
+                QMessageBox.information(
                     self.root,
-                    "Update Error",
-                    f"Update executable not found.\n\n"
-                    f"Searched paths:\n- " + "\n- ".join(searched_paths) + "\n\n"
-                    f"Please download the latest version manually from GitHub.",
+                    "Update",
+                    "Update download is already in progress.",
                     QMessageBox.StandardButton.Ok,
                 )
                 return
 
-            # Prepare confirmation message based on environment
-            if is_development_environment():
-                confirm_msg = (
-                    "The update process will now start.\n\n"
-                    f"[Development Mode]\n"
-                    f"Update will be downloaded to '{get_update_directory()}' folder.\n"
-                    f"You can manually install it later.\n\n"
-                    f"Continue with the download?"
-                )
-            else:
-                confirm_msg = (
-                    "The update process will now start.\n\n"
-                    "The application will close and restart automatically.\n"
-                    "Make sure to save any unsaved work.\n\n"
-                    "Continue with the update?"
-                )
+            version_tag = (version or "").strip()
+            if not version_tag:
+                raise RuntimeError("Invalid update version.")
 
-            # Show final confirmation without blocking
-            final_reply = QMessageBox.question(
-                self.root,
-                "Confirm Update",
-                confirm_msg,
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.Yes,
+            version_candidates = [version_tag]
+            if not version_tag.startswith("v"):
+                version_candidates.insert(0, f"v{version_tag}")
+
+            download_dir = get_update_directory() or resolve_path("release")
+            os.makedirs(download_dir, exist_ok=True)
+
+            self.download_progress_dialog = QProgressDialog(
+                "Downloading updater...", "Cancel", 0, 100, self.root
             )
+            self.download_progress_dialog.setWindowTitle("Update Download")
+            self.download_progress_dialog.setWindowModality(
+                Qt.WindowModality.ApplicationModal
+            )
+            self.download_progress_dialog.setAutoClose(False)
+            self.download_progress_dialog.setAutoReset(False)
+            self.download_progress_dialog.setMinimumDuration(0)
+            self.download_progress_dialog.setValue(0)
 
-            if final_reply == QMessageBox.StandardButton.Yes:
-                # Store update script paths for delayed execution
-                self.update_executable_path = update_executable
-                self.update_batch_path = None
-                if (
-                    update_executable
-                    and not update_executable.lower().endswith(".exe")
-                    and os.path.exists(update_batch)
-                ):
-                    self.update_batch_path = update_batch
+            self.download_thread = QThread(self)
+            self.download_worker = UpdaterDownloadWorker(version_candidates, download_dir)
+            self.download_worker.moveToThread(self.download_thread)
 
-                # # Show a quick status message
-                # self.root.statusBar().showMessage("Starting update process...", 2000)
+            self.download_thread.started.connect(self.download_worker.run)
+            self.download_progress_dialog.canceled.connect(self.download_worker.cancel)
 
-                # Use QTimer to delay the update process
-                # This allows the dialog to close properly before exit
-                QTimer.singleShot(500, self.__execute_update_and_exit)
+            self.download_worker.progress_changed.connect(self._on_download_progress)
+            self.download_worker.status_changed.connect(self._on_download_status)
+            self.download_worker.download_finished.connect(self._on_download_finished)
+            self.download_worker.download_failed.connect(self._on_download_failed)
+            self.download_worker.download_canceled.connect(self._on_download_canceled)
+
+            self.download_worker.download_finished.connect(self.download_thread.quit)
+            self.download_worker.download_failed.connect(self.download_thread.quit)
+            self.download_worker.download_canceled.connect(self.download_thread.quit)
+            self.download_thread.finished.connect(self._cleanup_download_worker)
+
+            self.download_thread.start()
+            self.download_progress_dialog.show()
 
         except Exception as e:
             logger.error(f"Failed to start update process: {e}")
@@ -390,96 +433,99 @@ class SideToolbar(QToolBar, I18nContext):
                 QMessageBox.StandardButton.Ok,
             )
 
-    def __execute_update_and_exit(self):
-        """Execute the update process and exit application"""
-        try:
-            # Start update process
-            if os.name == "nt" and self.update_batch_path:  # Windows with batch file
-                subprocess.Popen(
-                    [self.update_batch_path],
-                    creationflags=subprocess.CREATE_NEW_CONSOLE,
-                    cwd=os.path.dirname(self.update_batch_path),
-                )
-            elif os.name == "nt":  # Windows
-                # Check if it's an .exe file or .py file
-                if self.update_executable_path.endswith(".exe"):
-                    # Run executable directly
-                    subprocess.Popen(
-                        [self.update_executable_path],
-                        cwd=os.path.dirname(self.update_executable_path),
-                        creationflags=(
-                            subprocess.DETACHED_PROCESS
-                            | subprocess.CREATE_NEW_PROCESS_GROUP
-                        ),
-                    )
-                else:
-                    # Run Python script
-                    subprocess.Popen(
-                        [sys.executable, self.update_executable_path],
-                        creationflags=subprocess.CREATE_NEW_CONSOLE,
-                    )
-            else:  # Unix-like
-                if self.update_executable_path.endswith(".exe"):
-                    subprocess.Popen([self.update_executable_path])
-                else:
-                    subprocess.Popen([sys.executable, self.update_executable_path])
+    def _on_download_progress(self, value: int):
+        if self.download_progress_dialog:
+            self.download_progress_dialog.setValue(value)
 
-            # Close all message boxes and dialogs first
-            print("🔄 Closing all dialogs and widgets...")
+    def _on_download_status(self, message: str):
+        if self.download_progress_dialog:
+            self.download_progress_dialog.setLabelText(message)
+
+    def _on_download_finished(self, updater_file: str, downloaded_version: str):
+        if self.download_progress_dialog:
+            self.download_progress_dialog.setValue(100)
+            self.download_progress_dialog.close()
+
+        logger.info(f"Updater downloaded to: {updater_file}")
+
+        try:
+            if os.name == "nt":
+                subprocess.Popen(
+                    [updater_file],
+                    cwd=os.path.dirname(updater_file),
+                    creationflags=(
+                        subprocess.DETACHED_PROCESS
+                        | subprocess.CREATE_NEW_PROCESS_GROUP
+                    ),
+                )
+            else:
+                subprocess.Popen([updater_file], cwd=os.path.dirname(updater_file))
+
+            logger.info(f"Updater launch started for version: {downloaded_version}")
+            self._shutdown_application()
+        except Exception as e:
+            logger.error(f"Failed to launch updater: {e}")
+            QMessageBox.critical(
+                self.root,
+                "Update Error",
+                f"Failed to launch updater:\n{str(e)}\n\nPlease try again.",
+                QMessageBox.StandardButton.Ok,
+            )
+
+    def _on_download_failed(self, message: str):
+        if self.download_progress_dialog:
+            self.download_progress_dialog.close()
+
+        logger.error(message)
+        QMessageBox.critical(
+            self.root,
+            "Update Error",
+            f"{message}\n\nPlease try updating manually.",
+            QMessageBox.StandardButton.Ok,
+        )
+
+    def _on_download_canceled(self):
+        if self.download_progress_dialog:
+            self.download_progress_dialog.close()
+
+        QMessageBox.information(
+            self.root,
+            "Update",
+            "Update download was canceled.",
+            QMessageBox.StandardButton.Ok,
+        )
+
+    def _cleanup_download_worker(self):
+        if self.download_worker:
+            self.download_worker.deleteLater()
+            self.download_worker = None
+        if self.download_thread:
+            self.download_thread.deleteLater()
+            self.download_thread = None
+        self.download_progress_dialog = None
+
+    def _shutdown_application(self):
+        """Close all windows and terminate the current application process."""
+        try:
             for widget in QApplication.allWidgets():
                 if isinstance(widget, QMessageBox) and widget.isVisible():
                     widget.close()
                     widget.deleteLater()
 
-            # Process events to ensure dialogs are closed
             QApplication.processEvents()
 
-            # Force close main window with proper cleanup
             if self.root:
-                print("🔄 Closing main window...")
                 self.root.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
                 self.root.close()
                 self.root.deleteLater()
 
-            # Multiple attempts at clean exit
-            print("🔄 Initiating application shutdown...")
-
-            # Process any remaining events
             QApplication.processEvents()
-
-            # Quit the application
             QApplication.closeAllWindows()
             QApplication.quit()
-
-            # Force exit after a brief delay to ensure cleanup
-            QTimer.singleShot(1000, self._force_exit)
+            if ConfigService.get_env("ENV") != "development":
+                os._exit(0)
+            sys.exit(0)
 
         except Exception as e:
-            logger.error(f"Failed to execute update: {e}")
-            print(f"Update execution failed: {e}")
-            # Force exit even if cleanup fails
-            self._force_exit()
-
-    def _force_exit(self):
-        """Force application exit with extreme measures"""
-        try:
-            print("🔄 Force exiting application...")
-
-            # Final cleanup
-            QApplication.processEvents()
-            QApplication.quit()
-
-            # Nuclear option - force process termination
-            if ConfigService.get_env("ENV") != "development":
-                import os
-
-                print("💀 Force terminating process...")
-                os._exit(0)  # Nuclear exit - bypasses cleanup
-            else:
-                sys.exit(0)
-
-        except:
-            # Last resort
-            import os
-
+            logger.error(f"Failed to shutdown app cleanly: {e}")
             os._exit(0)
