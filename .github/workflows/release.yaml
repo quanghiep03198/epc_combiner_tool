@@ -217,6 +217,26 @@ jobs:
           # Create a directory for release assets
           mkdir -p release-assets
 
+          # Normalize updater name for release attachment
+          TARGET_UPDATER="release-assets/epc-ic-${VERSION_TAG}-windows-updater-x64.exe"
+          CANDIDATE_UPDATER=""
+
+          # Priority 1: updater generated in root release folder
+          if [ -d "release" ]; then
+            CANDIDATE_UPDATER=$(find release -type f -name "*.exe" 2>/dev/null | grep -Ei "(updater|setup)" | sort | tail -1)
+            if [ -z "$CANDIDATE_UPDATER" ]; then
+              CANDIDATE_UPDATER=$(find release -type f -name "*.exe" 2>/dev/null | sort | tail -1)
+            fi
+          fi
+
+          if [ -n "$CANDIDATE_UPDATER" ]; then
+            echo "Found updater candidate: $CANDIDATE_UPDATER"
+            cp "$CANDIDATE_UPDATER" "$TARGET_UPDATER"
+            echo "Prepared updater asset: $TARGET_UPDATER"
+          else
+            echo "No updater executable found in release/"
+          fi
+
           # Normalize latest installer name for release attachment
           TARGET_INSTALLER="release-assets/epc-ic-${VERSION_TAG}-windows-installer-x64.exe"
           CANDIDATE_INSTALLER=""
@@ -335,6 +355,7 @@ jobs:
           prerelease: ${{ inputs.prerelease }}
           files: |
             epc-ic-v*-windows-x64.zip
+            release-assets/epc-ic-v*-windows-updater-x64.exe
             release-assets/epc-ic-v*-windows-installer-x64.exe
             executable-windows/*
             release-assets/*
