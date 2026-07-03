@@ -1,11 +1,106 @@
 import json
 import os
+import sys
+import time
+from datetime import datetime
 from typing import Dict
 
 import requests
 
 from helpers.logger import logger
 from helpers.resolve_path import resolve_path
+
+
+def _normalize_version_tag(version: str) -> str:
+    if not version:
+        return ""
+    normalized = str(version).strip()
+    if not normalized:
+        return ""
+    return normalized if normalized.startswith("v") else f"v{normalized}"
+
+
+def _get_windows_executable_version(executable_path: str) -> str:
+    if os.name != "nt" or not executable_path or not os.path.exists(executable_path):
+        return ""
+
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        size = ctypes.windll.version.GetFileVersionInfoSizeW(executable_path, None)
+        if not size:
+            return ""
+
+        raw_data = ctypes.create_string_buffer(size)
+        ok = ctypes.windll.version.GetFileVersionInfoW(executable_path, 0, size, raw_data)
+        if not ok:
+            return ""
+
+        value_ptr = wintypes.LPVOID()
+        value_len = wintypes.UINT()
+
+        # Matches StringTable in build script (0409/04B0).
+        if ctypes.windll.version.VerQueryValueW(
+            raw_data,
+            "\\StringFileInfo\\040904B0\\ProductVersion",
+            ctypes.byref(value_ptr),
+            ctypes.byref(value_len),
+        ):
+            version = ctypes.wstring_at(value_ptr, value_len.value).rstrip("\x00")
+            return version.strip()
+    except Exception as e:
+        logger.warning(f"Failed to read executable version: {e}")
+
+    return ""
+
+
+def _sync_version_json_with_installed_app(version_file: str, data: Dict) -> Dict:
+    """Sync version.json with installed executable version on app startup."""
+    try:
+        if not getattr(sys, "frozen", False):
+            return data
+
+        runtime_version = _normalize_version_tag(
+            _get_windows_executable_version(sys.executable)
+        )
+        if not runtime_version:
+            return data
+
+        current_version = _normalize_version_tag(data.get("version", ""))
+        if current_version == runtime_version:
+            return data
+
+        updated_data = dict(data)
+        updated_data["version"] = runtime_version
+
+        if not updated_data.get("build_type") or updated_data.get("build_type") == "unknown":
+            updated_data["build_type"] = "release"
+
+        if not updated_data.get("build_date") or updated_data.get("build_date") == "unknown":
+            updated_data["build_date"] = datetime.now().isoformat()
+
+        updated_data["build_timestamp"] = int(time.time())
+        updated_data.setdefault(
+            "git",
+            {"commit_hash": "unknown", "commit_date": "unknown", "branch": "unknown"},
+        )
+        updated_data.setdefault(
+            "platform",
+            {"system": os.name, "python_version": sys.version},
+        )
+
+        with open(version_file, "w", encoding="utf-8") as f:
+            json.dump(updated_data, f, indent=2, ensure_ascii=False)
+
+        logger.info(
+            f"Synchronized version.json from {current_version or 'unknown'} to {runtime_version}"
+        )
+        return updated_data
+
+    except Exception as e:
+        logger.warning(f"Failed to synchronize version.json: {e}")
+        return data
 
 
 class VersionInfo:
@@ -50,17 +145,18 @@ class VersionInfo:
 
 def load_version_info() -> VersionInfo:
     """Load version information from version.json"""
+    version_file = resolve_path("version.json")
+    data = {"version": "1.0.0", "build_type": "unknown"}
+
     try:
-        version_file = resolve_path("version.json")
         if os.path.exists(version_file):
             with open(version_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                return VersionInfo(data)
     except Exception as e:
         logger.warning(f"Failed to load version info: {e}")
 
-    # Fallback to default version
-    return VersionInfo({"version": "1.0.0", "build_type": "unknown"})
+    data = _sync_version_json_with_installed_app(version_file, data)
+    return VersionInfo(data)
 
 
 def get_current_version() -> str:

@@ -43,42 +43,44 @@ def get_git_info():
         return {"commit_hash": "unknown", "commit_date": "unknown", "branch": "unknown"}
 
 
-def update_inno_script_version(version):
-    """Update MyAppVersion in installer.iss and updater.iss."""
-    import re
+def update_installer_version(version):
+    """Update installer.iss file with new version"""
+    installer_file = Path("installer.iss")
 
-    iss_files = [Path("installer.iss"), Path("updater.iss")]
-    version_pattern = r'(#define MyAppVersion\s+")[^"]*(")'
-    clean_version = version[1:] if version.startswith("v") else version
-    updated_count = 0
+    if not installer_file.exists():
+        print(f"Installer file not found: {installer_file}")
+        return False
 
-    for iss_file in iss_files:
-        if not iss_file.exists():
-            print(f"Inno script not found: {iss_file}")
-            continue
+    try:
+        # Read current content
+        with open(installer_file, "r", encoding="utf-8") as f:
+            content = f.read()
 
-        try:
-            with open(iss_file, "r", encoding="utf-8") as f:
-                content = f.read()
+        # Find and replace the version line
+        import re
 
-            new_content = re.sub(
-                version_pattern, f"\\g<1>{clean_version}\\g<2>", content
-            )
+        version_pattern = r'(#define MyAppVersion\s+")[^"]*(")'
 
-            if new_content == content:
-                print(f"Version pattern not found in {iss_file}")
-                continue
+        # Remove 'v' prefix if present for installer
+        clean_version = version[1:] if version.startswith("v") else version
 
-            with open(iss_file, "w", encoding="utf-8") as f:
-                f.write(new_content)
+        new_content = re.sub(version_pattern, f"\\g<1>{clean_version}\\g<2>", content)
 
-            print(f"Updated {iss_file} version to: {clean_version}")
-            updated_count += 1
+        # Check if replacement was made
+        if new_content == content:
+            print(f"Version pattern not found in {installer_file}")
+            return False
 
-        except Exception as e:
-            print(f"Failed to update {iss_file} version: {e}")
+        # Write updated content
+        with open(installer_file, "w", encoding="utf-8") as f:
+            f.write(new_content)
 
-    return updated_count > 0
+        print(f"Updated installer version to: {clean_version}")
+        return True
+
+    except Exception as e:
+        print(f"Failed to update installer version: {e}")
+        return False
 
 
 def create_version_info(version, build_type="development"):
@@ -469,8 +471,8 @@ def main():
     if not args.no_clean:
         clean_build_dirs()
 
-    # Update installer/updater version (always update regardless of version file option)
-    update_inno_script_version(args.version)
+    # Update installer version (always update regardless of version file option)
+    update_installer_version(args.version)
 
     # Create version info
     include_version_file = not args.no_version_file
@@ -480,6 +482,14 @@ def main():
 
     # Run PyInstaller first to create main app
     success = run_pyinstaller(args.version, include_version_file)
+
+    if success:
+        # Build update scripts into the same directory as main app
+        if not build_update_scripts():
+            print("Failed to build update scripts, but main app built successfully")
+            print("Update functionality may not work without Python installed")
+        else:
+            print("Update scripts built into app directory")
 
     if success:
         print(f"\nBuild completed successfully!")
