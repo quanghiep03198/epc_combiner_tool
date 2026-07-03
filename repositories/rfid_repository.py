@@ -4,7 +4,7 @@ from pathlib import Path
 from PyQt6.QtCore import QDateTime
 from PyQt6.QtSql import *
 
-from constants import CombineAction
+from constants import CombineAction, FactoryCodes
 from contexts.auth_context import auth_context
 from contexts.combine_form_context import combine_form_context
 from database import DatabaseConnection, db_service
@@ -53,57 +53,63 @@ class RFIDRepository:
         try:
             connection = db_service.get_connection(DatabaseConnection.DATA_LAKE)
 
-            # Bắt đầu transaction
             if not connection.transaction():
                 raise Exception("Failed to start transaction")
 
             query = QSqlQuery(connection)
             epc_params_str = ",".join([f"'{item['EPC_Code']}'" for item in data])
-            logger.info(f"EPC Params String: >> {epc_params_str}")
             fallback_station_no = "%s_%s" % (auth_context.get("factory_code"), "PA103")
 
-            # Force end EPC's lifecycle
-            query.prepare(f"""-- sql
-                WITH CTE_MatchKeys AS (
-                    SELECT a.keyid as matchkeyid 
-                    FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst a
-                    INNER JOIN DV_DATA_LAKE.dbo.dv_RFIDrecordmst b
-                        ON a.EPC_Code = b.EPC_Code
-                        AND a.keyid = b.matchkeyid
-                    WHERE a.EPC_Code IN ({epc_params_str})
-                        AND a.ri_cancel = 0  
-                        AND b.stationNO NOT LIKE '%P%103'
-                )
-                UPDATE DV_DATA_LAKE.dbo.dv_RFIDrecordmst
-                SET stationNO = (
-                    SELECT COALESCE(
-                        -- find stationNO by both "mo_no" and "size_code"
-                        (
-                            SELECT TOP 1 a.stationNO
-                            FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst a, DV_DATA_LAKE.dbo.dv_RFIDrecordmst b 
-                            WHERE b.stationNO NOT LIKE '%P%103' 
-                            AND a.mo_no = b.mo_no  
-                            AND a.size_code = b.size_code
-                            AND a.stationNO <> b.stationNO
-                            AND a.EPC_Code <> b.EPC_Code 
-                            AND b.EPC_Code IN ({epc_params_str})
-                            ORDER BY a.record_time DESC
-                        ), 
-                        -- else use the fallback stationNO
-                        '{fallback_station_no}'
-                        ) AS stationNO
-                    ),              
-                    user_code_updated = '{combine_form_context.get("user_code_updated")}',
-                    user_name_updated = '{combine_form_context.get("user_name_updated")}',
-                    record_time = DATEADD(DAY, -7, GETDATE()),
-                    remark = 'Forced lifecycle end by {combine_form_context.get("user_name_updated")}'
-                WHERE matchkeyid IN (SELECT matchkeyid FROM CTE_MatchKeys)
-                ;
-                """)
+            # region Producing lifecycle
 
-            if not query.exec():
-                raise Exception(query.lastError().text())
+            # * Only apply epc's ending producing lifecycle for all factories except for Cambodia (CA1)
+            should_force_end_lifecycle = auth_context.get("factory_code") != FactoryCodes.CA1.value
+            if should_force_end_lifecycle:
+                query.prepare(f"""-- sql
+                    WITH CTE_MatchKeys AS (
+                        SELECT a.keyid as matchkeyid 
+                        FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst a
+                        INNER JOIN DV_DATA_LAKE.dbo.dv_RFIDrecordmst b
+                            ON a.EPC_Code = b.EPC_Code
+                            AND a.keyid = b.matchkeyid
+                        WHERE a.EPC_Code IN ({epc_params_str})
+                            AND a.ri_cancel = 0  
+                            AND b.stationNO NOT LIKE '%P%103'
+                    )
+                    UPDATE DV_DATA_LAKE.dbo.dv_RFIDrecordmst
+                    SET stationNO = (
+                        SELECT COALESCE(
+                            -- find stationNO by both "mo_no" and "size_code"
+                            (
+                                SELECT TOP 1 a.stationNO
+                                FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst a, DV_DATA_LAKE.dbo.dv_RFIDrecordmst b 
+                                WHERE b.stationNO NOT LIKE '%P%103' 
+                                AND a.mo_no = b.mo_no  
+                                AND a.size_code = b.size_code
+                                AND a.stationNO <> b.stationNO
+                                AND a.EPC_Code <> b.EPC_Code 
+                                AND b.EPC_Code IN ({epc_params_str})
+                                ORDER BY a.record_time DESC
+                            ), 
+                            -- else use the fallback stationNO
+                            '{fallback_station_no}'
+                            ) AS stationNO
+                        ),              
+                        user_code_updated = '{combine_form_context.get("user_code_updated")}',
+                        user_name_updated = '{combine_form_context.get("user_name_updated")}',
+                        record_time = DATEADD(DAY, -7, GETDATE()),
+                        remark = 'Forced lifecycle end by {combine_form_context.get("user_name_updated")}'
+                    WHERE matchkeyid IN (SELECT matchkeyid FROM CTE_MatchKeys)
+                    ;
+                    """)
 
+                if not query.exec():
+                    raise Exception(query.lastError().text())
+                    
+            # endregion
+
+            # region Common logic
+            
             # Cancel old records
             query.prepare(f"""--sql          
                 UPDATE DV_DATA_LAKE.dbo.dv_rfidmatchmst
@@ -122,10 +128,8 @@ class RFIDRepository:
                 raise Exception(query.lastError().text())
 
             # Insert new records
-            # Convert data to JSON format
             json_data = json.dumps(obj=data, ensure_ascii=False).replace("'", "''")
 
-            # Use the JSON to perform an insert-select operation
             query.prepare(f"""--sql
                 INSERT INTO DV_DATA_LAKE.dbo.dv_rfidmatchmst (
                     EPC_Code, mo_no, mo_noseq, mat_code, or_no, or_custpo, 
@@ -171,25 +175,26 @@ class RFIDRepository:
                 """)
 
             if not query.exec():
-                raise Exception(query.lastError().text())
-
+                raise Exception(query.lastError().text())    
+                
+            # endregion
+            
+            # region Compensation logic
             if combine_form_context["ri_type"] == CombineAction.COMPENSATE.value:
                 station_history = StationRepository.get_station_history(
                     mo_no=combine_form_context["mo_no"],
                     size_numcode=combine_form_context["size_numcode"],
                     station_seq_no=combine_form_context["station_seq_no"],
                 )
-                logger.debug(f"Station history: {station_history}")
 
-                # Get max station_seq_no in trace_history_stations
+                # * Get max station_seq_no in trace_history_stations
                 max_station_seq_no = max(
                     station.get("station_seq_no", 0) for station in station_history
                 )
-                logger.debug(f"Max station_seq_no: {max_station_seq_no}")
 
                 """
-                Validate missing station history before compensation point
-                If missing, raise exception to rollback transaction
+                * Validate missing station history before compensation point
+                * If missing, raise exception to rollback transaction
                 """
                 if combine_form_context["station_seq_no"] > max_station_seq_no:
                     logger.error(
@@ -198,20 +203,18 @@ class RFIDRepository:
                     raise Exception(
                         I18nService.t("notification.missing_station_point_history")
                     )
-                # Insert trace history for each station before compensation point
+                # * Insert trace history for each station before compensation point
                 json_epcs_codes = json.dumps(
                     obj=[item["EPC_Code"] for item in data],
                     ensure_ascii=False,
                 )
-                # Filter stations with station_seq_no < compensation point
+                # * Filter stations with station_seq_no < compensation point
                 trace_history_stations = [
                     station
                     for station in station_history
                     if station.get("station_seq_no", 0)
                     < combine_form_context["station_seq_no"]
                 ]
-                logger.debug(f"Actual trace history stations: {trace_history_stations}")
-                # target_station: str = combine_form_context["station_no"]
                 for station in trace_history_stations:
                     inoutbound_types: str | None = None
                     trace_station_no: str = station.get("station_no", "")
@@ -247,13 +250,13 @@ class RFIDRepository:
                             station_no=trace_station_no,
                             inoutbound_type="A",
                             record_time=last_record_time,
-                            # target_station_no=target_station,
                         )
+
+            # endregion
 
             connection.commit()
             return query.numRowsAffected()
         except Exception as e:
-            # Rollback transaction nếu có lỗi
             if connection is not None:
                 connection.rollback()
                 logger.error(f"Transaction rolled back due to error: {e}")
@@ -271,7 +274,6 @@ class RFIDRepository:
         station_no: str,
         inoutbound_type: str,
         record_time: str,
-        # target_station_no: str,
     ) -> int:
         query_runner.prepare(
             db_service.get_raw_sql(RFIDRepository.__epc_trace_history_sql_file_path)
@@ -282,7 +284,6 @@ class RFIDRepository:
         query_runner.bindValue(":inoutbound_type", inoutbound_type)
         query_runner.bindValue(":record_time", record_time)
         query_runner.bindValue(":username", auth_context.get("user_code"))
-        # query_runner.bindValue(":target_station_no", target_station_no)
 
         if not query_runner.exec():
             raise Exception(query_runner.lastError().text())
