@@ -20,10 +20,10 @@ USING (
       )
 ) AS source
 ON target.matchkeyid = source.keyid 
-   AND target.EPC_Code = source.EPC_Code
-   AND target.mo_no = source.mo_no
-   AND target.size_code = source.size_code
-   AND target.FC_server_code = @FactoryCode
+	AND target.EPC_Code = source.EPC_Code
+	AND target.mo_no = source.mo_no
+	AND target.size_code = source.size_code
+	AND target.FC_server_code = @FactoryCode
 	AND target.stationNO = @StationNO
 	AND target.inoutbound_type = @InoutboundType
 WHEN MATCHED THEN 
