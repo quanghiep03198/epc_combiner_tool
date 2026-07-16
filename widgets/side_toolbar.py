@@ -11,12 +11,8 @@ from events import UserActionEvent, __event_emitter__
 from helpers.configuration import ConfigService
 from helpers.logger import logger
 from helpers.resolve_path import resolve_path
-from helpers.version import (
-    fetch_latest_version,
-    get_update_directory,
-    is_development_environment,
-    load_version_info,
-)
+from helpers.version import (fetch_latest_version, get_update_directory,
+                             is_development_environment, load_version_info)
 from i18n import I18nContext, I18nService, Language, __languages__
 from themes.colors import Theme, get_color
 from themes.theme_manager import theme_manager
@@ -391,8 +387,10 @@ class SideToolbar(QToolBar, I18nContext):
             os.makedirs(download_dir, exist_ok=True)
 
             self.download_progress_dialog = QProgressDialog(
-                "Downloading updater...", "Cancel", 0, 100, self.root
+                "Downloading updater...", None, 0, 100, self.root
             )
+            self.download_progress_dialog.setMinimumWidth(400)
+            self.download_progress_dialog.setMinimumHeight(100)
             self.download_progress_dialog.setWindowTitle("Update Download")
             self.download_progress_dialog.setWindowModality(
                 Qt.WindowModality.ApplicationModal
@@ -403,7 +401,9 @@ class SideToolbar(QToolBar, I18nContext):
             self.download_progress_dialog.setValue(0)
 
             self.download_thread = QThread(self)
-            self.download_worker = UpdaterDownloadWorker(version_candidates, download_dir)
+            self.download_worker = UpdaterDownloadWorker(
+                version_candidates, download_dir
+            )
             self.download_worker.moveToThread(self.download_thread)
 
             self.download_thread.started.connect(self.download_worker.run)

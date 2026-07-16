@@ -33,7 +33,9 @@ def _get_windows_executable_version(executable_path: str) -> str:
             return ""
 
         raw_data = ctypes.create_string_buffer(size)
-        ok = ctypes.windll.version.GetFileVersionInfoW(executable_path, 0, size, raw_data)
+        ok = ctypes.windll.version.GetFileVersionInfoW(
+            executable_path, 0, size, raw_data
+        )
         if not ok:
             return ""
 
@@ -74,10 +76,16 @@ def _sync_version_json_with_installed_app(version_file: str, data: Dict) -> Dict
         updated_data = dict(data)
         updated_data["version"] = runtime_version
 
-        if not updated_data.get("build_type") or updated_data.get("build_type") == "unknown":
+        if (
+            not updated_data.get("build_type")
+            or updated_data.get("build_type") == "unknown"
+        ):
             updated_data["build_type"] = "release"
 
-        if not updated_data.get("build_date") or updated_data.get("build_date") == "unknown":
+        if (
+            not updated_data.get("build_date")
+            or updated_data.get("build_date") == "unknown"
+        ):
             updated_data["build_date"] = datetime.now().isoformat()
 
         updated_data["build_timestamp"] = int(time.time())
@@ -154,8 +162,8 @@ def load_version_info() -> VersionInfo:
                 data = json.load(f)
     except Exception as e:
         logger.warning(f"Failed to load version info: {e}")
-
-    data = _sync_version_json_with_installed_app(version_file, data)
+    # if sync:
+    #     data = _sync_version_json_with_installed_app(version_file, data)
     return VersionInfo(data)
 
 
