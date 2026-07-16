@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "EPC Combiner Tool"
-#define MyAppVersion "1.3.6"
+#define MyAppVersion "1.3.7"
 #define MyAppPublisher "Greenland, Inc."
 #define MyAppExeName "EPC Information Combiner.exe"
 #define MyAppAssocName MyAppName + ""
@@ -44,7 +44,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: ".\dist\EPC Information Combiner\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: ".\dist\EPC Information Combiner\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: ".\dist\EPC Information Combiner\version.json"; DestDir: "{app}"; Flags: ignoreversion overwritereadonly
+Source: ".\dist\EPC Information Combiner\*"; DestDir: "{app}"; Excludes: "version.json"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Registry]
