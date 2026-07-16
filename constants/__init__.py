@@ -25,6 +25,7 @@ class FactoryCodes(Enum):
     VB2 = "VB2"
     CA1 = "CA1"
 
+
 @unique
 class FactoryNames(Enum):
     VA1 = "Lian Ying"
