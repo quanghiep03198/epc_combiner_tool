@@ -306,10 +306,14 @@ class CombineForm(QFrame, I18nContext):
     @pyqtDebounce(wait=500, immediate=True)
     @pyqtSlot()
     def on_combine_proceed(self):
+        self.combine_proceed_button.setEnabled(False)
+        self.combine_proceed_button.setText(I18nService.t("notification.processing"))
         # Check if all values in data are not None or empty string or "all"
         is_valid = self.__validate_submission_criteria()
 
         if is_valid is False:
+            self.combine_proceed_button.setEnabled(True)
+            self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
             Toaster(
                 parent=self.root,
                 title=I18nService.t("notification.combine_epc_failure_title"),
@@ -323,6 +327,8 @@ class CombineForm(QFrame, I18nContext):
             and len(self.__epcs)
             > combine_form_context["size_qty"] - combine_form_context["combined_qty"]
         ):
+            self.combine_proceed_button.setEnabled(True)
+            self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
             toast = Toaster(
                 parent=self.root,
                 title=I18nService.t("notification.over_scan_limit_title"),
@@ -333,10 +339,6 @@ class CombineForm(QFrame, I18nContext):
             return
 
         try:
-            self.combine_proceed_button.setEnabled(False)
-            self.combine_proceed_button.setText(
-                I18nService.t("notification.processing")
-            )
             payload = list(
                 map(
                     lambda item: {
@@ -349,6 +351,9 @@ class CombineForm(QFrame, I18nContext):
             )
             validated_epcs = RFIDRepository.check_reasonable_combination(payload)
             if any(epc.get("recombinable") == False for epc in validated_epcs):
+                self.combine_proceed_button.setEnabled(True)
+                self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
+
                 __event_emitter__.emit(
                     UserActionEvent.INVALID_COMBINATION_FOUND.value, validated_epcs
                 )
@@ -361,7 +366,7 @@ class CombineForm(QFrame, I18nContext):
                     preset=ToastPreset.WARNING_DARK,
                 )
                 toast.show()
-                self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
+
                 return
 
             worker = StoreDataWorker(
@@ -370,6 +375,17 @@ class CombineForm(QFrame, I18nContext):
             QThreadPool.globalInstance().start(worker)
         except Exception as e:
             logger.error(e)
+
+            self.combine_proceed_button.setEnabled(True)
+            self.combine_proceed_button.setText(I18nService.t("actions.confirm"))
+
+            toast = Toaster(
+                parent=self.root,
+                title=I18nService.t("notification.combine_epc_failure_title"),
+                text=None,
+                preset=ToastPreset.ERROR_DARK,
+            )
+            toast.show()
 
     @pyqtSlot(int)
     def on_mutate_success(self, num_rows_affected: int | None):

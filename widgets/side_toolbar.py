@@ -391,8 +391,10 @@ class SideToolbar(QToolBar, I18nContext):
             os.makedirs(download_dir, exist_ok=True)
 
             self.download_progress_dialog = QProgressDialog(
-                "Downloading updater...", "Cancel", 0, 100, self.root
+                "Downloading updater...", None, 0, 100, self.root
             )
+            self.download_progress_dialog.setMinimumWidth(400)
+            self.download_progress_dialog.setMinimumHeight(100)
             self.download_progress_dialog.setWindowTitle("Update Download")
             self.download_progress_dialog.setWindowModality(
                 Qt.WindowModality.ApplicationModal
@@ -403,7 +405,9 @@ class SideToolbar(QToolBar, I18nContext):
             self.download_progress_dialog.setValue(0)
 
             self.download_thread = QThread(self)
-            self.download_worker = UpdaterDownloadWorker(version_candidates, download_dir)
+            self.download_worker = UpdaterDownloadWorker(
+                version_candidates, download_dir
+            )
             self.download_worker.moveToThread(self.download_thread)
 
             self.download_thread.started.connect(self.download_worker.run)

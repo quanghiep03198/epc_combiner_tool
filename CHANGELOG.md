@@ -123,6 +123,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - enhance update manager with theme support and progress callbacks
 - optimize max value validation in AdditionalQtyDelegate with improved styling
 
+## [1.3.6-rc] - 2026-07-02
+
+### Fixed
+
+- Exclude force end producing lifecycle for KHRU factory
+- Update translations for customer order fields and improve order detail table headers
+
+### Features
+
+- Add logic to normalize and prepare updater asset for release
+
+## [1.3.7] - 2026-07-16
+
+### Fixed
+
+- Compensating producing history for assembly product line before combining new
+- Resize update downloader dialog for better UI
+- Override `version.json` after install new update
+- Format all files with `black` and `isort`
+
 [1.1]: https://github.com/quanghiep03198/epc_combiner_tool/releases/tag/v1.1
 [1.1.1-rc]: https://github.com/quanghiep03198/epc_combiner_tool/releases/tag/v1.1.1-rc
 [1.1.2]: https://github.com/quanghiep03198/epc_combiner_tool/releases/tag/v1.1.2
@@ -132,3 +152,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.3.3]: https://github.com/quanghiep03198/epc_combiner_tool/releases/tag/v1.3.3
 [1.3.4]: https://github.com/quanghiep03198/epc_combiner_tool/releases/tag/v1.3.4
 [1.3.5]: https://github.com/quanghiep03198/epc_combiner_tool/releases/tag/v1.3.5
+[1.3.6-rc]: https://github.com/quanghiep03198/epc_combiner_tool/releases/tag/v1.3.6-rc
+[1.3.7]: https://github.com/quanghiep03198/epc_combiner_tool/releases/tag/v1.3.7
