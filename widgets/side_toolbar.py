@@ -11,8 +11,12 @@ from events import UserActionEvent, __event_emitter__
 from helpers.configuration import ConfigService
 from helpers.logger import logger
 from helpers.resolve_path import resolve_path
-from helpers.version import (fetch_latest_version, get_update_directory,
-                             is_development_environment, load_version_info)
+from helpers.version import (
+    fetch_latest_version,
+    get_update_directory,
+    is_development_environment,
+    load_version_info,
+)
 from i18n import I18nContext, I18nService, Language, __languages__
 from themes.colors import Theme, get_color
 from themes.theme_manager import theme_manager
