@@ -12,8 +12,8 @@ WITH BaseData AS (
          WHEN stationNO LIKE '%M%' THEN 2
          WHEN stationNO LIKE '%DH%' THEN 3
          WHEN stationNO LIKE '%IH%' THEN 4
-         WHEN stationNO LIKE '%P%101%' THEN 5
-         WHEN stationNO LIKE '%P%103%' THEN 6
+         WHEN stationNO LIKE '%P%101' THEN 5
+         WHEN stationNO LIKE '%P%103' THEN 6
          ELSE 999
       END AS station_seq_no,
       -- * Determine station type for branching
@@ -39,8 +39,8 @@ WITH BaseData AS (
          WHEN stationNO LIKE '%M%' THEN 2
          WHEN stationNO LIKE '%DH%' THEN 3
          WHEN stationNO LIKE '%IH%' THEN 4
-         WHEN stationNO LIKE '%P%101%' THEN 5
-         WHEN stationNO LIKE '%P%103%' THEN 6
+         WHEN stationNO LIKE '%P%101' THEN 5
+         WHEN stationNO LIKE '%P%103' THEN 6
          ELSE 999
       END AS station_seq_no,
       -- * Determine station type for branching

@@ -15,8 +15,8 @@ VALUES
     ('%M%', 2),
     ('%DH%', 3),
     ('%IH%', 4),
-    ('%P%101%', 5),
-    ('%P%103%', 6)
+    ('%P%101', 5),
+    ('%P%103', 6)
 ;
 DECLARE @LastStationOrder INT = (SELECT MAX(station_order) FROM @StationOrderMapping);
 
@@ -40,8 +40,8 @@ WITH EPC_STATION_HISTORY AS (
             WHEN ISNULL(rbk.stationNO, r.stationNO) LIKE '%M%' THEN 2
             WHEN ISNULL(rbk.stationNO, r.stationNO) LIKE '%DH%' THEN 3
             WHEN ISNULL(rbk.stationNO, r.stationNO) LIKE '%IH%' THEN 4
-            WHEN ISNULL(rbk.stationNO, r.stationNO) LIKE '%P%101%' THEN 5
-            WHEN ISNULL(rbk.stationNO, r.stationNO) LIKE '%P%103%' THEN 6
+            WHEN ISNULL(rbk.stationNO, r.stationNO) LIKE '%P%101' THEN 5
+            WHEN ISNULL(rbk.stationNO, r.stationNO) LIKE '%P%103' THEN 6
             ELSE NULL
         END AS latest_station_order, 
         ROW_NUMBER() OVER (PARTITION BY a.keyid, a.EPC_Code ORDER BY ISNULL(rbk.record_time, r.record_time) DESC) AS rn
