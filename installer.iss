@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "EPC Combiner Tool"
-#define MyAppVersion "1.3.8"
+#define MyAppVersion "1.3.9"
 #define MyAppPublisher "Greenland, Inc."
 #define MyAppExeName "EPC Information Combiner.exe"
 #define MyAppAssocName MyAppName + ""
