@@ -15,10 +15,12 @@ from uhf.reader import GClient
 from contexts.auth_context import auth_context
 from database import db_service
 from events import UserActionEvent, __event_emitter__
+
 # Import services
 from helpers.configuration import ConfigSection, ConfigService
 from helpers.logger import logger
 from helpers.resolve_path import resolve_path
+
 # from version import get_latest_release_version
 from helpers.version import version_info
 from i18n import I18nService, Language
@@ -33,6 +35,7 @@ from widgets.refresh_button import RefreshButton
 from widgets.side_toolbar import SideToolbar
 from widgets.sizing_detail_table import SizingDetailTableWidget
 from widgets.status_bar import StatusBar
+
 # Import widgets
 from widgets.toolbar import AppToolBar
 
