@@ -60,16 +60,16 @@ REDUCED_DATASOURCE AS (
         size_numcode , 
         latest_station_order,
         stationNO AS lastest_station,
-        record_time AS latest_record_time, -- LATEST RECORD TIME AT LAST STATION
+        record_time AS latest_record_time,
         CASE 
-            WHEN latest_station_order < @LastStationOrder - 1 THEN CONCAT_WS('_', @FactoryCode, 'PA103')   -- * Nếu chưa đi đến thành hình thì bù mặc định cho thành hình A (103)
-            WHEN latest_station_order = @LastStationOrder - 1 THEN REPLACE(stationNO, '101', '103')        -- * Nếu chỉ đi đến đầu thành hình (101) thì bù cho thành hình tương ứng (103)
-            ELSE stationNO                                                      -- * Nếu đã đi đến thành hình (103) thì giữ nguyên
+            WHEN latest_station_order < @LastStationOrder - 1 THEN CONCAT_WS('_', @FactoryCode, 'PA103')   -- * If the latest station is before the last two stations, then we expect the next station to be PA103
+            WHEN latest_station_order = @LastStationOrder - 1 THEN REPLACE(stationNO, '101', '103')        -- * If the latest station is the second last station, then we expect the next station to be the last station (103)
+            ELSE stationNO                                                                                 -- * If the latest station is the last station, then we expect the next station to be the same station (103)
         END AS expecting_assembly_station, 
         CASE 
             WHEN days_since_last_record = 0 THEN DATEADD(MINUTE, -5, GETDATE())
             WHEN days_since_last_record = 1 THEN DATEADD(MINUTE, @EXPECTED_STATION_GAP * (@LastStationOrder - latest_station_order), record_time)
-            ELSE DATEADD(DAY, -1, record_time)
+            ELSE DATEADD(DAY, -1, GETDATE())
         END AS expecting_record_time, 
         ROW_NUMBER() OVER (PARTITION BY keyid, EPC_Code ORDER BY latest_station_order DESC) AS rn
     FROM EPC_STATION_HISTORY a
@@ -85,7 +85,16 @@ ON target.matchkeyid = source.keyid
     AND target.mo_no = source.mo_no
     AND target.size_code = source.size_numcode
     AND target.stationNO = source.expecting_assembly_station
-WHEN NOT MATCHED THEN 
+WHEN NOT MATCHED BY TARGET
+    AND NOT EXISTS (
+        SELECT 1
+        FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst_backup_Daily AS _target
+        WHERE _target.matchkeyid = source.keyid
+            AND _target.EPC_Code = source.EPC_Code
+            AND _target.mo_no = source.mo_no
+            AND _target.size_code = source.size_numcode
+            AND _target.stationNO = source.expecting_assembly_station
+    ) THEN 
     INSERT (
         matchkeyid, 
         EPC_Code, 
