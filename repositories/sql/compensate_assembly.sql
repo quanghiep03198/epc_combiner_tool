@@ -32,11 +32,19 @@ WITH EPC_STATION_HISTORY AS (
         a.EPC_Code, 
         a.mo_no, 
         a.size_numcode, 
-        ISNULL(r.stationNO, rbk.stationNO) AS stationNO, 
-        ISNULL(r.record_time, rbk.record_time) AS record_time,
-        DATEDIFF(DAY, ISNULL(r.record_time, rbk.record_time), GETDATE()) AS days_since_last_record,
-        som.station_order AS latest_station_order, 
-        ROW_NUMBER() OVER (PARTITION BY a.keyid, a.EPC_Code ORDER BY ISNULL(r.record_time, rbk.record_time) DESC) AS rn
+        ISNULL(rbk.stationNO, r.stationNO) AS stationNO, 
+        ISNULL(rbk.record_time, r.record_time) AS record_time,
+        DATEDIFF(DAY, ISNULL(rbk.record_time, r.record_time), GETDATE()) AS days_since_last_record,
+        CASE 
+            WHEN ISNULL(rbk.stationNO, r.stationNO) LIKE '%FC%' THEN 1
+            WHEN ISNULL(rbk.stationNO, r.stationNO) LIKE '%M%' THEN 2
+            WHEN ISNULL(rbk.stationNO, r.stationNO) LIKE '%DH%' THEN 3
+            WHEN ISNULL(rbk.stationNO, r.stationNO) LIKE '%IH%' THEN 4
+            WHEN ISNULL(rbk.stationNO, r.stationNO) LIKE '%P%101%' THEN 5
+            WHEN ISNULL(rbk.stationNO, r.stationNO) LIKE '%P%103%' THEN 6
+            ELSE NULL
+        END AS latest_station_order, 
+        ROW_NUMBER() OVER (PARTITION BY a.keyid, a.EPC_Code ORDER BY ISNULL(rbk.record_time, r.record_time) DESC) AS rn
     FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst a
     INNER JOIN @EpcTable AS e ON a.EPC_Code = e.EPC_Code
     LEFT JOIN (
@@ -49,7 +57,6 @@ WITH EPC_STATION_HISTORY AS (
         FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst_backup_Daily
         WHERE EPC_Code IN (SELECT EPC_Code FROM @EpcTable)
     ) rbk ON a.keyid = rbk.matchkeyid AND a.EPC_Code = rbk.EPC_Code
-    LEFT JOIN @StationOrderMapping AS som ON ISNULL(r.stationNO, rbk.stationNO) LIKE som.station_like
     WHERE a.ri_cancel = 0
 ),
 REDUCED_DATASOURCE AS (
@@ -72,29 +79,20 @@ REDUCED_DATASOURCE AS (
             ELSE DATEADD(DAY, -1, GETDATE())
         END AS expecting_record_time, 
         ROW_NUMBER() OVER (PARTITION BY keyid, EPC_Code ORDER BY latest_station_order DESC) AS rn
-    FROM EPC_STATION_HISTORY a
+    FROM EPC_STATION_HISTORY 
 )
 MERGE INTO DV_DATA_LAKE.dbo.dv_RFIDrecordmst AS target
 USING (
     SELECT keyid, EPC_Code, mo_no, size_numcode, expecting_assembly_station, expecting_record_time 
-    FROM REDUCED_DATASOURCE 
-    WHERE rn = 1
+    FROM REDUCED_DATASOURCE
+    WHERE rn = 1 AND lastest_station NOT LIKE '%P%103'
 ) AS source
 ON target.matchkeyid = source.keyid 
     AND target.EPC_Code = source.EPC_Code
     AND target.mo_no = source.mo_no
     AND target.size_code = source.size_numcode
     AND target.stationNO = source.expecting_assembly_station
-WHEN NOT MATCHED BY TARGET
-    AND NOT EXISTS (
-        SELECT 1
-        FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst_backup_Daily AS _target
-        WHERE _target.matchkeyid = source.keyid
-            AND _target.EPC_Code = source.EPC_Code
-            AND _target.mo_no = source.mo_no
-            AND _target.size_code = source.size_numcode
-            AND _target.stationNO = source.expecting_assembly_station
-    ) THEN 
+WHEN NOT MATCHED BY TARGET THEN 
     INSERT (
         matchkeyid, 
         EPC_Code, 
