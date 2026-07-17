@@ -12,27 +12,27 @@ from helpers.resolve_path import resolve_path
 
 
 def _normalize_version_tag(version: str) -> str:
-  if not version:
-      return ""
-  normalized = str(version).strip()
-  if not normalized:
-      return ""
-  return normalized if normalized.startswith("v") else f"v{normalized}"
+    if not version:
+        return ""
+    normalized = str(version).strip()
+    if not normalized:
+        return ""
+    return normalized if normalized.startswith("v") else f"v{normalized}"
 
 
 def _get_windows_executable_version(executable_path: str) -> str:
-  if os.name != "nt" or not executable_path or not os.path.exists(executable_path):
-      return ""
+    if os.name != "nt" or not executable_path or not os.path.exists(executable_path):
+        return ""
 
-  try:
-      import ctypes
-      from ctypes import wintypes
+    try:
+        import ctypes
+        from ctypes import wintypes
 
-      size = ctypes.windll.version.GetFileVersionInfoSizeW(executable_path, None)
-      if not size:
-          return ""
+        size = ctypes.windll.version.GetFileVersionInfoSizeW(executable_path, None)
+        if not size:
+            return ""
 
-      raw_data = ctypes.create_string_buffer(size)
+        raw_data = ctypes.create_string_buffer(size)
         ok = ctypes.windll.version.GetFileVersionInfoW(
             executable_path, 0, size, raw_data
         )
