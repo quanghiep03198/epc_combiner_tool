@@ -38,8 +38,8 @@ class RFIDRepository:
             bind_values={"epc_list": epc_list},
         )
 
-        if not result:
-            return []
+        if result is None:
+            raise Exception("Failed to check reasonable combination")
 
         return list(
             map(
@@ -56,7 +56,7 @@ class RFIDRepository:
         connection = None
         try:
             connection = db_service.get_connection(DatabaseConnection.DATA_LAKE)
-
+            
             if not connection.transaction():
                 raise Exception("Failed to start transaction")
 
