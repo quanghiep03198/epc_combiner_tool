@@ -1,11 +1,11 @@
 {
-  "version": "v1.3.9",
+  "version": "v1.4.0",
   "build_type": "release",
-  "build_date": "2026-07-17T16:20:27.880164",
-  "build_timestamp": 1784280027,
+  "build_date": "2026-08-24T13:18:31.748396",
+  "build_timestamp": 1787552311,
   "git": {
-    "commit_hash": "aa57122",
-    "commit_date": "2026-07-17 16:20:15 +0700",
+    "commit_hash": "0225d28",
+    "commit_date": "2026-08-24 13:18:10 +0700",
     "branch": "develop"
   },
   "platform": {
