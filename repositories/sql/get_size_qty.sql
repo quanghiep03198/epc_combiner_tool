@@ -10,8 +10,8 @@ SELECT
             ISNULL(CAST(e.compensated_qty AS INT), 0) AS compensated_qty,
             ISNULL(CAST(f.cancelled_qty AS INT), 0) AS cancelled_qty,
             IIF(
-                ISNULL(CAST(g.max_add_qty AS INT), 0) <= SUM(CAST(b.size_qty AS INT)) - ISNULL(CAST(d.in_use_qty AS INT), 0),
-                ISNULL(CAST(g.max_add_qty AS INT), 0),
+                ISNULL(CAST(g.max_add_qty AS INT), 0) >= SUM(CAST(b.size_qty AS INT)) - ISNULL(CAST(d.in_use_qty AS INT), 0),
+                SUM(CAST(b.size_qty AS INT)) - ISNULL(CAST(d.in_use_qty AS INT), 0),
                 ISNULL(CAST(g.max_add_qty AS INT), 0) - ISNULL(CAST(d.in_use_qty AS INT), 0)
             ) AS max_add_qty
 FROM wuerp_vnrd.dbo.ta_ordersizerun a WITH (NOLOCK)
