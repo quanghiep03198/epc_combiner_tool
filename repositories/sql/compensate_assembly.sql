@@ -103,6 +103,7 @@ WHEN NOT MATCHED BY TARGET THEN
         rfid_status,
         inoutbound_type, 
         record_time,
+        created,
         user_code_created, 
         user_name_created, 
         remark
@@ -116,6 +117,7 @@ WHEN NOT MATCHED BY TARGET THEN
         source.expecting_assembly_station,
         'A', -- Default rfid status
         'A',
+        source.expecting_record_time, 
         source.expecting_record_time, 
         @Username,
         @Username,
