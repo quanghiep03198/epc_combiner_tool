@@ -1,7 +1,9 @@
 ## Overview
+
 EPC Combiner Tool is a desktop application developed in Python for combining EPC (Electronic Product Code) information. It aims to track the production process efficiently.
 
 ## Features
+
 - Combine multiple EPC data sources
 - Track production stages
 - Generate reports
@@ -16,6 +18,7 @@ EPC Combiner Tool is a desktop application developed in Python for combining EPC
 ![GitHub Actions](https://img.shields.io/badge/github%20actions-%232671E5.svg?style=for-the-badge&logo=githubactions&logoColor=white)
 
 ## Folder structure
+
 ```
 epc-combiner-tool/
 ├── .github
@@ -73,7 +76,6 @@ python -m venv venv
 venv/Scripts/activate
 ```
 
-
 ### 5. Install all dependencies packages
 
 ```bash
@@ -83,38 +85,47 @@ venv/Scripts/python -m pip install -r requirements.txt
 ## Usage
 
 ### 1. Run the application:
-    
+
 ```bash
 py main.py
 ```
+
 ### 2. Build application:
 
 **2.1** Show build helpers
+
 ```bash
 py scripts/build.py -h
 ```
 
 **2.2** Build application with new updater for specific version
+
 ```bash
 py scripts/build.py --version <version> --type <developement | release | beta>
 ```
 
-
-**Example:** `py scripts/build.py --version v1.0.0 --type release` 
-
+**Example:** `py scripts/build.py --version v1.0.0 --type release`
 
 ### 3. Create application installer:
-    
+
 ```bash
 iscc "./installer.iss"
 ```
-    
+
+### 4. Create application updater:
+
+```bash
+iscc "./updater.iss"
+```
 
 ## Contributing
+
 Contributions are welcome! Please fork the repository and create a pull request with your changes.
 
 ## License
+
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ## Contact
-For any questions or suggestions, please contact [yourname@example.com](mailto:yourname@example.com).
+
+For any questions or suggestions, please contact [quanghiep03198@gmail.com](mailto:quanghiep03198@gmail.com).
