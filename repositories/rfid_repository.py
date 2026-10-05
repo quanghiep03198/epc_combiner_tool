@@ -10,12 +10,8 @@ from database import DatabaseConnection, db_service
 from helpers.disutils import strtobool
 from helpers.logger import logger
 from i18n import I18nService
-from repositories.sql import (
-    CANCEL_OLD_MATCH_SQL,
-    COMPENSATE_ASSEMBLY_SQL,
-    EPC_TRACE_HISTORY_SQL,
-    INSERT_EPC_MATCH_SQL,
-)
+from repositories.sql import (CANCEL_OLD_MATCH_SQL, COMPENSATE_ASSEMBLY_SQL,
+                              EPC_TRACE_HISTORY_SQL, INSERT_EPC_MATCH_SQL)
 from repositories.station_repository import StationRepository
 
 

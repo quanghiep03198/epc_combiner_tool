@@ -25,7 +25,7 @@ THEMES = {
         "popover": "#161b22",
         "popover-foreground": "#e6edf3",
         # Primary (green accent - GitHub style)
-        "primary":"#1f883d",  # GitHub green light (default button color)
+        "primary": "#1f883d",  # GitHub green light (default button color)
         "primary-foreground": "#ffffff",
         "primary-hover": "#1c8139",  # Lighter green on hover
         # Secondary
@@ -68,7 +68,7 @@ THEMES = {
         "popover": "#ffffff",
         "popover-foreground": "#24292f",
         # Primary (green accent - GitHub style)
-        "primary":"#1f883d",  # GitHub green light (default button color)
+        "primary": "#1f883d",  # GitHub green light (default button color)
         "primary-foreground": "#ffffff",
         "primary-hover": "#1c8139",  # Lighter green on hover
         # Secondary
