@@ -25,9 +25,9 @@ THEMES = {
         "popover": "#161b22",
         "popover-foreground": "#e6edf3",
         # Primary (green accent - GitHub style)
-        "primary": "#238636",  # GitHub green dark
+        "primary":"#1f883d",  # GitHub green light (default button color)
         "primary-foreground": "#ffffff",
-        "primary-hover": "#2ea043",  # Lighter green on hover
+        "primary-hover": "#1c8139",  # Lighter green on hover
         # Secondary
         "secondary": "#21262d",  # GitHub secondary bg
         "secondary-foreground": "#e6edf3",
@@ -38,10 +38,10 @@ THEMES = {
         "accent": "#1f6feb",  # GitHub accent blue
         "accent-foreground": "#ffffff",
         # Destructive (danger/error)
-        "destructive": "#da3633",  # GitHub red
+        "destructive": "#b62324",  # GitHub red
         "destructive-foreground": "#ffffff",
         # Success
-        "success": "#2ea043",  # GitHub green
+        "success": "#1c8139",  # GitHub green
         "success-foreground": "#ffffff",
         # Warning
         "warning": "#bf8700",  # GitHub yellow/orange
@@ -49,7 +49,7 @@ THEMES = {
         # Borders & inputs
         "border": "#30363d",  # GitHub border
         "input": "#30363d",  # GitHub input border
-        "ring": "#238636",  # Focus ring (green)
+        "ring": "#1c8139",  # Focus ring (green)
         # Hover states
         "hover": "#30363d",  # GitHub hover background
         "hover-secondary": "#292e33",
@@ -68,9 +68,9 @@ THEMES = {
         "popover": "#ffffff",
         "popover-foreground": "#24292f",
         # Primary (green accent - GitHub style)
-        "primary": "#1a7f37",  # GitHub green light (default button color)
+        "primary":"#1f883d",  # GitHub green light (default button color)
         "primary-foreground": "#ffffff",
-        "primary-hover": "#2da44e",  # Lighter green on hover
+        "primary-hover": "#1c8139",  # Lighter green on hover
         # Secondary
         "secondary": "#f6f8fa",  # GitHub secondary bg light
         "secondary-foreground": "#24292f",
@@ -92,7 +92,7 @@ THEMES = {
         # Borders & inputs
         "border": "#d0d7de",  # GitHub border light
         "input": "#d0d7de",  # GitHub input border light
-        "ring": "#1a7f37",  # Focus ring (green) light
+        "ring": "#1c8139",  # Focus ring (green) light
         # Hover states
         "hover": "#f3f4f6",  # GitHub hover background light
         "hover-secondary": "#e1e4e8",
