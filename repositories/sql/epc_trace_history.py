@@ -1,3 +1,4 @@
+EPC_TRACE_HISTORY_SQL = f"""--sql
 DECLARE @JsonEpcCodes NVARCHAR(MAX) = :json_epcs_codes;
 DECLARE @StationNO NVARCHAR(30) = :station_no;
 DECLARE @RecordTime DATETIME = :record_time;
@@ -64,3 +65,4 @@ WHEN NOT MATCHED THEN
 		'Trace history for station ' + @StationNO
 	)
 ;
+"""

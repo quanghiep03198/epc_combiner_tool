@@ -1,22 +1,13 @@
-from pathlib import Path
-
 from PyQt6.QtSql import *
 
 from contexts.auth_context import auth_context
 from database import DatabaseConnection, db_service
 from helpers.logger import logger
 from i18n import I18nService
+from repositories.sql import STATION_HISTORY_SQL
 
 
 class StationRepository:
-    __compensatable_station_list_sql_file_path = (
-        Path(__file__).parent.resolve() / "./sql/get_station.sql"
-    )
-
-    __station_history_sql_file_path: str = (
-        Path(__file__).parent.resolve() / "./sql/station_history.sql"
-    )
-
     __factory_stations: list[dict] = [
         {"station_no": "departments.sewing", "station_seq_no": 2},
         {"station_no": "departments.shaping", "station_seq_no": 3},
@@ -47,9 +38,7 @@ class StationRepository:
         try:
             return db_service.execute_query(
                 connection_type=DatabaseConnection.DATA_LAKE,
-                sql_query=db_service.get_raw_sql(
-                    StationRepository.__station_history_sql_file_path
-                ),
+                sql_query=STATION_HISTORY_SQL,
                 bind_values={
                     "mo_no": mo_no,
                     "size_numcode": size_numcode,

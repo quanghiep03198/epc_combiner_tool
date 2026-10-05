@@ -1,3 +1,4 @@
+CANCEL_OLD_MATCH_SQL = f"""--sql
 DECLARE @PendingCombineEpcs NVARCHAR(MAX) = :pending_combine_epcs;
 DECLARE @User NVARCHAR(MAX) = :username;
 
@@ -11,3 +12,4 @@ WHERE EPC_Code IN (SELECT value FROM STRING_SPLIT(@PendingCombineEpcs, ','))
     AND ri_cancel = 0
     AND sole_tag = 'A'
 ;
+"""

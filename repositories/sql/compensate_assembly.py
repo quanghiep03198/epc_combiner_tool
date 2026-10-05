@@ -1,3 +1,4 @@
+COMPENSATE_ASSEMBLY_SQL = f"""--sql
 DECLARE @Username NVARCHAR(50) = :username;
 DECLARE @FactoryCode NVARCHAR(50) = :factory_code;
 DECLARE @PendingCombineEpcs NVARCHAR(MAX) = :pending_combine_epcs;
@@ -124,3 +125,4 @@ WHEN NOT MATCHED BY TARGET THEN
         REPLACE(@CompensatingRemark, ':station', source.expecting_assembly_station)
     )
 ;
+"""
