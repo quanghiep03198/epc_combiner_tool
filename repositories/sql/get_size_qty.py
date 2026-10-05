@@ -1,3 +1,4 @@
+GET_SIZE_QTY_SQL = f"""--sql
 DECLARE @mo_no NVARCHAR(10) = :mo_no;
 DECLARE @mo_noseq NVARCHAR(10) = :mo_noseq;
 
@@ -120,11 +121,5 @@ WHERE b.size_qty <> 0
     AND (@mo_noseq IS NULL OR a1.mo_noseq = @mo_noseq)
 GROUP BY a.size_code, b.size_numcode, c.combined_qty, d.in_use_qty, e.compensated_qty, f.cancelled_qty, g.max_add_qty
 ORDER BY RIGHT('0000' + IIF(CHARINDEX('.', b.size_numcode) > 0, b.size_numcode, b.size_numcode + '.0'), 5) ASC
-OPTION
-(
-    OPTIMIZE FOR UNKNOWN,
-    USE HINT(
-        'FORCE_LEGACY_CARDINALITY_ESTIMATION', 
-        'ENABLE_PARALLEL_PLAN_PREFERENCE'
-    )
-);
+OPTION (OPTIMIZE FOR UNKNOWN);
+"""

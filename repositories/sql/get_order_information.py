@@ -1,3 +1,4 @@
+GET_ORDER_INFORMATION_SQL = f"""--sql
 DECLARE @mo_no NVARCHAR(10) = :mo_no;
 
 SELECT
@@ -24,4 +25,4 @@ ORDER BY b.mo_noseq ASC
 OPTION (
 	OPTIMIZE FOR UNKNOWN
 );
-
+"""

@@ -1,17 +1,12 @@
-from pathlib import Path
-
 from PyQt6.QtSql import *
 
 from contexts.auth_context import auth_context
 from database import DatabaseConnection, db_service
 from helpers.logger import logger
+from repositories.sql import GET_ORDER_INFORMATION_SQL
 
 
 class OrderRepository:
-    __sql_file_path = (
-        Path(__file__).parent.resolve() / "./sql/get_order_information.sql"
-    )
-
     @staticmethod
     def search_order(search: str):
         result = db_service.execute_query(
@@ -35,6 +30,6 @@ class OrderRepository:
     def get_order_detail(params: dict):
         return db_service.execute_query(
             connection_type=DatabaseConnection.ERP,
-            sql_query=db_service.get_raw_sql(OrderRepository.__sql_file_path),
+            sql_query=GET_ORDER_INFORMATION_SQL,
             bind_values={"mo_no": params["mo_no"]},
         )

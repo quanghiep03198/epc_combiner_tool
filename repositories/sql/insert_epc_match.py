@@ -1,3 +1,4 @@
+INSERT_EPC_MATCH_SQL = f"""--sql
 DECLARE @JsonData NVARCHAR(MAX) = :json_data;
 
 INSERT INTO DV_DATA_LAKE.dbo.dv_rfidmatchmst (
@@ -40,3 +41,4 @@ SELECT
     JSON_VALUE(value, '$.isactive') AS isactive,
     JSON_VALUE(value, '$.remark') AS remark
 FROM OPENJSON(@JsonData)
+"""

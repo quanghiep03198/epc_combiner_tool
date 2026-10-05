@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 from PyQt6.QtCore import QDateTime
 from PyQt6.QtSql import *
@@ -11,6 +10,12 @@ from database import DatabaseConnection, db_service
 from helpers.disutils import strtobool
 from helpers.logger import logger
 from i18n import I18nService
+from repositories.sql import (
+    CANCEL_OLD_MATCH_SQL,
+    COMPENSATE_ASSEMBLY_SQL,
+    EPC_TRACE_HISTORY_SQL,
+    INSERT_EPC_MATCH_SQL,
+)
 from repositories.station_repository import StationRepository
 
 
@@ -56,7 +61,7 @@ class RFIDRepository:
         connection = None
         try:
             connection = db_service.get_connection(DatabaseConnection.DATA_LAKE)
-            
+
             if not connection.transaction():
                 raise Exception("Failed to start transaction")
 
@@ -71,10 +76,7 @@ class RFIDRepository:
             if should_compensate_assembly:
                 compensate_assembly_result = db_service.execute_non_query(
                     connection_type=DatabaseConnection.DATA_LAKE,
-                    sql_query=db_service.get_raw_sql(
-                        Path(__file__).parent.resolve()
-                        / "./sql/compensate_assembly.sql"
-                    ),
+                    sql_query=COMPENSATE_ASSEMBLY_SQL,
                     bind_values={
                         "username": auth_context.get("user_code"),
                         "factory_code": auth_context.get("factory_code"),
@@ -92,9 +94,7 @@ class RFIDRepository:
             # Cancel old records
             cancel_old_epcs_result: int = db_service.execute_non_query(
                 connection_type=DatabaseConnection.DATA_LAKE,
-                sql_query=db_service.get_raw_sql(
-                    Path(__file__).parent.resolve() / "./sql/cancel_old_match.sql"
-                ),
+                sql_query=CANCEL_OLD_MATCH_SQL,
                 bind_values={
                     "pending_combine_epcs": epc_params_str,
                     "username": auth_context.get("user_code"),
@@ -107,9 +107,7 @@ class RFIDRepository:
             # Insert new records
             insert_result = db_service.execute_non_query(
                 connection_type=DatabaseConnection.DATA_LAKE,
-                sql_query=db_service.get_raw_sql(
-                    Path(__file__).parent.resolve() / "./sql/insert_epc_match.sql"
-                ),
+                sql_query=INSERT_EPC_MATCH_SQL,
                 bind_values={
                     "json_data": json.dumps(obj=data, ensure_ascii=False).replace(
                         "'", "''"
@@ -227,9 +225,7 @@ class RFIDRepository:
     ) -> int:
         result = db_service.execute_non_query(
             connection_type=DatabaseConnection.DATA_LAKE,
-            sql_query=db_service.get_raw_sql(
-                Path(__file__).parent.resolve() / "./sql/epc_trace_history.sql"
-            ),
+            sql_query=EPC_TRACE_HISTORY_SQL,
             bind_values={
                 "json_epcs_codes": json_epcs_codes,
                 "factory_code": auth_context.get("factory_code"),

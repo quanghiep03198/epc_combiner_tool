@@ -1,3 +1,4 @@
+GET_STATION_SQL = f"""--sql
 DECLARE @FactoryCode NVARCHAR(10) = :factory_code;
 
 SELECT DISTINCT device_name AS station_no,
@@ -17,3 +18,4 @@ AND device_name LIKE CONCAT('%', @FactoryCode, '%')
 ORDER BY
 station_seq_no ASC,
 device_name ASC;
+"""

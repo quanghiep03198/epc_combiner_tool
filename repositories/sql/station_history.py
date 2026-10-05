@@ -1,3 +1,4 @@
+STATION_HISTORY_SQL = f"""--sql
 DECLARE @MoNo NVARCHAR(10) = :mo_no;
 DECLARE @SizeNumCode NVARCHAR(10) = :size_numcode;
 DECLARE @MaxStationSeqNo INT = :station_seq_no;
@@ -127,3 +128,4 @@ SELECT
 FROM OtherStations
 WHERE station_seq_no <= @MaxStationSeqNo
 ORDER BY station_seq_no ASC, last_record_time ASC, stationNO ASC;
+"""
