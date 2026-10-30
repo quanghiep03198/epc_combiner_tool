@@ -16,6 +16,7 @@ from helpers.resolve_path import resolve_path
 from i18n import I18nContext, I18nService
 from themes.colors import Theme, get_color
 from themes.theme_manager import theme_manager
+
 # Import widgets
 from widgets.toaster import Toaster
 

@@ -39,9 +39,16 @@ try:
     # from helpers.resolve_path import resolve_path
     from PyQt6.QtCore import QObject, QThread, pyqtSignal
     from PyQt6.QtGui import QIcon
-    from PyQt6.QtWidgets import (QApplication, QDialog, QHBoxLayout, QLabel,
-                                 QProgressBar, QPushButton, QTextEdit,
-                                 QVBoxLayout)
+    from PyQt6.QtWidgets import (
+        QApplication,
+        QDialog,
+        QHBoxLayout,
+        QLabel,
+        QProgressBar,
+        QPushButton,
+        QTextEdit,
+        QVBoxLayout,
+    )
 
     PYQT_AVAILABLE = True
 except ImportError:
