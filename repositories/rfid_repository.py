@@ -10,8 +10,12 @@ from database import DatabaseConnection, db_service
 from helpers.disutils import strtobool
 from helpers.logger import logger
 from i18n import I18nService
-from repositories.sql import (CANCEL_OLD_MATCH_SQL, COMPENSATE_ASSEMBLY_SQL,
-                              EPC_TRACE_HISTORY_SQL, INSERT_EPC_MATCH_SQL)
+from repositories.sql import (
+    CANCEL_OLD_MATCH_SQL,
+    COMPENSATE_ASSEMBLY_SQL,
+    EPC_TRACE_HISTORY_SQL,
+    INSERT_EPC_MATCH_SQL,
+)
 from repositories.station_repository import StationRepository
 
 
@@ -58,7 +62,7 @@ class RFIDRepository:
         try:
             connection = db_service.get_connection(DatabaseConnection.DATA_LAKE)
 
-            if not connection.transaction():
+            if connection is None or not connection.transaction():
                 raise Exception("Failed to start transaction")
 
             epc_params_str = ",".join([f"{item['EPC_Code']}" for item in data])
