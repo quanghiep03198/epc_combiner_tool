@@ -68,24 +68,18 @@ class RFIDRepository:
             epc_params_str = ",".join([f"{item['EPC_Code']}" for item in data])
 
             # region Producing lifecycle
-
-            # * Only apply epc's ending producing lifecycle for all factories except for Cambodia (CA1)
-            should_compensate_assembly = (
-                auth_context.get("factory_code") == FactoryCodes.CA1.value
+            compensate_assembly_result = db_service.execute_non_query(
+                connection_type=DatabaseConnection.DATA_LAKE,
+                sql_query=COMPENSATE_ASSEMBLY_SQL,
+                bind_values={
+                    "username": auth_context.get("user_code"),
+                    "factory_code": auth_context.get("factory_code"),
+                    "pending_combine_epcs": epc_params_str,
+                },
             )
-            if should_compensate_assembly:
-                compensate_assembly_result = db_service.execute_non_query(
-                    connection_type=DatabaseConnection.DATA_LAKE,
-                    sql_query=COMPENSATE_ASSEMBLY_SQL,
-                    bind_values={
-                        "username": auth_context.get("user_code"),
-                        "factory_code": auth_context.get("factory_code"),
-                        "pending_combine_epcs": epc_params_str,
-                    },
-                )
 
-                if compensate_assembly_result == -1:
-                    raise Exception("Failed to end producing lifecycle for EPCs")
+            if compensate_assembly_result == -1:
+                raise Exception("Failed to end producing lifecycle for EPCs")
 
             # endregion
 
